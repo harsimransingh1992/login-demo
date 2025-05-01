@@ -1,0 +1,10 @@
+<svg width="40" height="40" viewBox="0 0 40 40" xmlns="http://www.w3.org/2000/svg">
+    <path d="M15 28C15 32 17 36 20 36C23 36 25 32 25 28C25 20 23 4 20 4C17 4 15 20 15 28Z"
+          fill="white"
+          stroke="#2c3e50"
+          stroke-width="2"/>
+    <path d="M20 4L20 36"
+          stroke="#2c3e50"
+          stroke-width="1"
+          stroke-dasharray="2,2"/>
+</svg>

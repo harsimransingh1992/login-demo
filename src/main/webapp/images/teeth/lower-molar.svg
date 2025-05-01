@@ -1,0 +1,13 @@
+<svg width="40" height="40" viewBox="0 0 40 40" xmlns="http://www.w3.org/2000/svg">
+    <path d="M8 28C8 32 12 36 20 36C28 36 32 32 32 28C32 20 28 4 20 4C12 4 8 20 8 28Z"
+          fill="white"
+          stroke="#2c3e50"
+          stroke-width="2"/>
+    <path d="M14 28C14 28 17 24 20 24C23 24 26 28 26 28"
+          fill="none"
+          stroke="#2c3e50"
+          stroke-width="2"/>
+    <path d="M14 24L26 24"
+          stroke="#2c3e50"
+          stroke-width="2"/>
+</svg>

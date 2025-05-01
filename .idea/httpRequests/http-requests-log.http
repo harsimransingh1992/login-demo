@@ -1,0 +1,12 @@
+POST http://localhost:8080/patients/checkin/1
+Content-Type: application/x-www-form-urlencoded
+User-Agent: IntelliJ HTTP Client/IntelliJ IDEA 2024.3.5
+Accept-Encoding: br, deflate, gzip, x-gzip
+Accept: */*
+cookie: JSESSIONID=1267858CDDE1D220447EA32108A31383
+content-length: 0
+
+<> 2025-03-27T132134.200.html
+
+###
+
