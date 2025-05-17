@@ -5,6 +5,7 @@ import lombok.Setter;
 
 import javax.persistence.*;
 import java.time.LocalDateTime;
+import java.util.List;
 
 @Setter
 @Getter
@@ -71,4 +72,7 @@ public class ToothClinicalExamination {
 
     @OneToOne(cascade = CascadeType.ALL)
     private User examinationClinic;
+
+    @OneToMany
+    private List<ProcedurePrice> procedures;
 }

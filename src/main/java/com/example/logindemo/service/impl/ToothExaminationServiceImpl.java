@@ -66,15 +66,27 @@ public class ToothExaminationServiceImpl implements ToothExaminationService {
                 // Parse the date string which is in format "YYYY-MM-DD HH:mm"
                 String[] dateTimeParts = treatmentStartDate.split(" ");
                 String datePart = dateTimeParts[0];
-                String timePart = dateTimeParts[1];
+                String timePart = dateTimeParts.length > 1 ? dateTimeParts[1] : "00:00";
                 
                 // Create the final date string in ISO format
                 String formattedDate = datePart + "T" + timePart + ":00";
                 
-                // Parse the formatted date string to LocalDateTime
-                examination.setTreatmentStartingDate(LocalDateTime.parse(formattedDate));
+                // Log the parsing process
+                System.out.println("Original date string: " + treatmentStartDate);
+                System.out.println("Formatted date string: " + formattedDate);
+                
+                try {
+                    // Parse the formatted date string to LocalDateTime
+                    LocalDateTime parsedDate = LocalDateTime.parse(formattedDate);
+                    System.out.println("Successfully parsed date: " + parsedDate);
+                    examination.setTreatmentStartingDate(parsedDate);
+                } catch (Exception e) {
+                    System.err.println("Error parsing formatted date: " + e.getMessage());
+                    throw new RuntimeException("Failed to parse treatment start date: " + e.getMessage());
+                }
             } catch (Exception e) {
-                throw new RuntimeException("Failed to parse treatment start date: " + e.getMessage());
+                System.err.println("Error processing date string: " + e.getMessage());
+                throw new RuntimeException("Failed to process treatment start date: " + e.getMessage());
             }
         } else {
             examination.setTreatmentStartingDate(null);

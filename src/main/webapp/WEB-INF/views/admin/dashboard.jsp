@@ -154,6 +154,12 @@
                     <p>Manage procedure prices based on city tiers</p>
                     <a href="${pageContext.request.contextPath}/admin/prices" class="btn">Manage Prices</a>
                 </div>
+                
+                <div class="admin-card">
+                    <h3>Database Maintenance</h3>
+                    <p>Fix database integrity issues and perform maintenance</p>
+                    <a href="${pageContext.request.contextPath}/admin/database-status" class="btn">Database Tools</a>
+                </div>
             </div>
             
             <p class="warning">Note: This is a restricted area. All actions are logged for security purposes.</p>
@@ -164,6 +170,7 @@
             <a href="${pageContext.request.contextPath}/admin/users/create" class="btn">Create New User</a>
             <a href="${pageContext.request.contextPath}/admin/doctors/create" class="btn">Add New Doctor</a>
             <a href="${pageContext.request.contextPath}/admin/prices/create" class="btn">Add New Procedure Price</a>
+            <a href="${pageContext.request.contextPath}/admin/database-status" class="btn">Database Maintenance</a>
             <a href="${pageContext.request.contextPath}/welcome" class="btn">Back to Main App</a>
         </div>
     </div>

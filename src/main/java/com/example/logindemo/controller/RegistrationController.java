@@ -1,6 +1,7 @@
 package com.example.logindemo.controller;
 
 import com.example.logindemo.dto.UserRegistrationDto;
+import com.example.logindemo.model.ReferralModel;
 import com.example.logindemo.service.UserService;
 import org.springframework.beans.factory.annotation.Autowired;
 import org.springframework.stereotype.Controller;
@@ -17,7 +18,8 @@ public class RegistrationController {
     private UserService userService;
 
     @GetMapping("/register")
-    public String showRegistrationPage() {
+    public String showRegistrationPage(Model model) {
+        model.addAttribute("referralModels", ReferralModel.values());
         return "register";
     }
 

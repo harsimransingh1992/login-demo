@@ -4,6 +4,7 @@ import com.example.logindemo.dto.PatientDTO;
 import com.example.logindemo.dto.ToothClinicalExaminationDTO;
 import com.example.logindemo.model.Patient;
 import com.example.logindemo.model.User;
+import org.springframework.web.multipart.MultipartFile;
 
 import java.util.List;
 
@@ -39,4 +40,20 @@ public interface PatientService {
      * @param patient the patient data to update
      */
     void updatePatient(PatientDTO patient);
+    
+    /**
+     * Check if a patient with the same first name and phone number already exists
+     * @param firstName the patient's first name
+     * @param phoneNumber the patient's phone number
+     * @return true if a duplicate exists, false otherwise
+     */
+    boolean isDuplicatePatient(String firstName, String phoneNumber);
+    
+    /**
+     * Handle profile picture upload for a patient
+     * @param file the profile picture file
+     * @param patientId the ID of the patient (null for new patients)
+     * @return the path where the file was stored
+     */
+    String handleProfilePictureUpload(MultipartFile file, String patientId);
 }

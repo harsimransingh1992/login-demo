@@ -507,11 +507,52 @@
                     <div class="success-message">${success}</div>
                 </c:if>
                 
-                <form:form action="${pageContext.request.contextPath}/patients/update" method="post" modelAttribute="patient">
+                <form:form action="${pageContext.request.contextPath}/patients/update" method="post" modelAttribute="patient" enctype="multipart/form-data">
                     <form:hidden path="id" />
                     
                     <div class="form-section">
                         <h3 class="section-title"><i class="fas fa-user"></i> Personal Information</h3>
+                        
+                        <!-- Profile picture section -->
+                        <div class="form-row">
+                            <div class="form-group w-100">
+                                <label for="profilePicture">Profile Picture</label>
+                                <div style="display: flex; align-items: center; gap: 20px; margin-bottom: 10px;">
+                                    <!-- Profile picture container -->
+                                    <div style="width: 120px; height: 120px; border-radius: 50%; overflow: hidden; border: 2px solid #e0e0e0; display: flex; align-items: center; justify-content: center; background-color: #f9f9f9;">
+                                        <c:choose>
+                                            <c:when test="${not empty patient.profilePicturePath}">
+                                                <!-- Make the image itself clickable -->
+                                                <img id="profileImg" 
+                                                     src="${pageContext.request.contextPath}/uploads/${patient.profilePicturePath}" 
+                                                     alt="Profile Picture" 
+                                                     style="width: 100%; height: 100%; object-fit: cover; cursor: pointer; position: relative; z-index: 10;"
+                                                     onclick="document.getElementById('profileModal').style.display='block'; document.getElementById('modalProfileImg').src=this.src;"
+                                                     onerror="this.onerror=null; this.src='${pageContext.request.contextPath}/images/default-profile.png';">
+                                            </c:when>
+                                            <c:otherwise>
+                                                <i class="fas fa-user-circle" style="font-size: 3rem; color: #c0c0c0;"></i>
+                                            </c:otherwise>
+                                        </c:choose>
+                                    </div>
+                                    <div>
+                                        <input type="file" name="profilePicture" id="profilePicture" accept="image/*" style="display: none;">
+                                        <label for="profilePicture" class="btn btn-secondary" style="cursor: pointer;">
+                                            <i class="fas fa-upload"></i> ${not empty patient.profilePicturePath ? 'Change Picture' : 'Upload Picture'}
+                                        </label>
+                                        <c:if test="${not empty patient.profilePicturePath}">
+                                            <button type="button" id="removeProfilePicture" class="btn btn-danger" style="margin-left: 10px;">
+                                                <i class="fas fa-trash"></i> Remove
+                                            </button>
+                                            <input type="hidden" name="removeProfilePicture" id="removeProfilePictureFlag" value="false">
+                                        </c:if>
+                                        <div class="form-tip" style="margin-top: 5px;">
+                                            <i class="fas fa-info-circle"></i> Maximum size: 2MB. Recommended: square image (1:1 ratio)
+                                        </div>
+                                    </div>
+                                </div>
+                            </div>
+                        </div>
                         
                         <div class="form-row">
                             <div class="form-group w-50">
@@ -528,7 +569,7 @@
                             <div class="form-group w-33">
                                 <label for="dateOfBirth">Date of Birth <span class="required">*</span></label>
                                 <form:input path="dateOfBirth" type="date" id="dateOfBirth" required="true" />
-                            </div>
+                                </div>
                             <div class="form-group w-33">
                                 <label for="gender">Gender <span class="required">*</span></label>
                                 <form:select path="gender" id="gender" required="true">
@@ -555,7 +596,7 @@
                             <div class="form-group w-50">
                                 <label for="phoneNumber">Phone Number <span class="required">*</span></label>
                                 <form:input path="phoneNumber" id="phoneNumber" required="true" />
-                            </div>
+                                </div>
                             <div class="form-group w-50">
                                 <label for="email">Email</label>
                                 <form:input path="email" type="email" id="email" />
@@ -566,7 +607,7 @@
                             <div class="form-group w-100">
                             <label for="streetAddress">Street Address <span class="required">*</span></label>
                                 <form:input path="streetAddress" id="streetAddress" required="true" />
-                            </div>
+                        </div>
                         </div>
                         
                         <div class="form-row">
@@ -583,7 +624,7 @@
                                     <form:option value="" label="-- Select City --" />
                                     <!-- Cities will be loaded dynamically -->
                                 </form:select>
-                            </div>
+                                </div>
                             <div class="form-group w-33">
                                 <label for="pincode">Pincode <span class="required">*</span></label>
                                 <form:input path="pincode" id="pincode" required="true" maxlength="6" />
@@ -721,8 +762,126 @@
                     alert('Please select a city');
                     citySelect.focus();
                 }
+                
+                // Validate profile picture if one is selected
+                const profilePicture = document.getElementById('profilePicture');
+                if (profilePicture.files.length > 0) {
+                    const file = profilePicture.files[0];
+                    
+                    // Check file size (max 2MB)
+                    if (file.size > 2 * 1024 * 1024) {
+                        event.preventDefault();
+                        alert('Error: Profile picture size exceeds 2MB limit');
+                        return;
+                    }
+                    
+                    // Check file type
+                    if (!file.type.startsWith('image/')) {
+                        event.preventDefault();
+                        alert('Error: Only image files are allowed for profile picture');
+                        return;
+                    }
+                }
+            });
+            
+            // Profile picture preview functionality
+            const profilePictureInput = document.getElementById('profilePicture');
+            if (profilePictureInput) {
+                profilePictureInput.addEventListener('change', function() {
+                    if (this.files && this.files[0]) {
+                        const reader = new FileReader();
+                        
+                        reader.onload = function(e) {
+                            // Find the image or create one if it doesn't exist
+                            let imgPreview = document.querySelector('.form-group div div img');
+                            if (!imgPreview) {
+                                const previewContainer = document.querySelector('.form-group div div');
+                                // Remove the icon if it exists
+                                const icon = previewContainer.querySelector('i');
+                                if (icon) {
+                                    previewContainer.removeChild(icon);
+                                }
+                                
+                                // Create and add the image
+                                imgPreview = document.createElement('img');
+                                imgPreview.style.width = '100%';
+                                imgPreview.style.height = '100%';
+                                imgPreview.style.objectFit = 'cover';
+                                previewContainer.appendChild(imgPreview);
+                            }
+                            
+                            // Update the image source
+                            imgPreview.src = e.target.result;
+                        };
+                        
+                        reader.readAsDataURL(this.files[0]);
+                    }
+                });
+            }
+            
+            // Handle remove profile picture button
+            const removeButton = document.getElementById('removeProfilePicture');
+            if (removeButton) {
+                removeButton.addEventListener('click', function() {
+                    // Set the flag to remove the profile picture
+                    document.getElementById('removeProfilePictureFlag').value = 'true';
+                    
+                    // Update the UI to show the profile picture has been removed
+                    const imgContainer = document.querySelector('.form-group div div');
+                    imgContainer.innerHTML = '<i class="fas fa-user-circle" style="font-size: 3rem; color: #c0c0c0;"></i>';
+                    
+                    // Clear the file input
+                    document.getElementById('profilePicture').value = '';
+                    
+                    // Change the button text
+                    const uploadLabel = document.querySelector('label[for="profilePicture"]');
+                    uploadLabel.innerHTML = '<i class="fas fa-upload"></i> Upload Picture';
+                    
+                    // Hide the remove button
+                    this.style.display = 'none';
+                });
+            }
         });
-    });
+</script>
+
+<!-- Profile Picture Modal -->
+<div id="profileModal" style="display: none; position: fixed; z-index: 1000; left: 0; top: 0; width: 100%; height: 100%; overflow: auto; background-color: rgba(0,0,0,0.7);">
+    <div style="margin: 10% auto; padding: 20px; max-width: 700px; position: relative;">
+        <span onclick="closeProfileModal()" style="position: absolute; top: 10px; right: 25px; color: white; font-size: 35px; font-weight: bold; cursor: pointer;">&times;</span>
+        <img id="modalProfileImg" style="width: 100%; max-height: 80vh; object-fit: contain; display: block; margin: 0 auto; border-radius: 5px;" src="" alt="Profile Picture">
+    </div>
+</div>
+
+<script>
+    // Profile picture modal functions
+    function openProfileModal() {
+        console.log("Opening profile modal");
+        const profileImg = document.getElementById('profileImg');
+        console.log("Profile image element:", profileImg);
+        
+        if (profileImg) {
+            const modal = document.getElementById('profileModal');
+            const modalImg = document.getElementById('modalProfileImg');
+            
+            console.log("Setting modal image src to:", profileImg.src);
+            modal.style.display = "block";
+            modalImg.src = profileImg.src;
+        } else {
+            console.error("Profile image element not found");
+        }
+    }
+    
+    function closeProfileModal() {
+        document.getElementById('profileModal').style.display = "none";
+    }
+    
+    // Close modal when clicking outside the image
+    window.onclick = function(event) {
+        const modal = document.getElementById('profileModal');
+        if (event.target == modal) {
+            closeProfileModal();
+        }
+    }
 </script>
 </body>
 </html> 

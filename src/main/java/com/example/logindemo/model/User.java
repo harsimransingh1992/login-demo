@@ -24,6 +24,7 @@ public class User {
     @OneToMany(mappedBy = "onboardClinic", cascade = CascadeType.ALL)
     private List<DoctorDetail> onboardDoctors;
 
-    @Column(nullable = false)
-    private CityTier cityTier;
+    @Column
+    @Enumerated(EnumType.STRING)
+    private CityTier cityTier = CityTier.TIER1; // Default to Tier 1
 } 

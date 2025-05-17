@@ -415,6 +415,16 @@
             margin-top: 30px;
         }
         
+        /* Clinic Code Styling */
+        .clinic-code {
+            font-weight: 600;
+            color: #3498db;
+            background-color: #f0f7ff;
+            padding: 2px 6px;
+            border-radius: 4px;
+            display: inline-block;
+        }
+        
         .chart-instructions {
             text-align: center;
             margin-bottom: 10px;
@@ -1026,6 +1036,88 @@
             border-color: #3498db;
             background-color: #f0f7ff;
         }
+
+        .patient-info-container {
+            display: flex;
+            flex-direction: column;
+            gap: 20px;
+            margin-bottom: 30px;
+        }
+        
+        .patient-header {
+            display: flex;
+            align-items: center;
+            gap: 20px;
+            padding: 20px;
+            background: white;
+            border-radius: 12px;
+            box-shadow: 0 5px 15px rgba(0, 0, 0, 0.03);
+        }
+        
+        .patient-profile-picture {
+            width: 120px;
+            height: 120px;
+            border-radius: 50%;
+            overflow: hidden;
+            border: 3px solid #3498db;
+            box-shadow: 0 4px 10px rgba(0, 0, 0, 0.1);
+            background-color: #f0f0f0;
+            display: flex;
+            align-items: center;
+            justify-content: center;
+        }
+        
+        .patient-profile-picture img {
+            width: 100%;
+            height: 100%;
+            object-fit: cover;
+        }
+        
+        .patient-profile-picture i {
+            font-size: 3rem;
+            color: #bbb;
+        }
+        
+        .patient-details {
+            flex: 1;
+        }
+        
+        .patient-name {
+            font-size: 1.8rem;
+            color: #2c3e50;
+            margin: 0 0 5px 0;
+            font-weight: 600;
+        }
+        
+        .patient-id {
+            font-size: 0.9rem;
+            color: #7f8c8d;
+            margin: 0;
+        }
+        
+        .patient-meta {
+            margin-top: 10px;
+            display: flex;
+            gap: 15px;
+            flex-wrap: wrap;
+        }
+        
+        .meta-item {
+            display: flex;
+            align-items: center;
+            gap: 5px;
+            font-size: 0.9rem;
+            color: #7f8c8d;
+        }
+        
+        .meta-item i {
+            color: #3498db;
+            font-size: 0.9rem;
+        }
+        
+        .meta-item strong {
+            color: #2c3e50;
+        }
     </style>
 </head>
 <body>
@@ -1069,12 +1161,35 @@
         
         <div class="patient-details-container">
             <div class="patient-header">
-                <h2>${patient.firstName} ${patient.lastName}</h2>
+                <!-- Add profile picture container -->
+                <div class="patient-profile-picture">
+                    <c:choose>
+                        <c:when test="${not empty patient.profilePicturePath}">
+                            <img src="${pageContext.request.contextPath}/uploads/${patient.profilePicturePath}" 
+                                 alt="Patient Profile" 
+                                 onerror="this.onerror=null; this.src='${pageContext.request.contextPath}/images/default-profile.png'; this.parentElement.classList.add('profile-error');">
+                            <!-- Debug: ${patient.profilePicturePath} -->
+                        </c:when>
+                        <c:otherwise>
+                            <i class="fas fa-user-circle"></i>
+                        </c:otherwise>
+                    </c:choose>
+        </div>
+                <!-- Patient name and other details -->
+                <div class="patient-details">
+                    <h2 class="patient-name">${patient.firstName} ${patient.lastName}</h2>
+                    <p class="patient-id">Patient ID: ${patient.id}</p>
+                    <div class="patient-meta">
+                        <span class="meta-item"><i class="fas fa-calendar-alt"></i> Age: <strong>${patient.age}</strong></span>
+                        <span class="meta-item"><i class="fas fa-venus-mars"></i> Gender: <strong>${patient.gender}</strong></span>
+                        <span class="meta-item"><i class="fas fa-phone"></i> Phone: <strong>${patient.phoneNumber}</strong></span>
+                    </div>
+                </div>
                 <div class="patient-actions">
                     <a href="${pageContext.request.contextPath}/patient/edit/${patient.id}" class="btn btn-secondary">
                         <i class="fas fa-edit"></i> Edit
                     </a>
-        </div>
+                </div>
             </div>
             
             <div class="patient-info">
@@ -1176,14 +1291,14 @@
                             <div class="tooth-graphic">
                                 <img src="${pageContext.request.contextPath}/images/teeth/upper-premolar.svg" alt="Tooth 14">
                                 <span class="tooth-number-bottom">14</span>
-                    </div>
+                            </div>
                             <div class="tooth-number">UR4</div>
                         </div>
                     <div class="tooth" onclick="openToothDetails(13)">
                             <div class="tooth-graphic">
                                 <img src="${pageContext.request.contextPath}/images/teeth/upper-canine.svg" alt="Tooth 13">
                                 <span class="tooth-number-bottom">13</span>
-                    </div>
+                            </div>
                             <div class="tooth-number">UR3</div>
                         </div>
                     <div class="tooth" onclick="openToothDetails(12)">
@@ -1236,7 +1351,7 @@
                             <div class="tooth-graphic">
                                 <img src="${pageContext.request.contextPath}/images/teeth/upper-premolar.svg" alt="Tooth 25">
                                 <span class="tooth-number-bottom">25</span>
-                    </div>
+                            </div>
                             <div class="tooth-number">UL5</div>
                         </div>
                     <div class="tooth" onclick="openToothDetails(26)">
@@ -1382,7 +1497,7 @@
                             <div class="tooth-graphic">
                                 <img src="${pageContext.request.contextPath}/images/teeth/lower-molar.svg" alt="Tooth 38">
                                 <span class="tooth-number-overlay">38</span>
-                    </div>
+                            </div>
                             <div class="tooth-number">LL8</div>
                 </div>
             </div>
@@ -1427,6 +1542,23 @@
                         </select>
                     </div>
                 
+                <div class="filter-group">
+                    <label for="clinicDropdown">Filter by Clinic:</label>
+                    <select id="clinicDropdown" class="custom-select" onchange="filterByClinic(this.value)">
+                        <option value="all">All Clinics</option>
+                        <c:set var="clinicsSeen" value="" />
+                        <c:forEach items="${examinationHistory}" var="exam">
+                            <c:if test="${not empty exam.examinationClinic}">
+                                <c:set var="clinicUsername" value="${exam.examinationClinic.username}" />
+                                <c:if test="${!fn:contains(clinicsSeen, clinicUsername)}">
+                                    <c:set var="clinicsSeen" value="${clinicsSeen}${clinicUsername}," />
+                                    <option value="${clinicUsername}">${clinicUsername}</option>
+                                </c:if>
+                            </c:if>
+                        </c:forEach>
+                    </select>
+                </div>
+                
                 <div class="sort-group">
                     <label for="sortDropdown">Sort by:</label>
                     <select id="sortDropdown" class="custom-select" onchange="sortTable(this.value)">
@@ -1461,6 +1593,7 @@
                                 <th>Condition</th>
                                 <th>Treatment Start Date</th>
                                 <th>Notes</th>
+                                <th>Clinic</th>
                                 <th>Assigned Doctor</th>
                                 <th>Actions</th>
                             </tr>
@@ -1510,6 +1643,16 @@
                                         </c:otherwise>
                                     </c:choose>
                                 </td>
+                                <td>
+                                    <c:choose>
+                                        <c:when test="${not empty exam.examinationClinic}">
+                                            <span class="clinic-code">${exam.examinationClinic.username}</span>
+                                        </c:when>
+                                        <c:otherwise>
+                                            <span class="no-data">--</span>
+                                        </c:otherwise>
+                                    </c:choose>
+                                </td>
                                 <td data-doctor="${exam.assignedDoctor != null ? exam.assignedDoctor.id : ''}">
                                     <select onchange='assignDoctor(this.value, <c:out value="${exam.id}"/>)' class="doctor-dropdown ${exam.assignedDoctor != null ? 'doctor-assigned' : ''}" data-exam-id="${exam.id}" onclick="event.stopPropagation();">
                                         <option value="">Assign Doctor</option>
@@ -1530,7 +1673,7 @@
                                        onclick="event.stopPropagation();">
                                         <i class="fas fa-eye"></i>
                                     </a>
-                                </td>
+                                    </td>
                                 </tr>
                             </c:forEach>
                             </tbody>
@@ -2125,6 +2268,30 @@
         document.querySelector('.table-info small').textContent = `Showing ${visibleRows.length} of ${tbody.querySelectorAll('tr').length} records`;
     }
 
+
+    // Function to filter examination history by clinic
+    function filterByClinic(clinicUsername) {
+        const table = document.getElementById('examinationHistoryTable');
+        const tbody = table.querySelector('tbody');
+        const rows = Array.from(tbody.querySelectorAll('tr'));
+
+        rows.forEach(row => {
+            if (clinicUsername === 'all') {
+                row.style.display = ''; // Show all rows
+            } else {
+                // Find the clinic cell (new 7th column we added - index 6)
+                const clinicCell = row.querySelector('td:nth-child(7)');
+                const clinicCode = clinicCell ? clinicCell.textContent.trim() : '';
+                row.style.display = (clinicCode === clinicUsername) ? '' : 'none';
+            }
+        });
+
+        // Update the row indexes for visible rows
+        updateIndexNumbers();
+
+        // Update total count in table info
+        updateRecordCount();
+    }
 
         // Add this function to your existing JavaScript to assign doctor
         function assignDoctor(doctorId, examinationId) {

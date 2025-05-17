@@ -225,6 +225,11 @@
             font-size: 1.5rem;
         }
         
+        .header-actions {
+            display: flex;
+            gap: 10px;
+        }
+        
         .examination-meta {
             display: grid;
             grid-template-columns: repeat(auto-fit, minmax(250px, 1fr));
@@ -407,6 +412,62 @@
             background-color: #f8d7da;
             color: #721c24;
             border: 1px solid #f5c6cb;
+        }
+        
+        /* Disabled button style */
+        .btn.disabled {
+            background: #cccccc;
+            color: #666666;
+            cursor: not-allowed;
+            pointer-events: none;
+            box-shadow: none;
+        }
+        
+        .btn.disabled:hover {
+            transform: none;
+            box-shadow: none;
+        }
+        
+        /* Custom tooltip styles */
+        .tooltip-container {
+            position: relative;
+            display: inline-block;
+        }
+        
+        .tooltip-container .tooltip-text {
+            visibility: hidden;
+            width: 200px;
+            background-color: #333;
+            color: #fff;
+            text-align: center;
+            border-radius: 6px;
+            padding: 8px;
+            position: absolute;
+            z-index: 1;
+            bottom: 125%;
+            left: 50%;
+            transform: translateX(-50%);
+            opacity: 0;
+            transition: opacity 0.3s;
+            font-size: 0.85rem;
+            font-weight: normal;
+            box-shadow: 0 2px 5px rgba(0,0,0,0.2);
+        }
+        
+        .tooltip-container .tooltip-text::after {
+            content: "";
+            position: absolute;
+            top: 100%;
+            left: 50%;
+            margin-left: -5px;
+            border-width: 5px;
+            border-style: solid;
+            border-color: #333 transparent transparent transparent;
+        }
+        
+        .tooltip-container:hover .tooltip-text {
+            visibility: visible;
+            opacity: 1;
         }
         
         /* Doctor Assignment Styles */
@@ -675,6 +736,32 @@
             <div id="notification" class="notification"></div>
             
             <div class="examination-container">
+                <div class="examination-header">
+                    <h2>Tooth ${examination.toothNumber} Examination</h2>
+                    <div class="header-actions">
+                        <div class="tooltip-container">
+                            <c:choose>
+                                <c:when test="${examination.assignedDoctor == null}">
+                                    <a href="#" 
+                                       class="btn btn-primary disabled" 
+                                       id="startProcedureBtn">
+                                        <i class="fas fa-play-circle"></i> Start Procedure
+                                    </a>
+                                </c:when>
+                                <c:otherwise>
+                                    <a href="${pageContext.request.contextPath}/patients/examination/${examination.id}/procedures" 
+                                       class="btn btn-primary" 
+                                       id="startProcedureBtn">
+                                        <i class="fas fa-play-circle"></i> Start Procedure
+                                    </a>
+                                </c:otherwise>
+                            </c:choose>
+                            <span class="tooltip-text" id="procedureBtnTooltip">
+                                ${examination.assignedDoctor == null ? 'Please assign a doctor first' : 'Start procedure for this examination'}
+                            </span>
+                        </div>
+                    </div>
+                </div>
                 <div class="examination-meta">
                     <div class="meta-item">
                         <span class="meta-label">Patient Name</span>
@@ -858,7 +945,7 @@
                         <!-- Form Actions -->
                         <div class="form-actions">
                             <button type="button" onclick="window.location.href='${pageContext.request.contextPath}/patients/details/${patient.id}'" class="btn btn-secondary">Cancel</button>
-                            <button type="submit" class="btn btn-primary">Update Examination</button>
+                            <button type="submit" class="btn btn-primary disabled" id="updateExaminationBtn" disabled>Update Examination</button>
                         </div>
                     </div>
                 </form>
@@ -1008,24 +1095,115 @@
             const form = document.getElementById('examinationForm');
             const doctorSelect = document.getElementById('doctorSelect');
             const notification = document.getElementById('notification');
+            const updateExaminationBtn = document.getElementById('updateExaminationBtn');
+            const startProcedureBtn = document.getElementById('startProcedureBtn');
             const csrfToken = document.querySelector('meta[name="_csrf"]').content;
             
-            // Function to show notification
-            function showNotification(message, isError = false) {
-                notification.textContent = message;
-                notification.className = 'notification ' + (isError ? 'error' : 'success');
-                notification.style.display = 'block';
-                
-                // Hide after 5 seconds
-                setTimeout(() => {
-                    notification.style.display = 'none';
-                }, 5000);
+            // Add event listener for Start Procedure button if doctor is assigned
+            if (startProcedureBtn && !startProcedureBtn.classList.contains('disabled')) {
+                startProcedureBtn.addEventListener('click', function(e) {
+                    // Check if there are unsaved changes
+                    if (checkFormChanges()) {
+                        // Prevent the default navigation
+                        e.preventDefault();
+                        
+                        // Show confirmation dialog
+                        if (confirm("You have unsaved changes to this examination. Click OK to save changes before proceeding, or Cancel to discard changes.")) {
+                            // User chose to save changes
+                            const targetUrl = this.getAttribute('href');
+                            
+                            // Trigger form submission
+                            submitExaminationForm().then(success => {
+                                if (success) {
+                                    // After successful save, navigate to the procedures page
+                                    window.location.href = targetUrl;
+                                }
+                            });
+                        } else {
+                            // User chose to discard changes, continue with navigation
+                            window.location.href = this.getAttribute('href');
+                        }
+                    }
+                    // If no changes, the default navigation will happen
+                });
             }
             
-            // Handle form submission
-            form.addEventListener('submit', async function(e) {
-                e.preventDefault();
+            // Store original form values to track changes
+            const originalFormValues = {};
+            const formElements = form.elements;
+            
+            // Capture initial form values
+            for (let i = 0; i < formElements.length; i++) {
+                const element = formElements[i];
+                if (element.name) {
+                    originalFormValues[element.name] = element.value;
+                } else if (element.id) {
+                    originalFormValues[element.id] = element.value;
+                }
+            }
+            
+            // Add change event listeners to all form fields
+            for (let i = 0; i < formElements.length; i++) {
+                const element = formElements[i];
+                element.addEventListener('change', checkFormChanges);
+                element.addEventListener('input', checkFormChanges);
+            }
+            
+            // Function to check if any form field has changed
+            function checkFormChanges() {
+                let hasChanges = false;
                 
+                for (let i = 0; i < formElements.length; i++) {
+                    const element = formElements[i];
+                    const elementId = element.name || element.id;
+                    
+                    if (elementId && originalFormValues[elementId] !== undefined) {
+                        if (element.value !== originalFormValues[elementId]) {
+                            hasChanges = true;
+                            break;
+                        }
+                    }
+                }
+                
+                // Enable or disable the update button based on changes
+                if (hasChanges) {
+                    updateExaminationBtn.classList.remove('disabled');
+                    updateExaminationBtn.disabled = false;
+                } else {
+                    updateExaminationBtn.classList.add('disabled');
+                    updateExaminationBtn.disabled = true;
+                }
+                
+                return hasChanges;
+            }
+            
+            // Function to check for unsaved changes before navigating away
+            function checkUnsavedChanges(element) {
+                if (checkFormChanges()) {
+                    if (!confirm("You have unsaved changes to this examination. Click OK to save changes before proceeding, or Cancel to discard changes.")) {
+                        return true; // User chose to discard changes, continue navigation
+                    }
+                    
+                    // User chose to save changes
+                    // Get the URL from the element
+                    const targetUrl = element.getAttribute('href');
+                    
+                    // Trigger form submission programmatically
+                    submitExaminationForm().then(success => {
+                        if (success) {
+                            // After successful save, navigate to the procedures page
+                            window.location.href = targetUrl;
+                        }
+                    });
+                    
+                    return false; // Prevent the default navigation for now
+                }
+                
+                return true; // No changes, allow navigation
+            }
+            
+            // Function to submit the form programmatically
+            async function submitExaminationForm() {
                 // Collect form data
                 const data = {
                     id: document.getElementById('examinationId').value,
@@ -1065,20 +1243,55 @@
                     const result = await response.json();
                     
                     if (result.success) {
-                        // Store success message in sessionStorage
-                        sessionStorage.setItem('flashMessage', 'Examination updated successfully');
-                        sessionStorage.setItem('flashMessageType', 'success');
+                        showNotification('Examination updated successfully');
+                        // Update the original form values to reflect the saved state
+                        for (let i = 0; i < formElements.length; i++) {
+                            const element = formElements[i];
+                            if (element.name) {
+                                originalFormValues[element.name] = element.value;
+                            } else if (element.id) {
+                                originalFormValues[element.id] = element.value;
+                            }
+                        }
+                        // Disable the update button since changes are now saved
+                        updateExaminationBtn.classList.add('disabled');
+                        updateExaminationBtn.disabled = true;
                         
-                        // Redirect to the same page
-                        window.location.href = window.location.href;
+                        return true;
                     } else {
                         showNotification('Error: ' + (result.message || 'Failed to update examination'), true);
+                        return false;
                     }
                 } catch (error) {
                     console.error('Error updating examination:', error);
                     showNotification('Error: ' + error.message, true);
+                    return false;
                 }
-            });
+            }
+            
+            // Function to show notification
+            function showNotification(message, isError = false) {
+                notification.textContent = message;
+                notification.className = 'notification ' + (isError ? 'error' : 'success');
+                notification.style.display = 'block';
+                
+                // Hide after 5 seconds
+                setTimeout(() => {
+                    notification.style.display = 'none';
+                }, 5000);
+            }
+            
+            // Check for URL parameters on page load
+            function getUrlParameter(name) {
+                const urlParams = new URLSearchParams(window.location.search);
+                return urlParams.get(name);
+            }
+            
+            // Check for error message in URL
+            const errorMsg = getUrlParameter('error');
+            if (errorMsg) {
+                showNotification(errorMsg, true);
+            }
             
             // Check for flash message on page load
             const flashMessage = sessionStorage.getItem('flashMessage');
@@ -1091,6 +1304,12 @@
                 sessionStorage.removeItem('flashMessageType');
             }
             
+            // Handle form submission
+            form.addEventListener('submit', async function(e) {
+                e.preventDefault();
+                await submitExaminationForm();
+            });
+            
             // Handle doctor assignment
             doctorSelect.addEventListener('change', async function() {
                 const doctorId = this.value;
@@ -1099,6 +1318,7 @@
                 if (!doctorId) return;
                 
                 const isRemove = doctorId === 'remove';
+                const startProcedureBtn = document.getElementById('startProcedureBtn');
                 
                 try {
                     const response = await fetch('${pageContext.request.contextPath}/patients/tooth-examination/assign-doctor', {
@@ -1117,6 +1337,60 @@
                     
                     if (result.success) {
                         showNotification(isRemove ? 'Doctor removed successfully' : 'Doctor assigned successfully');
+                        
+                        // Update the Start Procedure button state based on doctor assignment
+                        if (isRemove) {
+                            startProcedureBtn.classList.add('disabled');
+                            startProcedureBtn.setAttribute('href', '#');
+                            document.getElementById('procedureBtnTooltip').textContent = 'Please assign a doctor first';
+                            this.classList.remove('doctor-assigned');
+                            
+                            // Remove any existing event listeners by replacing the button with its clone
+                            const newStartProcedureBtn = startProcedureBtn.cloneNode(true);
+                            startProcedureBtn.parentNode.replaceChild(newStartProcedureBtn, startProcedureBtn);
+                            
+                            // Update the reference to the new button
+                            window.startProcedureBtn = newStartProcedureBtn;
+                        } else {
+                            startProcedureBtn.classList.remove('disabled');
+                            startProcedureBtn.setAttribute('href', '${pageContext.request.contextPath}/patients/examination/${examination.id}/procedures');
+                            document.getElementById('procedureBtnTooltip').textContent = 'Start procedure for this examination';
+                            this.classList.add('doctor-assigned');
+                            
+                            // Remove any existing event listeners by replacing the button with its clone
+                            const newStartProcedureBtn = startProcedureBtn.cloneNode(true);
+                            startProcedureBtn.parentNode.replaceChild(newStartProcedureBtn, startProcedureBtn);
+                            
+                            // Update the reference to the new button
+                            window.startProcedureBtn = newStartProcedureBtn;
+                            
+                            // Add click event listener to the new button
+                            newStartProcedureBtn.addEventListener('click', function(e) {
+                                // Check if there are unsaved changes
+                                if (checkFormChanges()) {
+                                    // Prevent the default navigation
+                                    e.preventDefault();
+                                    
+                                    // Show confirmation dialog
+                                    if (confirm("You have unsaved changes to this examination. Click OK to save changes before proceeding, or Cancel to discard changes.")) {
+                                        // User chose to save changes
+                                        const targetUrl = this.getAttribute('href');
+                                        
+                                        // Trigger form submission
+                                        submitExaminationForm().then(success => {
+                                            if (success) {
+                                                // After successful save, navigate to the procedures page
+                                                window.location.href = targetUrl;
+                                            }
+                                        });
+                                    } else {
+                                        // User chose to discard changes, continue with navigation
+                                        window.location.href = this.getAttribute('href');
+                                    }
+                                }
+                                // If no changes, the default navigation will happen
+                            });
+                        }
                     } else {
                         showNotification('Error: ' + (result.message || 'Failed to update doctor assignment'), true);
                         
@@ -1200,7 +1474,10 @@
                     e.preventDefault();
                     const selectedDate = fp.selectedDates[0];
                     if (selectedDate) {
-                        updateTreatmentDate(selectedDate, treatmentDatePicker.dataset.examId);
+                        // Get the examination ID from the input's data attribute or hidden field
+                        const examId = treatmentDatePicker.dataset.examId || document.getElementById('examinationId').value;
+                        console.log('Save button clicked, using examination ID:', examId);
+                        updateTreatmentDate(selectedDate, examId);
                         fp.close();
                     }
                 });
@@ -1230,6 +1507,19 @@
                 // Format the date in 24-hour format
                 const formattedDate = flatpickr.formatDate(date, "Y-m-d H:i");
                 console.log('Sending date to backend:', formattedDate);
+                console.log('Examination ID:', examinationId);
+                
+                // Ensure examinationId is properly set
+                if (!examinationId) {
+                    // Try to get it from the hidden input
+                    examinationId = document.getElementById('examinationId').value;
+                    console.log('Using examination ID from hidden input:', examinationId);
+                }
+                
+                if (!examinationId) {
+                    showNotification('Error: Missing examination ID', true);
+                    return;
+                }
                 
                 fetch('${pageContext.request.contextPath}/patients/tooth-examination/update-treatment-date', {
                     method: 'POST',
@@ -1243,12 +1533,16 @@
                     })
                 })
                 .then(response => {
+                    console.log('Response status:', response.status);
                     if (!response.ok) {
-                        throw new Error('Failed to update treatment date');
+                        return response.json().then(data => {
+                            throw new Error(data.message || 'Failed to update treatment date');
+                        });
                     }
                     return response.json();
                 })
                 .then(data => {
+                    console.log('Response data:', data);
                     if (data.success) {
                         showNotification('Treatment start date updated successfully');
                         // Update the input field with the formatted date
@@ -1257,6 +1551,8 @@
                             // Format the date for display
                             const displayDate = flatpickr.formatDate(date, "Y-m-d H:i");
                             input.value = displayDate;
+                            // Also update the data attribute
+                            input.dataset.rawDate = formattedDate;
                         }
                     } else {
                         throw new Error(data.message || 'Failed to update treatment date');

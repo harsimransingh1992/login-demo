@@ -82,6 +82,7 @@ public class PatientMapper implements Mapper<Patient, PatientDTO> {
         patientDTO.setEmergencyContactName(patient.getEmergencyContactName());
         patientDTO.setEmergencyContactPhoneNumber(patient.getEmergencyContactPhoneNumber());
         patientDTO.setRegistrationDate(patient.getRegistrationDate());
+        patientDTO.setProfilePicturePath(patient.getProfilePicturePath());
 
         // Convert Occupation enum to OccupationDTO
         if (patient.getOccupation() != null) {
@@ -117,6 +118,7 @@ public class PatientMapper implements Mapper<Patient, PatientDTO> {
         patient.setEmergencyContactName(patientDTO.getEmergencyContactName());
         patient.setEmergencyContactPhoneNumber(patientDTO.getEmergencyContactPhoneNumber());
         patient.setRegistrationDate(patientDTO.getRegistrationDate());
+        patient.setProfilePicturePath(patientDTO.getProfilePicturePath());
 
         // Handle occupation conversion - support both OccupationDTO and String
         if (patientDTO.getOccupation() != null) {

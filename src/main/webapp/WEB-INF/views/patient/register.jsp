@@ -426,6 +426,74 @@
             border-color: #e74c3c !important;
             background-color: #ffeeee !important;
         }
+        
+        /* Profile picture upload styles */
+        .profile-picture-container {
+            width: 100%;
+        }
+        
+        .profile-upload-area {
+            display: flex;
+            align-items: center;
+            gap: 20px;
+            margin-bottom: 10px;
+        }
+        
+        .profile-preview {
+            width: 120px;
+            height: 120px;
+            border-radius: 50%;
+            border: 2px dashed #c0c0c0;
+            display: flex;
+            flex-direction: column;
+            align-items: center;
+            justify-content: center;
+            overflow: hidden;
+            background-color: #f9f9f9;
+            transition: all 0.3s ease;
+        }
+        
+        .profile-preview i {
+            font-size: 3rem;
+            color: #c0c0c0;
+            margin-bottom: 5px;
+        }
+        
+        .profile-preview span {
+            font-size: 0.8rem;
+            color: #7f8c8d;
+            text-align: center;
+            padding: 0 5px;
+        }
+        
+        .profile-preview img {
+            width: 100%;
+            height: 100%;
+            object-fit: cover;
+        }
+        
+        .upload-controls {
+            display: flex;
+            flex-direction: column;
+            gap: 10px;
+        }
+        
+        .btn-upload {
+            background: linear-gradient(135deg, #3498db, #2980b9);
+            color: white;
+            cursor: pointer;
+            transition: all 0.3s ease;
+        }
+        
+        .btn-upload:hover {
+            background: linear-gradient(135deg, #2980b9, #1c6ea4);
+            transform: translateY(-2px);
+        }
+        
+        #removeImage {
+            padding: 6px 12px;
+            font-size: 0.85rem;
+        }
     </style>
 </head>
 <body>
@@ -500,7 +568,7 @@
                     </div>
                 </c:if>
                 
-                <form:form action="${pageContext.request.contextPath}/patients/register" method="post" modelAttribute="patient">
+                <form:form action="${pageContext.request.contextPath}/patients/register" method="post" modelAttribute="patient" enctype="multipart/form-data">
                     <!-- Personal Information Section -->
                     <div class="form-section">
                         <h3 class="section-title"><i class="fas fa-user"></i> Personal Information</h3>
@@ -514,6 +582,32 @@
                                 <form:input type="text" id="lastName" path="lastName" required="true" placeholder="Enter last name"/>
                             </div>
                         </div>
+                        
+                        <!-- Profile Picture Upload -->
+                        <div class="form-row">
+                            <div class="form-group profile-picture-container">
+                                <label for="profilePicture">Profile Picture</label>
+                                <div class="profile-upload-area">
+                                    <div class="profile-preview" id="profilePreview">
+                                        <i class="fas fa-user-circle"></i>
+                                        <span>No image selected</span>
+                                    </div>
+                                    <div class="upload-controls">
+                                        <label for="profilePicture" class="btn btn-secondary btn-upload">
+                                            <i class="fas fa-upload"></i> Choose Image
+                                        </label>
+                                        <input type="file" id="profilePicture" name="profilePicture" accept="image/*" style="display: none;" />
+                                        <button type="button" id="removeImage" class="btn btn-danger btn-small" style="display: none;">
+                                            <i class="fas fa-times"></i> Remove
+                                        </button>
+                                    </div>
+                                </div>
+                                <div class="form-tip">
+                                    <i class="fas fa-info-circle"></i> Maximum size: 2MB. Recommended: square image (1:1 ratio)
+                                </div>
+                            </div>
+                        </div>
+                        
                         <div class="form-row">
                             <div class="form-group">
                                 <label for="dateOfBirth">Date of Birth <span class="required">*</span></label>
@@ -541,10 +635,10 @@
                             <div class="form-group">
                                 <label for="phoneNumber">Phone Number <span class="required">*</span></label>
                                 <form:input type="tel" id="phoneNumber" path="phoneNumber" required="true" 
-                                            pattern="[0-9]*" maxlength="15" placeholder="Enter phone number"
-                                            title="Please enter a valid phone number (numbers only)"/>
+                                            pattern="[0-9]{10}" maxlength="10" placeholder="Enter 10-digit phone number"
+                                            title="Please enter a valid 10-digit phone number (numbers only)"/>
                                 <div class="form-tip">
-                                    <i class="fas fa-info-circle"></i> Numbers only, no spaces or special characters
+                                    <i class="fas fa-info-circle"></i> 10-digit number only, no spaces or special characters
                                 </div>
                             </div>
                             <div class="form-group">
@@ -602,6 +696,16 @@
                                 <form:options items="${occupations}" itemLabel="displayName" itemValue="name"/>
                             </form:select>
                         </div>
+                        <div class="form-group">
+                            <label for="referral">How did you hear about us? <span class="required">*</span></label>
+                            <form:select id="referral" path="referral" class="form-control" required="true">
+                                <form:option value="">Select an option</form:option>
+                                <form:options items="${referralModels}" itemLabel="displayName" itemValue="name"/>
+                            </form:select>
+                            <div class="form-tip">
+                                <i class="fas fa-info-circle"></i> This helps us understand how patients find us
+                            </div>
+                        </div>
                     </div>
                     
                     <!-- Emergency Contact Section -->
@@ -616,8 +720,8 @@
                             <div class="form-group">
                                 <label for="emergencyContactPhoneNumber">Emergency Contact Phone</label>
                                 <form:input type="tel" id="emergencyContactPhoneNumber" path="emergencyContactPhoneNumber" 
-                                          pattern="[0-9]*" maxlength="15" placeholder="Enter emergency contact's phone number"
-                                          title="Please enter a valid phone number (numbers only)"/>
+                                          pattern="[0-9]{10}" maxlength="10" placeholder="Enter 10-digit emergency contact number"
+                                          title="Please enter a valid 10-digit phone number (numbers only)"/>
                             </div>
                         </div>
                     </div>
@@ -688,6 +792,40 @@
                     'background-color': '#f0f7ff'
                 });
                 $('#city-error').remove();
+            }
+            
+            // Check if phone number is exactly 10 digits
+            const phoneValue = $('#phoneNumber').val();
+            if (phoneValue && !/^[0-9]{10}$/.test(phoneValue)) {
+                // Phone number is invalid
+                $('#phoneNumber').addClass('invalid-field');
+                $('#phoneNumber').css({
+                    'border-color': '#e74c3c',
+                    'background-color': '#ffeeee'
+                });
+                
+                // Show error message
+                if ($('#phone-error').length === 0) {
+                    $('<div id="phone-error" class="error-message">Please enter a valid 10-digit phone number</div>')
+                        .insertAfter('#phoneNumber')
+                        .css({
+                            'color': '#e74c3c',
+                            'font-size': '0.8rem',
+                            'margin-top': '5px'
+                        });
+                }
+                
+                // Prevent form submission
+                e.preventDefault();
+                return false;
+            } else {
+                // Remove error if phone number is valid
+                $('#phoneNumber').removeClass('invalid-field');
+                $('#phoneNumber').css({
+                    'border-color': '#c0c0c0',
+                    'background-color': '#f9f9f9'
+                });
+                $('#phone-error').remove();
             }
             
             // Check if pincode is valid
@@ -894,6 +1032,71 @@
                 'color': '#000000',
                 'font-weight': '500'
             });
+        });
+    });
+</script>
+
+<!-- Add script for profile picture handling -->
+<script>
+    $(document).ready(function() {
+        // Profile picture upload handling
+        const profileInput = document.getElementById('profilePicture');
+        const profilePreview = document.getElementById('profilePreview');
+        const removeButton = document.getElementById('removeImage');
+        
+        // Handle file selection
+        profileInput.addEventListener('change', function() {
+            const file = this.files[0];
+            
+            if (file) {
+                // Validate file size (max 2MB)
+                if (file.size > 2 * 1024 * 1024) {
+                    alert('Error: Image size exceeds 2MB. Please choose a smaller image.');
+                    this.value = ''; // Clear the input
+                    return;
+                }
+                
+                // Validate file type
+                if (!file.type.startsWith('image/')) {
+                    alert('Error: Please select an image file.');
+                    this.value = ''; // Clear the input
+                    return;
+                }
+                
+                // Create preview
+                const reader = new FileReader();
+                reader.onload = function(e) {
+                    // Clear previous content
+                    profilePreview.innerHTML = '';
+                    
+                    // Create and add image
+                    const img = document.createElement('img');
+                    img.src = e.target.result;
+                    img.alt = 'Profile Preview';
+                    profilePreview.appendChild(img);
+                    
+                    // Update styling
+                    profilePreview.style.border = 'none';
+                    removeButton.style.display = 'block';
+                };
+                reader.readAsDataURL(file);
+            }
+        });
+        
+        // Handle remove button click
+        removeButton.addEventListener('click', function() {
+            // Clear the file input
+            profileInput.value = '';
+            
+            // Reset the preview
+            profilePreview.innerHTML = `
+                <i class="fas fa-user-circle"></i>
+                <span>No image selected</span>
+            `;
+            
+            // Reset styling
+            profilePreview.style.border = '2px dashed #c0c0c0';
+            removeButton.style.display = 'none';
         });
     });
 </script>

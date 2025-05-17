@@ -111,6 +111,18 @@
         .text-right {
             text-align: right;
         }
+        .required-label::after {
+            content: " *";
+            color: #e74c3c;
+            font-weight: bold;
+        }
+        
+        .required-note {
+            color: #e74c3c;
+            font-size: 0.9em;
+            margin-top: 20px;
+            font-style: italic;
+        }
     </style>
 </head>
 <body>
@@ -128,25 +140,36 @@
         
         <div class="card">
             <h2>Procedure Price Details</h2>
+            <p class="required-note">All fields are mandatory</p>
             
             <form:form method="POST" action="${pageContext.request.contextPath}/admin/prices/create" modelAttribute="procedure">
                 <div class="form-group">
-                    <label for="procedureName">Procedure Name</label>
-                    <form:input path="procedureName" class="form-control" required="true" />
+                    <label for="procedureName" class="required-label">Procedure Name</label>
+                    <form:input path="procedureName" class="form-control" required="required" />
                     <form:errors path="procedureName" cssClass="text-danger" />
                 </div>
                 
                 <div class="form-group">
-                    <label for="cityTier">City Tier</label>
-                    <form:select path="cityTier" class="form-control" required="true">
+                    <label for="cityTier" class="required-label">City Tier</label>
+                    <form:select path="cityTier" class="form-control" required="required">
+                        <form:option value="" label="-- Select City Tier --" />
                         <form:options items="${cityTiers}" />
                     </form:select>
                     <form:errors path="cityTier" cssClass="text-danger" />
                 </div>
                 
                 <div class="form-group">
-                    <label for="price">Price (₹)</label>
-                    <form:input path="price" type="number" step="0.01" class="form-control" required="true" min="0" />
+                    <label for="dentalDepartment" class="required-label">Department</label>
+                    <form:select path="dentalDepartment" class="form-control" required="required">
+                        <form:option value="" label="-- Select Department --" />
+                        <form:options items="${dentalDepartments}" />
+                    </form:select>
+                    <form:errors path="dentalDepartment" cssClass="text-danger" />
+                </div>
+                
+                <div class="form-group">
+                    <label for="price" class="required-label">Price (₹)</label>
+                    <form:input path="price" type="number" step="0.01" class="form-control" required="required" min="0.01" />
                     <form:errors path="price" cssClass="text-danger" />
                 </div>
                 

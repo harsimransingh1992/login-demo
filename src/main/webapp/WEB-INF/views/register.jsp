@@ -480,14 +480,26 @@
                     
                     <div class="form-section">
                         <h3 class="section-title"><i class="fas fa-clinic-medical"></i> Clinic Details</h3>
-            <div class="form-group">
+                        <div class="form-group">
                             <label for="username">Clinic ID <span class="required">*</span></label>
                             <input type="text" id="username" name="username" required placeholder="Choose a unique clinic identifier">
                             <div class="form-tip">
                                 <i class="fas fa-info-circle"></i> This will be used for login
                             </div>
                         </div>
-            </div>
+                        <div class="form-group">
+                            <label for="referralModel">How did you hear about us? <span class="required">*</span></label>
+                            <select id="referralModel" name="referralModel" required class="form-control">
+                                <option value="">Select an option</option>
+                                <c:forEach items="${referralModels}" var="model">
+                                    <option value="${model}">${model.displayName}</option>
+                                </c:forEach>
+                            </select>
+                            <div class="form-tip">
+                                <i class="fas fa-info-circle"></i> This helps us understand how patients find us
+                            </div>
+                        </div>
+                    </div>
                     
                     <div class="form-section">
                         <h3 class="section-title"><i class="fas fa-lock"></i> Security</h3>

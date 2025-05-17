@@ -30,5 +30,6 @@ public class ToothClinicalExaminationDTO {
     private LocalDateTime treatmentStartingDate;
     private DoctorDetailDTO assignedDoctor;
     private PatientDTO patient;
+    private UserDTO examinationClinic;
 
 }

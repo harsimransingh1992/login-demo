@@ -484,21 +484,21 @@
                 <i class="fas fa-clipboard-list"></i>
                 <div class="card-text">
                     <h3>Waiting Lobby</h3>
-                    <p>View waiting patients</p>
+                <p>View waiting patients</p>
                 </div>
             </a>
             <a href="${pageContext.request.contextPath}/patients/register" class="action-card">
                 <i class="fas fa-user-plus"></i>
                 <div class="card-text">
-                    <h3>Register Patient</h3>
-                    <p>Add new patient</p>
+                <h3>Register Patient</h3>
+                <p>Add new patient</p>
                 </div>
             </a>
             <a href="${pageContext.request.contextPath}/patients/list" class="action-card">
                 <i class="fas fa-users"></i>
                 <div class="card-text">
-                    <h3>View Patients</h3>
-                    <p>Manage records</p>
+                <h3>View Patients</h3>
+                <p>Manage records</p>
                 </div>
             </a>
             <a href="${pageContext.request.contextPath}/patients/appointments" class="action-card">
@@ -506,6 +506,13 @@
                 <div class="card-text">
                     <h3>Appointments</h3>
                     <p>Today's schedule</p>
+                </div>
+            </a>
+            <a href="${pageContext.request.contextPath}/visits" class="action-card">
+                <i class="fas fa-calendar-check"></i>
+                <div class="card-text">
+                    <h3>Patient Visits</h3>
+                    <p>Track patient history</p>
                 </div>
             </a>
             <div class="footer">
@@ -569,14 +576,14 @@
                                 <td>
                                     <div class="action-buttons">
                                         <button onclick="editPatient('${patient.id}')" class="btn-edit"><i class="fas fa-edit"></i> Edit</button>
-                                        <c:choose>
-                                            <c:when test="${!patient.checkedIn}">
+                                    <c:choose>
+                                        <c:when test="${!patient.checkedIn}">
                                                 <button onclick="checkIn('${patient.id}')" class="btn-primary"><i class="fas fa-user-check"></i> Check In</button>
-                                            </c:when>
-                                            <c:otherwise>
+                                        </c:when>
+                                        <c:otherwise>
                                                 <button onclick="uncheck('${patient.id}')" class="btn-danger"><i class="fas fa-user-times"></i> Check Out</button>
-                                            </c:otherwise>
-                                        </c:choose>
+                                        </c:otherwise>
+                                    </c:choose>
                                     </div>
                                 </td>
                             </tr>

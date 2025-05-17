@@ -7,5 +7,10 @@
       <user-name>root</user-name>
       <schema-mapping />
     </data-source>
+    <data-source name="sdcdatab@localhost" uuid="84dfc101-56bb-4344-b7e0-aa77e57abb94">
+      <database-info product="" version="" jdbc-version="" driver-name="" driver-version="" dbms="MYSQL" />
+      <user-name>root</user-name>
+      <schema-mapping />
+    </data-source>
   </component>
 </project>

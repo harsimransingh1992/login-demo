@@ -157,6 +157,17 @@
                     </div>
                 </div>
                 
+                <div class="form-group">
+                    <label for="cityTier">City Tier</label>
+                    <select id="cityTier" name="cityTier" class="form-control">
+                        <option value="">-- Select City Tier --</option>
+                        <option value="TIER1">Tier 1 - Metro Cities</option>
+                        <option value="TIER2">Tier 2 - Large Cities</option>
+                        <option value="TIER3">Tier 3 - Small Cities</option>
+                        <option value="TIER4">Tier 4 - Rural Areas</option>
+                    </select>
+                </div>
+                
                 <div class="actions">
                     <a href="${pageContext.request.contextPath}/admin/users" class="btn">Cancel</a>
                     <button type="submit" class="btn">Create User</button>

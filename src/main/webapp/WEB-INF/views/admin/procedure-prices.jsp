@@ -248,6 +248,7 @@
                                     <th>ID</th>
                                     <th>Procedure Name</th>
                                     <th>City Tier</th>
+                                    <th>Department</th>
                                     <th>Price</th>
                                     <th>Actions</th>
                                 </tr>
@@ -258,6 +259,7 @@
                                         <td>${procedure.id}</td>
                                         <td>${procedure.procedureName}</td>
                                         <td>${procedure.cityTier}</td>
+                                        <td>${procedure.dentalDepartment != null ? procedure.dentalDepartment.displayName : 'Not specified'}</td>
                                         <td>₹${procedure.price}</td>
                                         <td>
                                             <div class="action-buttons">

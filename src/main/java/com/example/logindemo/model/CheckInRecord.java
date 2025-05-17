@@ -24,4 +24,7 @@ public class CheckInRecord {
     @Column
     private LocalDateTime  checkOutTime;
 
+    @ManyToOne
+    private Patient patient;
+
 }

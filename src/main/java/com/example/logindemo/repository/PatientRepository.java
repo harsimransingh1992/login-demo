@@ -14,4 +14,7 @@ public interface PatientRepository extends JpaRepository<Patient, Long> {
     List<Patient> findByPhoneNumberContaining(String phoneNumber);
     List<Patient> findByCheckedInTrue();
     Patient getPatientsById(Long patientId);
+    
+    // Method to find patients with the same first name and phone number
+    boolean existsByFirstNameIgnoreCaseAndPhoneNumber(String firstName, String phoneNumber);
 } 

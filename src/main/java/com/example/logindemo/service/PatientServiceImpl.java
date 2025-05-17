@@ -1,8 +1,9 @@
 package com.example.logindemo.service;
 
+import com.example.logindemo.dto.CheckInRecordDTO;
+import com.example.logindemo.dto.OccupationDTO;
 import com.example.logindemo.dto.PatientDTO;
 import com.example.logindemo.dto.ToothClinicalExaminationDTO;
-import com.example.logindemo.dto.OccupationDTO;
 import com.example.logindemo.model.*;
 import com.example.logindemo.repository.CheckInRecordRepository;
 import com.example.logindemo.repository.DoctorDetailRepository;
@@ -10,13 +11,16 @@ import com.example.logindemo.repository.PatientRepository;
 import com.example.logindemo.repository.ToothClinicalExaminationRepository;
 import com.example.logindemo.repository.UserRepository;
 import com.example.logindemo.util.PatientMapper;
+import com.example.logindemo.utils.PeriDeskUtils;
 import lombok.NonNull;
 import lombok.extern.slf4j.Slf4j;
 import org.modelmapper.ModelMapper;
 import org.springframework.stereotype.Component;
 import org.springframework.stereotype.Service;
+import org.springframework.web.multipart.MultipartFile;
 
 import javax.annotation.Resource;
+import java.io.IOException;
 import java.time.LocalDateTime;
 import java.util.Date;
 import java.util.List;
@@ -48,6 +52,9 @@ public class PatientServiceImpl implements PatientService{
     @Resource(name="doctorDetailRepository")
     private DoctorDetailRepository doctorDetailRepository;
 
+    @Resource(name="fileStorageService")
+    private FileStorageService fileStorageService;
+
 
     @Override
     public void checkInPatient(Long patientId, String currentClinicId) {
@@ -64,20 +71,56 @@ public class PatientServiceImpl implements PatientService{
         CheckInRecord checkInRecord = new CheckInRecord();
         checkInRecord.setCheckInClinic(currentClinicModel);
         checkInRecord.setCheckInTime(LocalDateTime.now());
+        checkInRecord.setPatient(patient);
         checkInRecordRepository.save(checkInRecord);
         patient.getPatientCheckIns().add(checkInRecord);
         patient.setCurrentCheckInRecord(checkInRecord);
+        patientRepository.save(patient);
         log.info("CheckIn recordID: {} added to patientID: {} ",checkInRecord.getId(), patient.getId());
     }
 
     @Override
     public void uncheckInPatient(Long patientId) {
-        Optional<Patient> patients = patientRepository.findById(patientId);
-        patients.ifPresent(patient -> {
-            patient.setCheckedIn(false);
-            patient.setCurrentCheckInRecord(null);
-            patientRepository.save(patient);
-        });
+        try {
+            // Try to find the patient using getPatientsById which should return a single patient
+            Patient patient = patientRepository.getPatientsById(patientId);
+            if (patient != null) {
+                patient.setCheckedIn(false);
+                
+                // Set check-out time on the current check-in record
+                if (patient.getCurrentCheckInRecord() != null) {
+                    patient.getCurrentCheckInRecord().setCheckOutTime(LocalDateTime.now());
+                    checkInRecordRepository.save(patient.getCurrentCheckInRecord());
+                }
+                patient.setCurrentCheckInRecord(null);
+                patientRepository.save(patient);
+                log.info("Successfully unchecked patient with ID: {}", patientId);
+            } else {
+                log.error("No patient found with ID: {}", patientId);
+            }
+        } catch (Exception e) {
+            log.error("Error while unchecking patient with ID: {}. Error: {}", patientId, e.getMessage());
+            
+            // Fallback to the findById method
+            try {
+                Optional<Patient> patientOpt = patientRepository.findById(patientId);
+                if (patientOpt.isPresent()) {
+                    Patient patient = patientOpt.get();
+                    patient.setCheckedIn(false);
+                    
+                    // Set check-out time on the current check-in record
+                    if (patient.getCurrentCheckInRecord() != null) {
+                        patient.getCurrentCheckInRecord().setCheckOutTime(LocalDateTime.now());
+                        checkInRecordRepository.save(patient.getCurrentCheckInRecord());
+                    }
+                    patient.setCurrentCheckInRecord(null);
+                    patientRepository.save(patient);
+                    log.info("Successfully unchecked patient with ID using fallback method: {}", patientId);
+                }
+            } catch (Exception ex) {
+                log.error("Fallback method also failed for patient ID: {}. Error: {}", patientId, ex.getMessage());
+            }
+        }
     }
 
     @Override
@@ -100,20 +143,27 @@ public class PatientServiceImpl implements PatientService{
             patient.setEmergencyContactName(patientDTO.getEmergencyContactName());
             patient.setEmergencyContactPhoneNumber(patientDTO.getEmergencyContactPhoneNumber());
             
+            
             // Handle occupation conversion
             if (patientDTO.getOccupation() != null) {
                 String occupationName;
-                if (patientDTO.getOccupation() instanceof OccupationDTO) {
-                    occupationName = ((OccupationDTO) patientDTO.getOccupation()).getName();
-                } else {
-                    occupationName = patientDTO.getOccupation().toString();
-                }
-                
+                occupationName = patientDTO.getOccupation().getName();
+
                 try {
                     patient.setOccupation(Occupation.valueOf(occupationName));
                 } catch (IllegalArgumentException e) {
                     log.warn("Invalid occupation value: {}", occupationName);
                     patient.setOccupation(Occupation.OTHER);
+                }
+            }
+            
+            // Set referral model
+            if (patientDTO.getReferral() != null) {
+                try {
+                    patient.setReferralModel(ReferralModel.valueOf(patientDTO.getReferral().getName()));
+                } catch (IllegalArgumentException e) {
+                    log.warn("Invalid referral model value: {}", patientDTO.getReferral().getName());
+                    patient.setReferralModel(ReferralModel.OTHER);
                 }
             }
             
@@ -138,7 +188,36 @@ public class PatientServiceImpl implements PatientService{
     @Override
     public List<PatientDTO> getCheckedInPatients() {
         List<Patient> waitingPatients = patientRepository.findByCheckedInTrue();
+        
+        // Fix any checked-in patients without check-in records
+        for (Patient patient : waitingPatients) {
+            if (patient.getCurrentCheckInRecord() == null) {
+                fixMissingCheckInRecord(patient);
+            }
+        }
+        
         return waitingPatients.stream().map(patientMapper::toDto).toList();
+    }
+
+    /**
+     * Create a check-in record for a patient that is marked as checked in but doesn't have a record
+     */
+    private void fixMissingCheckInRecord(Patient patient) {
+        log.warn("Found patient ID: {} marked as checked in but without a check-in record. Creating one now.", patient.getId());
+        User clinic = userRepository.findAll().stream().findFirst().orElse(null);
+        if (clinic != null) {
+            CheckInRecord checkInRecord = new CheckInRecord();
+            checkInRecord.setCheckInClinic(clinic);
+            checkInRecord.setCheckInTime(LocalDateTime.now());
+            checkInRecord.setPatient(patient);
+            checkInRecordRepository.save(checkInRecord);
+            patient.getPatientCheckIns().add(checkInRecord);
+            patient.setCurrentCheckInRecord(checkInRecord);
+            patientRepository.save(patient);
+            log.info("Created missing CheckIn record ID: {} for patient ID: {}", checkInRecord.getId(), patient.getId());
+        } else {
+            log.error("Cannot create check-in record for patient ID: {} - no clinic found", patient.getId());
+        }
     }
 
     @Override
@@ -155,12 +234,27 @@ public class PatientServiceImpl implements PatientService{
             if (patients.isPresent()) {
                 toothClinicalExamination.setPatient(patients.get());
                 toothClinicalExamination.setExaminationDate(LocalDateTime.now());
+                
+                // Get current clinic user and set it as examination clinic
+                String currentClinicUsername = PeriDeskUtils.getCurrentClinicUserName();
+                Optional<User> currentClinic = userRepository.findByUsername(currentClinicUsername);
+                if (currentClinic.isPresent()) {
+                    toothClinicalExamination.setExaminationClinic(currentClinic.get());
+                    log.info("Setting examination clinic to: {}", currentClinicUsername);
+                } else {
+                    log.warn("Could not find clinic with username: {}", currentClinicUsername);
+                }
+                
                 toothClinicalExaminationRepository.save(toothClinicalExamination);
+                log.info("Successfully saved examination for tooth: {} of patient: {}", 
+                        toothClinicalExamination.getToothNumber(), request.getPatientId());
+            } else {
+                log.error("Patient not found with ID: {}", request.getPatientId());
             }
-
         }
         catch (Exception e) {
-            log.error(e.getMessage());
+            log.error("Error saving examination: {}", e.getMessage(), e);
+            throw new RuntimeException("Failed to save examination: " + e.getMessage(), e);
         }
     }
 
@@ -260,6 +354,51 @@ public class PatientServiceImpl implements PatientService{
     public PatientDTO convertToDTO(Patient patient) {
         log.info("Converting Patient entity to DTO for patient ID: {}", patient.getId());
         return patientMapper.toDto(patient);
+    }
+    
+    @Override
+    public boolean isDuplicatePatient(String firstName, String phoneNumber) {
+        log.info("Checking for duplicate patient with firstName: {} and phoneNumber: {}", firstName, phoneNumber);
+        return patientRepository.existsByFirstNameIgnoreCaseAndPhoneNumber(firstName, phoneNumber);
+    }
+    
+    @Override
+    public String handleProfilePictureUpload(MultipartFile file, String patientId) {
+        log.info("Handling profile picture upload for patient ID: {}", patientId);
+        try {
+            if (file == null || file.isEmpty()) {
+                log.warn("Empty file provided for profile picture upload");
+                return null;
+            }
+            
+            // Store the file using FileStorageService
+            String profilePicturePath = fileStorageService.storeFile(file, "profiles");
+            log.info("Profile picture stored at: {}", profilePicturePath);
+            
+            // If patientId is provided, update the existing patient with the new profile picture path
+            if (patientId != null && !patientId.isEmpty()) {
+                try {
+                    Long id = Long.parseLong(patientId);
+                    Optional<Patient> patientOpt = patientRepository.findById(id);
+                    if (patientOpt.isPresent()) {
+                        Patient patient = patientOpt.get();
+                        // Delete old profile picture if exists
+                        if (patient.getProfilePicturePath() != null) {
+                            fileStorageService.deleteFile(patient.getProfilePicturePath());
+                        }
+                        patient.setProfilePicturePath(profilePicturePath);
+                        patientRepository.save(patient);
+                    }
+                } catch (NumberFormatException e) {
+                    log.error("Invalid patient ID format: {}", patientId, e);
+                }
+            }
+            
+            return profilePicturePath;
+        } catch (IOException e) {
+            log.error("Error uploading profile picture", e);
+            throw new RuntimeException("Failed to upload profile picture: " + e.getMessage(), e);
+        }
     }
     
     @Override

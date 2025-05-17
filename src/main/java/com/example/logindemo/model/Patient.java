@@ -68,6 +68,10 @@ public class Patient {
     @Enumerated(EnumType.STRING)
     private Occupation occupation;
 
+    @Column
+    @Enumerated(EnumType.STRING)
+    private ReferralModel referralModel;
+
     @OneToOne
     private CheckInRecord currentCheckInRecord;
 
@@ -76,6 +80,9 @@ public class Patient {
 
     @OneToMany(mappedBy = "patient", cascade = CascadeType.ALL)
     private List<ToothClinicalExamination> toothClinicalExaminations;
+
+    @Column(name = "profile_picture_path")
+    private String profilePicturePath;
 
     /**
      * Calculate the age based on the dateOfBirth.
