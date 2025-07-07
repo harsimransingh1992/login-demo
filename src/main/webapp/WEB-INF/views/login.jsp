@@ -5,6 +5,7 @@
 <head>
     <title>PeriDesk - Login</title>
     <meta name="viewport" content="width=device-width, initial-scale=1.0">
+    <link rel="icon" type="image/svg+xml" href="data:image/svg+xml,<svg xmlns='http://www.w3.org/2000/svg' viewBox='0 0 24 24' fill='%233498db'><path d='M12 2C10.5 2 9 3.5 9 5C9 6.5 10.5 8 12 8C13.5 8 15 6.5 15 5C15 3.5 13.5 2 12 2ZM12 10C10.5 10 9 11.5 9 13C9 14.5 10.5 16 12 16C13.5 16 15 14.5 15 13C15 11.5 13.5 10 12 10ZM12 18C10.5 18 9 19.5 9 21C9 22.5 10.5 24 12 24C13.5 24 15 22.5 15 21C15 19.5 13.5 18 12 18Z'/></svg>">
     <link rel="stylesheet" href="${pageContext.request.contextPath}/css/style.css">
     <script src="${pageContext.request.contextPath}/js/common.js"></script>
     <link rel="stylesheet" href="${pageContext.request.contextPath}/css/login.css">
@@ -218,6 +219,22 @@
             font-weight: 600;
         }
         
+        .register-link {
+            text-align: center;
+            margin-top: 20px;
+            font-size: 14px;
+        }
+        
+        .register-link a {
+            color: #3498db;
+            text-decoration: none;
+            font-weight: 600;
+        }
+        
+        .register-link a:hover {
+            text-decoration: underline;
+        }
+        
         @media (max-width: 768px) {
             .main-content {
                 padding: 15px;
@@ -262,7 +279,7 @@
             
             <c:if test="${param.error != null}">
                 <div class="error">
-                    <i class="fas fa-exclamation-circle"></i> Invalid Clinic ID or password. Please try again.
+                    <i class="fas fa-exclamation-circle"></i> Invalid username or password. Please try again.
                 </div>
             </c:if>
             <c:if test="${param.logout != null}">
@@ -277,8 +294,8 @@
                 <div class="form-section">
                     <h3 class="section-title"><i class="fas fa-user"></i> Login Details</h3>
                     <div class="form-group">
-                        <label for="username">Clinic ID <span class="required">*</span></label>
-                        <input type="text" id="username" name="username" required placeholder="Enter your Clinic ID">
+                        <label for="username">Username <span class="required">*</span></label>
+                        <input type="text" id="username" name="username" required placeholder="Enter your username">
                     </div>
                     <div class="form-group">
                         <label for="password">Password <span class="required">*</span></label>
@@ -290,12 +307,12 @@
                 </div>
                 
                 <button type="submit">Sign In</button>
+                
+                <div class="footer">
+                    <p class="copyright">© 2024 PeriDesk. All rights reserved.</p>
+                    <p>Powered by <span class="powered-by">Navtech</span><span class="navtech">Labs</span></p>
+                </div>
             </form>
-            
-            <div class="footer">
-                <p class="copyright">© 2024 PeriDesk. All rights reserved.</p>
-                <p>Powered by <span class="powered-by">Navtech</span><span class="navtech">Labs</span></p>
-            </div>
         </div>
     </div>
 </body>

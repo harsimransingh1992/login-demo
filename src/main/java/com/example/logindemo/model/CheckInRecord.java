@@ -15,16 +15,23 @@ public class CheckInRecord {
     @GeneratedValue(strategy = GenerationType.IDENTITY)
     private Long id;
 
-    @Column
-    private LocalDateTime  checkInTime;
+    @Column(name = "check_in_time")
+    private LocalDateTime checkInTime;
 
     @OneToOne
     private User checkInClinic;
 
-    @Column
-    private LocalDateTime  checkOutTime;
+    @Column(name = "check_out_time")
+    private LocalDateTime checkOutTime;
 
     @ManyToOne
     private Patient patient;
 
+    @ManyToOne
+    @JoinColumn(name = "clinic_id")
+    private ClinicModel clinic;
+
+    @Column(name = "status")
+    @Enumerated(EnumType.STRING)
+    private CheckInStatus status = CheckInStatus.WAITING;
 }

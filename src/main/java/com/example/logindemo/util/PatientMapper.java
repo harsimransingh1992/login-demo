@@ -2,6 +2,9 @@ package com.example.logindemo.util;
 
 import com.example.logindemo.dto.PatientDTO;
 import com.example.logindemo.dto.OccupationDTO;
+import com.example.logindemo.dto.CheckInRecordDTO;
+import com.example.logindemo.dto.UserDTO;
+import com.example.logindemo.dto.ClinicDTO;
 import com.example.logindemo.model.Patient;
 import com.example.logindemo.model.Occupation;
 import org.modelmapper.ModelMapper;
@@ -83,6 +86,17 @@ public class PatientMapper implements Mapper<Patient, PatientDTO> {
         patientDTO.setEmergencyContactPhoneNumber(patient.getEmergencyContactPhoneNumber());
         patientDTO.setRegistrationDate(patient.getRegistrationDate());
         patientDTO.setProfilePicturePath(patient.getProfilePicturePath());
+        patientDTO.setRegistrationCode(patient.getRegistrationCode());
+        patientDTO.setCheckedIn(patient.getCheckedIn());
+
+        // Set audit fields
+        if (patient.getCreatedBy() != null) {
+            patientDTO.setCreatedBy(patient.getCreatedBy().getFirstName() + " " + patient.getCreatedBy().getLastName());
+        }
+        if (patient.getRegisteredClinic() != null) {
+            patientDTO.setRegisteredClinic(patient.getRegisteredClinic().getClinicName());
+        }
+        patientDTO.setCreatedAt(patient.getCreatedAt());
 
         // Convert Occupation enum to OccupationDTO
         if (patient.getOccupation() != null) {
@@ -91,9 +105,21 @@ public class PatientMapper implements Mapper<Patient, PatientDTO> {
             patientDTO.setOccupation(occupationDTO);
         }
 
+        // Convert current check-in record to DTO
+        if (patient.getCurrentCheckInRecord() != null) {
+            CheckInRecordDTO checkInRecordDTO = new CheckInRecordDTO();
+            checkInRecordDTO.setId(patient.getCurrentCheckInRecord().getId());
+            checkInRecordDTO.setCheckInTime(patient.getCurrentCheckInRecord().getCheckInTime());
+            checkInRecordDTO.setCheckOutTime(patient.getCurrentCheckInRecord().getCheckOutTime());
+            checkInRecordDTO.setStatus(patient.getCurrentCheckInRecord().getStatus());
+
+
+            patientDTO.setCurrentCheckInRecord(checkInRecordDTO);
+        }
+
         return patientDTO;
     }
-    
+
     @Override
     public Patient toEntity(PatientDTO patientDTO) {
         if (patientDTO == null) {

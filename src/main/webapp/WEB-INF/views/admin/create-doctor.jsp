@@ -123,11 +123,30 @@
                 </div>
                 
                 <div class="form-group">
+                    <label for="doctorMobileNumber">Mobile Number</label>
+                    <input type="text" id="doctorMobileNumber" name="doctorMobileNumber" class="form-control" pattern="[0-9]{10}" title="Please enter a valid 10-digit mobile number" required />
+                </div>
+                
+                <div class="form-group">
+                    <label for="doctorBirthday">Date of Birth</label>
+                    <input type="date" id="doctorBirthday" name="doctorBirthday" class="form-control" required />
+                </div>
+                
+                <div class="form-group">
                     <label for="clinicId">Assign to Clinic</label>
                     <select id="clinicId" name="clinicId" class="form-control" required>
                         <option value="">Select Clinic</option>
                         <c:forEach var="clinic" items="${clinics}">
-                            <option value="${clinic.id}">${clinic.username}</option>
+                            <option value="${clinic.id}">${clinic.clinicName} (${clinic.clinicId})</option>
+                        </c:forEach>
+                    </select>
+                </div>
+                
+                <div class="form-group">
+                    <label for="specialization">Specialization</label>
+                    <select id="specialization" name="specialization" class="form-control" required>
+                        <c:forEach var="spec" items="${specializations}">
+                            <option value="${spec.name()}">${spec.displayName}</option>
                         </c:forEach>
                     </select>
                 </div>

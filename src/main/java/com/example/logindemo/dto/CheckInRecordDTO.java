@@ -1,6 +1,6 @@
 package com.example.logindemo.dto;
 
-
+import com.example.logindemo.model.CheckInStatus;
 import lombok.Getter;
 import lombok.Setter;
 import org.springframework.format.annotation.DateTimeFormat;
@@ -15,8 +15,10 @@ public class CheckInRecordDTO {
     @DateTimeFormat(pattern = "dd-MM-yyyy hh:mm:ss")
     private LocalDateTime checkInTime;
 
-    private UserDTO checkInClinic;
-
     @DateTimeFormat(pattern = "dd-MM-yyyy hh:mm:ss")
     private LocalDateTime  checkOutTime;
+
+    private ClinicDTO clinic;
+
+    private CheckInStatus status;
 }

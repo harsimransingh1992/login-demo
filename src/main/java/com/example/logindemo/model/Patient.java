@@ -55,6 +55,9 @@ public class Patient {
     @Column(nullable = false)
     private Date registrationDate = new Date();
 
+    @Column(unique = true)
+    private String registrationCode;
+
     @Column(name = "checked_in")
     private Boolean checkedIn = false; // Default value is false
 
@@ -83,6 +86,17 @@ public class Patient {
 
     @Column(name = "profile_picture_path")
     private String profilePicturePath;
+
+    @ManyToOne
+    @JoinColumn(name = "created_by")
+    private User createdBy;
+
+    @ManyToOne
+    @JoinColumn(name = "registered_clinic")
+    private ClinicModel registeredClinic;
+
+    @Column(name = "created_at")
+    private Date createdAt = new Date();
 
     /**
      * Calculate the age based on the dateOfBirth.

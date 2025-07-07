@@ -1,16 +1,26 @@
 <%@ page language="java" contentType="text/html; charset=UTF-8" pageEncoding="UTF-8"%>
 <%@ taglib prefix="c" uri="http://java.sun.com/jsp/jstl/core"%>
 <%@ taglib prefix="form" uri="http://www.springframework.org/tags/form"%>
+<%@ taglib prefix="sec" uri="http://www.springframework.org/security/tags"%>
 <!DOCTYPE html>
 <html>
 <head>
     <title>Patient Registration - PeriDesk</title>
     <link rel="stylesheet" href="${pageContext.request.contextPath}/css/style.css">
     <script src="${pageContext.request.contextPath}/js/common.js"></script>
+    <script src="${pageContext.request.contextPath}/js/imageCompression.js"></script>
     <link href="https://fonts.googleapis.com/css2?family=Poppins:wght@300;400;500;600;700&display=swap" rel="stylesheet">
     <link rel="stylesheet" href="https://cdnjs.cloudflare.com/ajax/libs/font-awesome/6.4.0/css/all.min.css">
+    <!-- Bootstrap CSS for modal -->
+    <link href="https://cdn.jsdelivr.net/npm/bootstrap@5.1.3/dist/css/bootstrap.min.css" rel="stylesheet">
     <!-- Add jQuery for easier DOM manipulation -->
     <script src="https://code.jquery.com/jquery-3.6.4.min.js"></script>
+    <!-- Bootstrap JS for modal -->
+    <script src="https://cdn.jsdelivr.net/npm/bootstrap@5.1.3/dist/js/bootstrap.bundle.min.js"></script>
+    
+    <!-- Include common menu styles -->
+    <jsp:include page="/WEB-INF/views/common/menuStyles.jsp" />
+    
     <style>
         body {
             font-family: 'Poppins', sans-serif;
@@ -24,89 +34,6 @@
         .welcome-container {
             display: flex;
             min-height: 100vh;
-        }
-        
-        .sidebar-menu {
-            width: 280px;
-            background: linear-gradient(180deg, #ffffff, #f8f9fa);
-            padding: 30px;
-            box-shadow: 0 0 25px rgba(0, 0, 0, 0.05);
-            display: flex;
-            flex-direction: column;
-            position: relative;
-            z-index: 10;
-        }
-        
-        .logo {
-            display: flex;
-            align-items: center;
-            gap: 15px;
-            margin-bottom: 35px;
-        }
-        
-        .logo img {
-            width: 40px;
-            height: 40px;
-            filter: drop-shadow(0 4px 6px rgba(0, 0, 0, 0.1));
-        }
-        
-        .logo h1 {
-            font-size: 1.5rem;
-            color: #2c3e50;
-            margin: 0;
-            font-weight: 600;
-            letter-spacing: 0.5px;
-        }
-        
-        .action-card {
-            background: white;
-            padding: 16px 20px;
-            border-radius: 10px;
-            box-shadow: 0 4px 10px rgba(0, 0, 0, 0.03);
-            transition: all 0.3s;
-            text-decoration: none;
-            border: 1px solid #f0f0f0;
-            margin-bottom: 15px;
-            display: flex;
-            align-items: center;
-            gap: 12px;
-        }
-        
-        .action-card i {
-            font-size: 1.2rem;
-            color: #3498db;
-            width: 30px;
-        }
-        
-        .action-card:hover {
-            transform: translateX(5px);
-            background: linear-gradient(135deg, #3498db, #2980b9);
-            color: white;
-            border-color: transparent;
-            box-shadow: 0 6px 15px rgba(52, 152, 219, 0.2);
-        }
-        
-        .action-card:hover h3,
-        .action-card:hover p,
-        .action-card:hover i {
-            color: white;
-        }
-        
-        .action-card h3 {
-            margin: 0;
-            color: #2c3e50;
-            font-size: 1rem;
-            font-weight: 600;
-        }
-        
-        .action-card p {
-            margin: 4px 0 0 0;
-            color: #7f8c8d;
-            font-size: 0.8rem;
-        }
-        
-        .card-text {
-            flex: 1;
         }
         
         .main-content {
@@ -488,54 +415,75 @@
         .btn-upload:hover {
             background: linear-gradient(135deg, #2980b9, #1c6ea4);
             transform: translateY(-2px);
+            box-shadow: 0 4px 12px rgba(52, 152, 219, 0.2);
+        }
+        
+        .btn-webcam {
+            background: linear-gradient(135deg, #17a2b8, #138496);
+            color: white;
+        }
+        
+        .btn-webcam:hover {
+            background: linear-gradient(135deg, #138496, #117a8b);
+            transform: translateY(-2px);
+            box-shadow: 0 4px 12px rgba(23, 162, 184, 0.2);
+        }
+        
+        .btn-info {
+            background: linear-gradient(135deg, #17a2b8, #138496);
+            color: white;
+        }
+        
+        .btn-info:hover {
+            background: linear-gradient(135deg, #138496, #117a8b);
+            transform: translateY(-2px);
+            box-shadow: 0 4px 12px rgba(23, 162, 184, 0.2);
         }
         
         #removeImage {
             padding: 6px 12px;
             font-size: 0.85rem;
         }
+        
+        /* Webcam Modal Styles */
+        .webcam-container {
+            text-align: center;
+            padding: 20px 0;
+        }
+        
+        .webcam-controls {
+            margin: 20px 0;
+            display: flex;
+            gap: 10px;
+            justify-content: center;
+            flex-wrap: wrap;
+        }
+        
+        .webcam-preview {
+            margin-top: 20px;
+        }
+        
+        #webcamVideo {
+            border: 2px solid #e0e0e0;
+            background: #f8f9fa;
+        }
+        
+        #capturedImage {
+            border: 2px solid #28a745;
+            box-shadow: 0 4px 8px rgba(40, 167, 69, 0.2);
+        }
+        
+        .upload-controls {
+            display: flex;
+            gap: 10px;
+            flex-wrap: wrap;
+            justify-content: center;
+        }
     </style>
 </head>
 <body>
     <div class="welcome-container">
-        <div class="sidebar-menu">
-            <div class="logo">
-                <img src="${pageContext.request.contextPath}/images/tooth-repair.svg" alt="PeriDesk Logo">
-                <h1>PeriDesk</h1>
-            </div>
-            <a href="${pageContext.request.contextPath}/welcome" class="action-card">
-                <i class="fas fa-clipboard-list"></i>
-                <div class="card-text">
-                    <h3>Waiting Lobby</h3>
-                    <p>View waiting patients</p>
-                </div>
-            </a>
-            <a href="${pageContext.request.contextPath}/patients/register" class="action-card">
-                <i class="fas fa-user-plus"></i>
-                <div class="card-text">
-                    <h3>Register Patient</h3>
-                    <p>Add new patient</p>
-                </div>
-            </a>
-            <a href="${pageContext.request.contextPath}/patients/list" class="action-card">
-                <i class="fas fa-users"></i>
-                <div class="card-text">
-                    <h3>View Patients</h3>
-                    <p>Manage records</p>
-                </div>
-            </a>
-            <a href="${pageContext.request.contextPath}/patients/appointments" class="action-card">
-                <i class="fas fa-calendar-alt"></i>
-                <div class="card-text">
-                    <h3>Appointments</h3>
-                    <p>Today's schedule</p>
-                </div>
-            </a>
-            <div class="footer">
-                <p class="copyright">© 2024 PeriDesk. All rights reserved.</p>
-                <p>Powered by <span class="powered-by">Navtech</span><span class="navtech">Labs</span></p>
-            </div>
-        </div>
+        <jsp:include page="/WEB-INF/views/common/menu.jsp" />
         <div class="main-content">
             <div class="welcome-header">
                 <form action="${pageContext.request.contextPath}/logout" method="post" class="logout-form">
@@ -596,6 +544,9 @@
                                         <label for="profilePicture" class="btn btn-secondary btn-upload">
                                             <i class="fas fa-upload"></i> Choose Image
                                         </label>
+                                        <button type="button" id="webcamBtn" class="btn btn-info btn-webcam">
+                                            <i class="fas fa-camera"></i> Use Camera
+                                        </button>
                                         <input type="file" id="profilePicture" name="profilePicture" accept="image/*" style="display: none;" />
                                         <button type="button" id="removeImage" class="btn btn-danger btn-small" style="display: none;">
                                             <i class="fas fa-times"></i> Remove
@@ -698,7 +649,7 @@
                         </div>
                         <div class="form-group">
                             <label for="referral">How did you hear about us? <span class="required">*</span></label>
-                            <form:select id="referral" path="referral" class="form-control" required="true">
+                            <form:select id="referral" path="referralModel" class="form-control" required="true">
                                 <form:option value="">Select an option</form:option>
                                 <form:options items="${referralModels}" itemLabel="displayName" itemValue="name"/>
                             </form:select>
@@ -735,6 +686,43 @@
                         </a>
                     </div>
                 </form:form>
+            </div>
+        </div>
+    </div>
+
+    <!-- Webcam Modal -->
+    <div class="modal fade" id="webcamModal" tabindex="-1" aria-labelledby="webcamModalLabel" aria-hidden="true">
+        <div class="modal-dialog modal-lg">
+            <div class="modal-content">
+                <div class="modal-header">
+                    <h5 class="modal-title" id="webcamModalLabel">
+                        <i class="fas fa-camera"></i> Capture Photo
+                    </h5>
+                    <button type="button" class="btn-close" data-bs-dismiss="modal" aria-label="Close"></button>
+                </div>
+                <div class="modal-body">
+                    <div class="webcam-container">
+                        <video id="webcamVideo" autoplay playsinline style="width: 100%; max-width: 500px; height: auto; border-radius: 8px;"></video>
+                        <canvas id="webcamCanvas" style="display: none;"></canvas>
+                        <div class="webcam-controls">
+                            <button type="button" id="captureBtn" class="btn btn-primary">
+                                <i class="fas fa-camera"></i> Capture Photo
+                            </button>
+                            <button type="button" id="retakeBtn" class="btn btn-secondary" style="display: none;">
+                                <i class="fas fa-redo"></i> Retake
+                            </button>
+                        </div>
+                        <div class="webcam-preview" id="webcamPreview" style="display: none;">
+                            <img id="capturedImage" style="width: 100%; max-width: 500px; height: auto; border-radius: 8px;">
+                        </div>
+                    </div>
+                </div>
+                <div class="modal-footer">
+                    <button type="button" class="btn btn-secondary" data-bs-dismiss="modal">Cancel</button>
+                    <button type="button" id="usePhotoBtn" class="btn btn-primary" style="display: none;">
+                        <i class="fas fa-check"></i> Use This Photo
+                    </button>
+                </div>
             </div>
         </div>
     </div>
@@ -1045,17 +1033,10 @@
         const removeButton = document.getElementById('removeImage');
         
         // Handle file selection
-        profileInput.addEventListener('change', function() {
+        profileInput.addEventListener('change', async function() {
             const file = this.files[0];
             
             if (file) {
-                // Validate file size (max 2MB)
-                if (file.size > 2 * 1024 * 1024) {
-                    alert('Error: Image size exceeds 2MB. Please choose a smaller image.');
-                    this.value = ''; // Clear the input
-                    return;
-                }
-                
                 // Validate file type
                 if (!file.type.startsWith('image/')) {
                     alert('Error: Please select an image file.');
@@ -1063,23 +1044,28 @@
                     return;
                 }
                 
-                // Create preview
-                const reader = new FileReader();
-                reader.onload = function(e) {
-                    // Clear previous content
-                    profilePreview.innerHTML = '';
+                try {
+                    // Show loading state
+                    ImageCompression.showLoading(profilePreview);
                     
-                    // Create and add image
-                    const img = document.createElement('img');
-                    img.src = e.target.result;
-                    img.alt = 'Profile Preview';
-                    profilePreview.appendChild(img);
+                    // Compress the image
+                    const compressedFile = await ImageCompression.compressImage(file);
                     
-                    // Update styling
-                    profilePreview.style.border = 'none';
+                    // Update the file input
+                    ImageCompression.updateFileInput(this, compressedFile);
+                    
+                    // Create preview
+                    ImageCompression.createPreview(compressedFile, profilePreview);
+                    
+                    // Show remove button
                     removeButton.style.display = 'block';
-                };
-                reader.readAsDataURL(file);
+                    
+                } catch (error) {
+                    console.error('Error compressing image:', error);
+                    alert('Error processing image. Please try again.');
+                    this.value = ''; // Clear the input
+                    ImageCompression.createPreview(null, profilePreview);
+                }
             }
         });
         
@@ -1089,14 +1075,275 @@
             profileInput.value = '';
             
             // Reset the preview
-            profilePreview.innerHTML = `
-                <i class="fas fa-user-circle"></i>
-                <span>No image selected</span>
-            `;
+            ImageCompression.createPreview(null, profilePreview);
             
             // Reset styling
             profilePreview.style.border = '2px dashed #c0c0c0';
             removeButton.style.display = 'none';
+        });
+    });
+</script>
+
+<!-- Webcam functionality script -->
+<script>
+    $(document).ready(function() {
+        let stream = null;
+        let webcamModal = null;
+        let capturedBlob = null; // Store blob in variable instead of dataset
+        
+        // Initialize Bootstrap modal
+        webcamModal = new bootstrap.Modal(document.getElementById('webcamModal'));
+        
+        // Webcam button click handler
+        $('#webcamBtn').on('click', function() {
+            startWebcam();
+            webcamModal.show();
+        });
+        
+        // Start webcam
+        async function startWebcam() {
+            try {
+                stream = await navigator.mediaDevices.getUserMedia({ 
+                    video: { 
+                        width: { ideal: 640 },
+                        height: { ideal: 480 },
+                        facingMode: 'user' // Use front camera
+                    } 
+                });
+                
+                const video = document.getElementById('webcamVideo');
+                video.srcObject = stream;
+                
+                // Show capture button, hide retake and use photo buttons
+                $('#captureBtn').show();
+                $('#retakeBtn').hide();
+                $('#usePhotoBtn').hide();
+                $('#webcamPreview').hide();
+                $('#webcamVideo').show();
+                
+            } catch (error) {
+                console.error('Error accessing webcam:', error);
+                alert('Unable to access webcam. Please make sure you have granted camera permissions and try again.');
+            }
+        }
+        
+        // Stop webcam
+        function stopWebcam() {
+            if (stream) {
+                stream.getTracks().forEach(track => track.stop());
+                stream = null;
+            }
+        }
+        
+        // Capture photo
+        $('#captureBtn').on('click', function() {
+            const video = document.getElementById('webcamVideo');
+            const canvas = document.getElementById('webcamCanvas');
+            const capturedImage = document.getElementById('capturedImage');
+            
+            // Set canvas size to match video
+            canvas.width = video.videoWidth;
+            canvas.height = video.videoHeight;
+            
+            // Draw video frame to canvas
+            const ctx = canvas.getContext('2d');
+            ctx.drawImage(video, 0, 0, canvas.width, canvas.height);
+            
+            // Convert canvas to blob
+            canvas.toBlob(function(blob) {
+                if (blob) {
+                    console.log('Photo captured, blob size:', blob.size, 'bytes');
+                    
+                    // Store blob in variable
+                    capturedBlob = blob;
+                    
+                    // Create object URL for preview
+                    const imageUrl = URL.createObjectURL(blob);
+                    capturedImage.src = imageUrl;
+                    
+                    // Hide video and capture button, show preview and other buttons
+                    $('#webcamVideo').hide();
+                    $('#captureBtn').hide();
+                    $('#webcamPreview').show();
+                    $('#retakeBtn').show();
+                    $('#usePhotoBtn').show();
+                } else {
+                    console.error('Failed to create blob from canvas');
+                    alert('Failed to capture photo. Please try again.');
+                }
+            }, 'image/jpeg', 0.8);
+        });
+        
+        // Retake photo
+        $('#retakeBtn').on('click', function() {
+            // Clear the stored blob
+            capturedBlob = null;
+            
+            $('#webcamVideo').show();
+            $('#captureBtn').show();
+            $('#webcamPreview').hide();
+            $('#retakeBtn').hide();
+            $('#usePhotoBtn').hide();
+        });
+        
+        // Use captured photo
+        $('#usePhotoBtn').on('click', async function() {
+            if (capturedBlob) {
+                try {
+                    console.log('Starting photo processing...');
+                    console.log('Blob size:', capturedBlob.size, 'bytes');
+                    console.log('Blob type:', capturedBlob.type);
+                    
+                    // Show loading state
+                    ImageCompression.showLoading(document.getElementById('profilePreview'));
+                    
+                    // Convert blob to File object
+                    const capturedFile = new File([capturedBlob], 'webcam-capture.jpg', {
+                        type: 'image/jpeg',
+                        lastModified: Date.now()
+                    });
+                    
+                    console.log('Created file from blob:', capturedFile);
+                    console.log('File size:', capturedFile.size, 'bytes');
+                    
+                    // Simple compression using canvas (more reliable than fetch approach)
+                    let compressedFile;
+                    try {
+                        compressedFile = await compressImageSimple(capturedFile);
+                        console.log('Image compression completed:', compressedFile);
+                    } catch (compressionError) {
+                        console.warn('Compression failed, using original file:', compressionError);
+                        compressedFile = capturedFile;
+                    }
+                    
+                    // Update the file input
+                    console.log('Updating file input...');
+                    ImageCompression.updateFileInput(document.getElementById('profilePicture'), compressedFile);
+                    
+                    // Create preview directly
+                    console.log('Creating preview...');
+                    createPreviewSimple(compressedFile, document.getElementById('profilePreview'));
+                    
+                    // Show remove button
+                    document.getElementById('removeImage').style.display = 'block';
+                    
+                    console.log('Photo processing completed successfully');
+                    
+                    // Clear the stored blob
+                    capturedBlob = null;
+                    
+                    // Close modal and stop webcam
+                    webcamModal.hide();
+                    stopWebcam();
+                    
+                } catch (error) {
+                    console.error('Error processing captured image:', error);
+                    
+                    // Hide loading state and show error
+                    const profilePreview = document.getElementById('profilePreview');
+                    profilePreview.innerHTML = '<i class="fas fa-exclamation-circle"></i><span>Error processing image</span>';
+                    profilePreview.style.color = '#e74c3c';
+                    
+                    alert('Error processing captured image. Please try again.');
+                }
+            } else {
+                console.error('No blob data found');
+                alert('No captured image data found. Please capture a photo first.');
+            }
+        });
+        
+        // Simple image compression function (more reliable)
+        function compressImageSimple(file) {
+            return new Promise((resolve, reject) => {
+                console.log('Starting compression for file:', file.name, 'size:', file.size);
+                
+                const reader = new FileReader();
+                reader.onload = function(e) {
+                    console.log('File read successfully, data URL length:', e.target.result.length);
+                    
+                    const img = new Image();
+                    img.onload = function() {
+                        console.log('Image loaded successfully, dimensions:', img.width, 'x', img.height);
+                        
+                        const canvas = document.createElement('canvas');
+                        const ctx = canvas.getContext('2d');
+                        
+                        // Set maximum dimensions
+                        const maxWidth = 800;
+                        const maxHeight = 800;
+                        
+                        let { width, height } = img;
+                        
+                        // Calculate new dimensions while maintaining aspect ratio
+                        if (width > height && width > maxWidth) {
+                            height = Math.round((height * maxWidth) / width);
+                            width = maxWidth;
+                        } else if (height > maxHeight) {
+                            width = Math.round((width * maxHeight) / height);
+                            height = maxHeight;
+                        }
+                        
+                        console.log('Compressed dimensions:', width, 'x', height);
+                        
+                        canvas.width = width;
+                        canvas.height = height;
+                        
+                        // Draw and compress
+                        ctx.drawImage(img, 0, 0, width, height);
+                        
+                        // Convert to blob with compression
+                        canvas.toBlob(function(blob) {
+                            if (blob) {
+                                console.log('Blob created successfully, size:', blob.size, 'bytes');
+                                const compressedFile = new File([blob], file.name, {
+                                    type: 'image/jpeg',
+                                    lastModified: Date.now()
+                                });
+                                resolve(compressedFile);
+                            } else {
+                                console.error('Failed to create blob from canvas');
+                                reject(new Error('Failed to create compressed image'));
+                            }
+                        }, 'image/jpeg', 0.8); // 80% quality
+                    };
+                    img.onerror = function(error) {
+                        console.error('Image loading error:', error);
+                        reject(new Error('Failed to load image for compression'));
+                    };
+                    img.src = e.target.result;
+                };
+                reader.onerror = function(error) {
+                    console.error('File reading error:', error);
+                    reject(new Error('Failed to read image file'));
+                };
+                reader.readAsDataURL(file);
+            });
+        }
+        
+        // Simple preview creation function
+        function createPreviewSimple(file, previewElement) {
+            const reader = new FileReader();
+            reader.onload = function(e) {
+                previewElement.innerHTML = '';
+                const img = document.createElement('img');
+                img.src = e.target.result;
+                img.alt = 'Preview';
+                img.style.maxWidth = '100%';
+                img.style.height = 'auto';
+                img.style.borderRadius = '8px';
+                previewElement.appendChild(img);
+            };
+            reader.readAsDataURL(file);
+        }
+        
+        // Handle modal close
+        $('#webcamModal').on('hidden.bs.modal', function() {
+            stopWebcam();
+        });
+        
+        // Handle page unload to ensure webcam is stopped
+        $(window).on('beforeunload', function() {
+            stopWebcam();
         });
     });
 </script>

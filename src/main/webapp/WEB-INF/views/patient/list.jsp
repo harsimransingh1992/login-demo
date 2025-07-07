@@ -1,17 +1,26 @@
 <%@ page language="java" contentType="text/html; charset=UTF-8" pageEncoding="UTF-8"%>
 <%@ taglib prefix="c" uri="http://java.sun.com/jsp/jstl/core"%>
 <%@ taglib prefix="fmt" uri="http://java.sun.com/jsp/jstl/fmt"%>
+<%@ taglib prefix="fn" uri="http://java.sun.com/jsp/jstl/functions"%>
+<%@ taglib prefix="sec" uri="http://www.springframework.org/security/tags"%>
+
 <!DOCTYPE html>
 <html>
 <head>
-    <title>Patient List - PeriDesk</title>
+    <meta charset="UTF-8">
     <meta name="_csrf" content="${_csrf.token}"/>
-    <meta name="viewport" content="width=device-width, initial-scale=1.0">
+    <meta name="_csrf_header" content="${_csrf.headerName}"/>
+    <title>Patient List - PeriDesk</title>
+    <jsp:include page="/WEB-INF/views/common/head.jsp" />
     <link rel="stylesheet" href="${pageContext.request.contextPath}/css/style.css">
+    <script src="${pageContext.request.contextPath}/js/common.js"></script>
     <link href="https://fonts.googleapis.com/css2?family=Poppins:wght@300;400;500;600;700&display=swap" rel="stylesheet">
     <link rel="stylesheet" href="https://cdnjs.cloudflare.com/ajax/libs/font-awesome/6.4.0/css/all.min.css">
     <script src="https://code.jquery.com/jquery-3.6.4.min.js"></script>
-    <script src="${pageContext.request.contextPath}/js/common.js"></script>
+    
+    <!-- Include common menu styles -->
+    <jsp:include page="/WEB-INF/views/common/menuStyles.jsp" />
+    
     <style>
         body {
             font-family: 'Poppins', sans-serif;
@@ -25,98 +34,12 @@
         .welcome-container {
             display: flex;
             min-height: 100vh;
-            flex-direction: row;
-        }
-        
-        .sidebar-menu {
-            width: 280px;
-            background: linear-gradient(180deg, #ffffff, #f8f9fa);
-            padding: 30px;
-            box-shadow: 0 0 25px rgba(0, 0, 0, 0.05);
-            display: flex;
-            flex-direction: column;
-            position: relative;
-            z-index: 10;
-            transition: all 0.3s ease;
-        }
-        
-        .logo {
-            display: flex;
-            align-items: center;
-            gap: 15px;
-            margin-bottom: 35px;
-        }
-        
-        .logo img {
-            width: 40px;
-            height: 40px;
-            filter: drop-shadow(0 4px 6px rgba(0, 0, 0, 0.1));
-        }
-        
-        .logo h1 {
-            font-size: 1.5rem;
-            color: #2c3e50;
-            margin: 0;
-            font-weight: 600;
-            letter-spacing: 0.5px;
-        }
-        
-        .action-card {
-            background: white;
-            padding: 16px 20px;
-            border-radius: 10px;
-            box-shadow: 0 4px 10px rgba(0, 0, 0, 0.03);
-            transition: all 0.3s;
-            text-decoration: none;
-            border: 1px solid #f0f0f0;
-            margin-bottom: 15px;
-            display: flex;
-            align-items: center;
-            gap: 12px;
-        }
-        
-        .action-card i {
-            font-size: 1.2rem;
-            color: #3498db;
-            width: 30px;
-        }
-        
-        .action-card:hover {
-            transform: translateX(5px);
-            background: linear-gradient(135deg, #3498db, #2980b9);
-            color: white;
-            border-color: transparent;
-            box-shadow: 0 6px 15px rgba(52, 152, 219, 0.2);
-        }
-        
-        .action-card:hover h3,
-        .action-card:hover p,
-        .action-card:hover i {
-            color: white;
-        }
-        
-        .action-card h3 {
-            margin: 0;
-            color: #2c3e50;
-            font-size: 1rem;
-            font-weight: 600;
-        }
-        
-        .action-card p {
-            margin: 4px 0 0 0;
-            color: #7f8c8d;
-            font-size: 0.8rem;
-        }
-        
-        .card-text {
-            flex: 1;
         }
         
         .main-content {
             flex: 1;
             padding: 40px;
             position: relative;
-            overflow-x: auto;
         }
         
         .welcome-header {
@@ -129,397 +52,185 @@
             box-shadow: 0 5px 15px rgba(0, 0, 0, 0.03);
             margin-bottom: 30px;
         }
-        
-        .welcome-message {
-            font-size: 1.5rem;
-            color: #2c3e50;
-            margin: 0;
-        }
-        
-        .welcome-message span {
-            color: #3498db;
-            font-weight: 600;
-        }
-        
-        .btn-secondary {
-            display: inline-flex;
-            align-items: center;
-            justify-content: center;
-            gap: 8px;
-            padding: 10px 20px;
-            border-radius: 8px;
-            cursor: pointer;
-            transition: all 0.3s ease;
-            font-family: 'Poppins', sans-serif;
-            font-weight: 500;
-            font-size: 0.9rem;
-            text-decoration: none;
-            text-align: center;
-            border: none;
-            background: linear-gradient(135deg, #3498db, #2980b9);
-            color: white;
-        }
-        
-        .btn-secondary:hover {
-            background: linear-gradient(135deg, #2980b9, #1c6ea4);
-            transform: translateY(-2px);
-            box-shadow: 0 4px 12px rgba(52, 152, 219, 0.2);
-        }
-        
-        .btn-secondary i {
-            font-size: 0.9rem;
-        }
-        
-        .search-container {
-            background: white;
-            padding: 20px;
-            border-radius: 12px;
-            box-shadow: 0 5px 15px rgba(0, 0, 0, 0.03);
-            margin-bottom: 30px;
-        }
-        
-        .search-form {
-            display: flex;
-            gap: 15px;
-            align-items: center;
-            flex-wrap: wrap;
-        }
-        
-        .search-select {
-            padding: 12px 15px;
-            border: 1px solid #e0e0e0;
-            border-radius: 8px;
-            font-size: 0.95rem;
-            font-family: 'Poppins', sans-serif;
-            min-width: 150px;
-            background-color: #f9f9f9;
-            color: #2c3e50;
-            appearance: none;
-            background-image: url("data:image/svg+xml;charset=UTF-8,%3csvg xmlns='http://www.w3.org/2000/svg' viewBox='0 0 24 24' fill='none' stroke='%232c3e50' stroke-width='2' stroke-linecap='round' stroke-linejoin='round'%3e%3cpolyline points='6 9 12 15 18 9'%3e%3c/polyline%3e%3c/svg%3e");
-            background-repeat: no-repeat;
-            background-position: right 12px center;
-            background-size: 16px;
-        }
-        
-        .search-input {
-            flex: 3;
-            padding: 12px 15px;
-            border: 1px solid #e0e0e0;
-            border-radius: 8px;
-            font-size: 0.95rem;
-            font-family: 'Poppins', sans-serif;
-            background-color: #f9f9f9;
-            min-width: 200px;
-        }
-        
-        .search-button {
-            display: inline-flex;
-            align-items: center;
-            justify-content: center;
-            gap: 8px;
-            background: linear-gradient(135deg, #3498db, #2980b9);
-            color: white;
-            border: none;
-            border-radius: 8px;
-            padding: 10px 15px;
-            font-size: 0.9rem;
-            font-weight: 500;
-            cursor: pointer;
-            transition: all 0.3s;
-            white-space: nowrap;
-        }
-        
-        .search-button:hover {
-            background: linear-gradient(135deg, #2980b9, #1c6ea4);
-            transform: translateY(-2px);
-            box-shadow: 0 4px 10px rgba(52, 152, 219, 0.2);
-        }
-        
-        .search-button svg {
-            width: 16px;
-            height: 16px;
-        }
-        
-        .table-responsive {
-            overflow-x: auto;
-            background: white;
-            border-radius: 12px;
-            box-shadow: 0 5px 15px rgba(0, 0, 0, 0.03);
-        }
-        
-        .table {
-            width: 100%;
-            border-collapse: collapse;
-            min-width: 800px;
-        }
-        
-        .table thead {
-            background: linear-gradient(135deg, #3498db, #2980b9);
-            color: white;
-        }
-        
-        .table th {
-            padding: 16px 20px;
-            text-align: left;
-            font-weight: 600;
-            font-size: 0.95rem;
-            white-space: nowrap;
-        }
-        
-        .table td {
-            padding: 16px 20px;
-            border-bottom: 1px solid #f0f0f0;
-            font-size: 0.9rem;
-        }
-        
-        .table tr:last-child td {
-            border-bottom: none;
-        }
-        
-        .table tr:hover {
-            background-color: #f9f9f9;
-        }
-        
-        .patient-link {
-            color: #3498db;
-            text-decoration: none;
-            font-weight: 500;
-            transition: color 0.2s;
-        }
-        
-        .patient-link:hover {
-            color: #2980b9;
-            text-decoration: underline;
-        }
-        
-        .btn-primary, .btn-danger, .btn-edit {
-            border: none;
-            border-radius: 6px;
-            padding: 8px 16px;
-            font-size: 0.85rem;
-            font-weight: 500;
-            cursor: pointer;
-            transition: all 0.3s;
-            display: inline-flex;
-            align-items: center;
-            gap: 5px;
-        }
-        
-        .btn-primary {
-            background: linear-gradient(135deg, #3498db, #2980b9);
-            color: white;
-        }
-        
-        .btn-primary:hover {
-            background: linear-gradient(135deg, #2980b9, #1c6ea4);
-            box-shadow: 0 4px 8px rgba(52, 152, 219, 0.2);
-        }
-        
-        .btn-danger {
-            background: linear-gradient(135deg, #e74c3c, #c0392b);
-            color: white;
-        }
-        
-        .btn-danger:hover {
-            background: linear-gradient(135deg, #c0392b, #a82315);
-            box-shadow: 0 4px 8px rgba(231, 76, 60, 0.2);
-        }
-        
-        .btn-edit {
-            background: linear-gradient(135deg, #f39c12, #e67e22);
-            color: white;
-            margin-right: 8px;
-        }
-        
-        .btn-edit:hover {
-            background: linear-gradient(135deg, #e67e22, #d35400);
-            box-shadow: 0 4px 8px rgba(243, 156, 18, 0.2);
-        }
-        
-        .action-buttons {
-            display: flex;
-            flex-wrap: wrap;
-            gap: 8px;
-        }
-        
-        .no-results {
-            text-align: center;
-            color: #7f8c8d;
-            padding: 25px !important;
-        }
-        
-        .footer {
-            margin-top: auto;
-            padding-top: 20px;
-            border-top: 1px solid #e0e0e0;
-            text-align: center;
-            font-size: 12px;
-            color: #999;
-        }
-        
-        .copyright {
-            margin: 5px 0;
-        }
-        
-        .powered-by {
-            color: #3498db;
-            font-weight: 500;
-        }
-        
-        .navtech {
-            color: #2c3e50;
-            font-weight: 600;
-        }
-        
-        h1 {
-            color: #2c3e50;
-            font-size: 1.8rem;
-            margin-bottom: 20px;
-        }
-        
-        .menu-toggle {
-            display: none;
-            position: fixed;
-            top: 20px;
-            left: 20px;
-            z-index: 999;
-            background: white;
-            border: none;
-            border-radius: 50%;
-            width: 40px;
-            height: 40px;
-            cursor: pointer;
-            box-shadow: 0 2px 10px rgba(0, 0, 0, 0.1);
-            align-items: center;
-            justify-content: center;
-            font-size: 1.2rem;
-            color: #2c3e50;
-        }
-        
-        @media (max-width: 992px) {
-            .welcome-container {
-                position: relative;
-            }
-            
-            .menu-toggle {
-                display: flex;
-            }
-            
-            .sidebar-menu {
-                position: fixed;
-                left: -340px;
-                top: 0;
-                bottom: 0;
-                transition: left 0.3s ease;
-                height: 100%;
-                overflow-y: auto;
-            }
-            
-            .sidebar-menu.active {
-                left: 0;
-            }
-            
-            .main-content {
-                padding: 30px 20px;
-                width: 100%;
-            }
-            
-            .welcome-header {
-                flex-direction: column;
-                gap: 15px;
-                align-items: flex-start;
-            }
-        }
-        
-        @media (max-width: 768px) {
-            .search-form {
-                flex-direction: column;
-                align-items: stretch;
-            }
-            
-            .search-select, .search-input, .search-button {
-                width: 100%;
-            }
-            
-            .welcome-header {
-                padding: 15px;
-            }
-            
-            .table td, .table th {
-                padding: 12px 15px;
-                font-size: 0.85rem;
-            }
-        }
-        
-        .overlay {
-            display: none;
-            position: fixed;
-            top: 0;
-            left: 0;
-            right: 0;
-            bottom: 0;
-            background: rgba(0, 0, 0, 0.5);
-            z-index: 9;
-        }
-        
-        .overlay.active {
-            display: block;
-        }
+
+    .search-container {
+        margin: 20px 0;
+        padding: 15px;
+        background: #fff;
+        border-radius: 8px;
+        box-shadow: 0 2px 4px rgba(0,0,0,0.1);
+    }
+
+    .search-form {
+        display: flex;
+        gap: 10px;
+        align-items: stretch;
+    }
+
+    .search-select {
+        padding: 10px 15px;
+        border: 1px solid #ddd;
+        border-radius: 6px;
+        background-color: #fff;
+        font-size: 14px;
+        color: #333;
+        min-width: 220px;
+        cursor: pointer;
+        transition: border-color 0.3s ease;
+        height: 42px;
+        box-sizing: border-box;
+    }
+
+    .search-select:hover {
+        border-color: #007bff;
+    }
+
+    .search-select:focus {
+        outline: none;
+        border-color: #007bff;
+        box-shadow: 0 0 0 2px rgba(0,123,255,0.25);
+    }
+
+    .search-input {
+        flex: 1;
+        padding: 10px 15px;
+        border: 1px solid #ddd;
+        border-radius: 6px;
+        font-size: 14px;
+        transition: border-color 0.3s ease;
+        min-width: 400px;
+        height: 42px;
+        box-sizing: border-box;
+    }
+
+    .search-input:focus {
+        outline: none;
+        border-color: #007bff;
+        box-shadow: 0 0 0 2px rgba(0,123,255,0.25);
+    }
+
+    .search-button {
+        padding: 6px 10px;
+        background-color: #007bff;
+        color: white;
+        border: none;
+        border-radius: 6px;
+        cursor: pointer;
+        font-size: 11px;
+        display: flex;
+        align-items: center;
+        justify-content: center;
+        gap: 3px;
+        transition: background-color 0.3s ease;
+        white-space: nowrap;
+        min-width: 70px;
+        height: 42px;
+        box-sizing: border-box;
+    }
+
+    .search-button:hover {
+        background-color: #0056b3;
+    }
+
+    .search-button i {
+        font-size: 11px;
+    }
+    
+    /* Pagination styles */
+    .pagination-container {
+        display: flex;
+        justify-content: space-between;
+        align-items: center;
+        margin-top: 20px;
+        padding: 15px;
+        background: white;
+        border-radius: 8px;
+        box-shadow: 0 2px 4px rgba(0,0,0,0.1);
+    }
+    
+    .pagination-info {
+        color: #666;
+        font-size: 14px;
+    }
+    
+    .pagination-controls {
+        display: flex;
+        gap: 10px;
+        align-items: center;
+    }
+    
+    .pagination-button {
+        padding: 8px 12px;
+        border: 1px solid #ddd;
+        background: white;
+        color: #333;
+        text-decoration: none;
+        border-radius: 4px;
+        font-size: 14px;
+        transition: all 0.3s ease;
+        cursor: pointer;
+    }
+    
+    .pagination-button:hover {
+        background: #f8f9fa;
+        border-color: #007bff;
+        color: #007bff;
+    }
+    
+    .pagination-button:disabled {
+        background: #f8f9fa;
+        color: #6c757d;
+        cursor: not-allowed;
+        border-color: #dee2e6;
+    }
+    
+    .pagination-button.active {
+        background: #007bff;
+        color: white;
+        border-color: #007bff;
+    }
+    
+    .page-size-selector {
+        display: flex;
+        align-items: center;
+        gap: 8px;
+    }
+    
+    .page-size-selector select {
+        padding: 6px 10px;
+        border: 1px solid #ddd;
+        border-radius: 4px;
+        font-size: 14px;
+    }
+    
+    .sort-controls {
+        display: flex;
+        align-items: center;
+        gap: 8px;
+    }
+    
+    .sort-controls select {
+        padding: 6px 10px;
+        border: 1px solid #ddd;
+        border-radius: 4px;
+        font-size: 14px;
+    }
+    
+    .audit-info {
+        font-size: 0.85rem;
+        color: #495057;
+        font-weight: 500;
+    }
+    
+    .text-muted {
+        color: #6c757d;
+        font-style: italic;
+    }
     </style>
 </head>
 <body>
-    <button class="menu-toggle" id="menuToggle">
-        <i class="fas fa-bars"></i>
-    </button>
-    
-    <div class="overlay" id="overlay"></div>
-    
     <div class="welcome-container">
-        <div class="sidebar-menu" id="sidebarMenu">
-            <div class="logo">
-                <img src="${pageContext.request.contextPath}/images/tooth-repair.svg" alt="PeriDesk Logo">
-                <h1>PeriDesk</h1>
-            </div>
-            <a href="${pageContext.request.contextPath}/welcome" class="action-card">
-                <i class="fas fa-clipboard-list"></i>
-                <div class="card-text">
-                    <h3>Waiting Lobby</h3>
-                <p>View waiting patients</p>
-                </div>
-            </a>
-            <a href="${pageContext.request.contextPath}/patients/register" class="action-card">
-                <i class="fas fa-user-plus"></i>
-                <div class="card-text">
-                <h3>Register Patient</h3>
-                <p>Add new patient</p>
-                </div>
-            </a>
-            <a href="${pageContext.request.contextPath}/patients/list" class="action-card">
-                <i class="fas fa-users"></i>
-                <div class="card-text">
-                <h3>View Patients</h3>
-                <p>Manage records</p>
-                </div>
-            </a>
-            <a href="${pageContext.request.contextPath}/patients/appointments" class="action-card">
-                <i class="fas fa-calendar-alt"></i>
-                <div class="card-text">
-                    <h3>Appointments</h3>
-                    <p>Today's schedule</p>
-                </div>
-            </a>
-            <a href="${pageContext.request.contextPath}/visits" class="action-card">
-                <i class="fas fa-calendar-check"></i>
-                <div class="card-text">
-                    <h3>Patient Visits</h3>
-                    <p>Track patient history</p>
-                </div>
-            </a>
-            <div class="footer">
-                <p class="copyright">© 2024 PeriDesk. All rights reserved.</p>
-                <p>Powered by <span class="powered-by">Navtech</span><span class="navtech">Labs</span></p>
-            </div>
-        </div>
+        <jsp:include page="/WEB-INF/views/common/menu.jsp" />
         <div class="main-content">
             <div class="welcome-header">
                 <h1 class="welcome-message">Patient Records</h1>
@@ -534,6 +245,8 @@
                     <select name="searchType" class="search-select" required>
                         <option value="name">Search by Name</option>
                         <option value="phone">Search by Phone</option>
+                        <option value="registration">Search by Registration Code</option>
+                        <option value="examination">Search by Examination ID</option>
                     </select>
                     <input type="text" name="query" class="search-input" placeholder="Enter search term..." required>
                     <button type="submit" class="search-button">
@@ -548,25 +261,27 @@
                 <table class="table">
                     <thead>
                         <tr>
-                            <th>ID</th>
+                            <th>Registration Code</th>
                             <th>Name</th>
                             <th>Date of Birth</th>
                             <th>Gender</th>
                             <th>Phone</th>
                             <th>Email</th>
                             <th>Registration Date</th>
+                            <th>Created By</th>
+                            <th>Registered At</th>
                             <th>Actions</th>
                         </tr>
                     </thead>
                     <tbody>
                         <c:if test="${empty patients}">
                             <tr>
-                                <td colspan="8" class="no-results">No patients found</td>
+                                <td colspan="9" class="no-results">No patients found</td>
                             </tr>
                         </c:if>
                         <c:forEach items="${patients}" var="patient">
                             <tr>
-                                <td>${patient.id}</td>
+                                <td>${patient.registrationCode}</td>
                                 <td><a href="${pageContext.request.contextPath}/patients/details/${patient.id}" class="patient-link">${patient.firstName} ${patient.lastName}</a></td>
                                 <td><fmt:formatDate value="${patient.dateOfBirth}" pattern="dd/MM/yyyy"/></td>
                                 <td>${patient.gender}</td>
@@ -574,23 +289,121 @@
                                 <td>${patient.email}</td>
                                 <td><fmt:formatDate value="${patient.registrationDate}" pattern="dd/MM/yyyy"/></td>
                                 <td>
-                                    <div class="action-buttons">
-                                        <button onclick="editPatient('${patient.id}')" class="btn-edit"><i class="fas fa-edit"></i> Edit</button>
                                     <c:choose>
-                                        <c:when test="${!patient.checkedIn}">
-                                                <button onclick="checkIn('${patient.id}')" class="btn-primary"><i class="fas fa-user-check"></i> Check In</button>
+                                        <c:when test="${not empty patient.createdBy}">
+                                            <span class="audit-info">${patient.createdBy}</span>
                                         </c:when>
                                         <c:otherwise>
-                                                <button onclick="uncheck('${patient.id}')" class="btn-danger"><i class="fas fa-user-times"></i> Check Out</button>
+                                            <span class="text-muted">-</span>
                                         </c:otherwise>
                                     </c:choose>
-                                    </div>
+                                </td>
+                                <td>
+                                    <c:choose>
+                                        <c:when test="${not empty patient.registeredClinic}">
+                                            <span class="audit-info">${patient.registeredClinic}</span>
+                                        </c:when>
+                                        <c:otherwise>
+                                            <span class="text-muted">-</span>
+                                        </c:otherwise>
+                                    </c:choose>
+                                </td>
+                                <td>
+                                    <sec:authorize access="hasAnyRole('RECEPTIONIST', 'ADMIN')">
+                                        <div class="action-buttons">
+                                            <button onclick="editPatient('${patient.id}')" class="btn-edit"><i class="fas fa-edit"></i> Edit</button>
+                                        <c:choose>
+                                            <c:when test="${!patient.checkedIn}">
+                                                    <button onclick="checkIn('${patient.id}')" class="btn-primary"><i class="fas fa-user-check"></i> Check In</button>
+                                            </c:when>
+                                            <c:otherwise>
+                                                    <button onclick="uncheck('${patient.id}')" class="btn-danger"><i class="fas fa-user-times"></i> Check Out</button>
+                                            </c:otherwise>
+                                        </c:choose>
+                                        </div>
+                                    </sec:authorize>
+                                    <sec:authorize access="hasRole('DOCTOR')">
+                                        <span style="color: #6c757d; font-style: italic; font-size: 0.9em;">Disabled for Doctor Role</span>
+                                    </sec:authorize>
                                 </td>
                             </tr>
                         </c:forEach>
                     </tbody>
                 </table>
             </div>
+            
+            <!-- Pagination Controls -->
+            <c:if test="${totalPages > 1 or not empty patients}">
+                <div class="pagination-container">
+                    <div class="pagination-info">
+                        Showing ${(currentPage * pageSize) + 1} to ${(currentPage * pageSize) + fn:length(patients)} of ${totalItems} patients
+                    </div>
+                    
+                    <div class="pagination-controls">
+                        <!-- Page Size Selector -->
+                        <div class="page-size-selector">
+                            <label for="pageSize">Show:</label>
+                            <select id="pageSize" onchange="changePageSize(this.value)">
+                                <option value="10" ${pageSize == 10 ? 'selected' : ''}>10</option>
+                                <option value="20" ${pageSize == 20 ? 'selected' : ''}>20</option>
+                                <option value="50" ${pageSize == 50 ? 'selected' : ''}>50</option>
+                                <option value="100" ${pageSize == 100 ? 'selected' : ''}>100</option>
+                            </select>
+                        </div>
+                        
+                        <!-- Sort Controls -->
+                        <div class="sort-controls">
+                            <label for="sort">Sort by:</label>
+                            <select id="sort" onchange="changeSort(this.value)">
+                                <option value="id" ${sort == 'id' ? 'selected' : ''}>ID</option>
+                                <option value="firstName" ${sort == 'firstName' ? 'selected' : ''}>Name</option>
+                                <option value="registrationDate" ${sort == 'registrationDate' ? 'selected' : ''}>Registration Date</option>
+                                <option value="dateOfBirth" ${sort == 'dateOfBirth' ? 'selected' : ''}>Date of Birth</option>
+                            </select>
+                            <select id="direction" onchange="changeDirection(this.value)">
+                                <option value="desc" ${direction == 'desc' ? 'selected' : ''}>Desc</option>
+                                <option value="asc" ${direction == 'asc' ? 'selected' : ''}>Asc</option>
+                            </select>
+                        </div>
+                        
+                        <!-- Navigation Buttons -->
+                        <c:if test="${currentPage > 0}">
+                            <a href="javascript:void(0)" onclick="goToPage(${currentPage - 1})" class="pagination-button">
+                                <i class="fas fa-chevron-left"></i> Previous
+                            </a>
+                        </c:if>
+                        
+                        <c:forEach begin="0" end="${totalPages - 1}" var="pageNum">
+                            <c:choose>
+                                <c:when test="${pageNum == currentPage}">
+                                    <span class="pagination-button active">${pageNum + 1}</span>
+                                </c:when>
+                                <c:when test="${pageNum == 0}">
+                                    <a href="javascript:void(0)" onclick="goToPage(${pageNum})" class="pagination-button">${pageNum + 1}</a>
+                                </c:when>
+                                <c:when test="${pageNum == totalPages - 1}">
+                                    <a href="javascript:void(0)" onclick="goToPage(${pageNum})" class="pagination-button">${pageNum + 1}</a>
+                                </c:when>
+                                <c:when test="${pageNum >= currentPage - 2 and pageNum <= currentPage + 2}">
+                                    <a href="javascript:void(0)" onclick="goToPage(${pageNum})" class="pagination-button">${pageNum + 1}</a>
+                                </c:when>
+                                <c:when test="${pageNum == currentPage - 3}">
+                                    <span class="pagination-button">...</span>
+                                </c:when>
+                                <c:when test="${pageNum == currentPage + 3}">
+                                    <span class="pagination-button">...</span>
+                                </c:when>
+                            </c:choose>
+                        </c:forEach>
+                        
+                        <c:if test="${currentPage < totalPages - 1}">
+                            <a href="javascript:void(0)" onclick="goToPage(${currentPage + 1})" class="pagination-button">
+                                Next <i class="fas fa-chevron-right"></i>
+                            </a>
+                        </c:if>
+                    </div>
+                </div>
+            </c:if>
         </div>
     </div>
     <script>
@@ -642,22 +455,33 @@
             }
         }
         
-        // Mobile menu toggle functionality
-        document.addEventListener('DOMContentLoaded', function() {
-            const menuToggle = document.getElementById('menuToggle');
-            const sidebarMenu = document.getElementById('sidebarMenu');
-            const overlay = document.getElementById('overlay');
-            
-            menuToggle.addEventListener('click', function() {
-                sidebarMenu.classList.toggle('active');
-                overlay.classList.toggle('active');
-            });
-            
-            overlay.addEventListener('click', function() {
-                sidebarMenu.classList.remove('active');
-                overlay.classList.remove('active');
-            });
-        });
+        // Pagination functions
+        function goToPage(page) {
+            const urlParams = new URLSearchParams(window.location.search);
+            urlParams.set('page', page);
+            window.location.href = window.location.pathname + '?' + urlParams.toString();
+        }
+        
+        function changePageSize(size) {
+            const urlParams = new URLSearchParams(window.location.search);
+            urlParams.set('pageSize', size);
+            urlParams.set('page', '0'); // Reset to first page when changing size
+            window.location.href = window.location.pathname + '?' + urlParams.toString();
+        }
+        
+        function changeSort(sort) {
+            const urlParams = new URLSearchParams(window.location.search);
+            urlParams.set('sort', sort);
+            urlParams.set('page', '0'); // Reset to first page when changing sort
+            window.location.href = window.location.pathname + '?' + urlParams.toString();
+        }
+        
+        function changeDirection(direction) {
+            const urlParams = new URLSearchParams(window.location.search);
+            urlParams.set('direction', direction);
+            urlParams.set('page', '0'); // Reset to first page when changing direction
+            window.location.href = window.location.pathname + '?' + urlParams.toString();
+        }
     </script>
 </body>
 </html> 
