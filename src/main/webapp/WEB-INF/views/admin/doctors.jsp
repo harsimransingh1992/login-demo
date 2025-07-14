@@ -111,7 +111,7 @@
             if (confirm('Are you sure you want to delete this doctor?')) {
                 const token = document.querySelector('meta[name="_csrf"]').content;
                 
-                fetch('${pageContext.request.contextPath}/admin/doctors/' + id + '/delete', {
+                fetch('${pageContext.request.contextPath}/doctors/' + id + '/delete', {
                     method: 'POST',
                     headers: {
                         'Content-Type': 'application/json',
@@ -177,6 +177,9 @@
                                 <tr>
                                     <th>ID</th>
                                     <th>Doctor Name</th>
+                                    <th>Specialization</th>
+                                    <th>Mobile Number</th>
+                                    <th>Date of Birth</th>
                                     <th>Assigned Clinic</th>
                                     <th>Actions</th>
                                 </tr>
@@ -185,11 +188,14 @@
                                 <c:forEach var="doctor" items="${doctors}">
                                     <tr>
                                         <td>${doctor.id}</td>
-                                        <td>${doctor.doctorName}</td>
-                                        <td>${doctor.onboardClinic.username}</td>
+                                        <td>${doctor.firstName} ${doctor.lastName}</td>
+                                        <td>${doctor.specialization.displayName}</td>
+                                        <td>${doctor.doctorMobileNumber}</td>
+                                        <td>${doctor.doctorBirthday}</td>
+                                        <td>${doctor.clinic.clinicName} (${doctor.clinic.clinicId})</td>
                                         <td>
                                             <a href="${pageContext.request.contextPath}/admin/doctors/${doctor.id}/edit" class="btn">Edit</a>
-                                            <button onclick="deleteDoctor(${doctor.id})" class="btn btn-danger">Delete</button>
+                                            <button onclick='deleteDoctor(${doctor.id})' class="btn btn-danger">Delete</button>
                                         </td>
                                     </tr>
                                 </c:forEach>

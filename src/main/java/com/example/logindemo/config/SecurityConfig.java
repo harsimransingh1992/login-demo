@@ -7,41 +7,32 @@ import org.springframework.context.annotation.Configuration;
 import org.springframework.security.authentication.AuthenticationManager;
 import org.springframework.security.authentication.dao.DaoAuthenticationProvider;
 import org.springframework.security.config.annotation.authentication.configuration.AuthenticationConfiguration;
+import org.springframework.security.config.annotation.method.configuration.EnableGlobalMethodSecurity;
 import org.springframework.security.config.annotation.web.builders.HttpSecurity;
 import org.springframework.security.config.annotation.web.configuration.EnableWebSecurity;
-import org.springframework.security.core.Authentication;
-import org.springframework.security.core.GrantedAuthority;
+import org.springframework.security.crypto.bcrypt.BCryptPasswordEncoder;
 import org.springframework.security.crypto.password.PasswordEncoder;
 import org.springframework.security.web.SecurityFilterChain;
-import org.springframework.security.web.authentication.AuthenticationSuccessHandler;
-
-import javax.servlet.ServletException;
-import javax.servlet.http.HttpServletRequest;
-import javax.servlet.http.HttpServletResponse;
-import java.io.IOException;
-import java.util.Collection;
+import org.springframework.security.web.authentication.UsernamePasswordAuthenticationFilter;
+import org.springframework.security.web.util.matcher.AntPathRequestMatcher;
 
 @Configuration
 @EnableWebSecurity
+@EnableGlobalMethodSecurity(prePostEnabled = true, securedEnabled = true)
 public class SecurityConfig {
 
     @Autowired
     private UserDetailsServiceImpl userDetailsService;
 
+    @Autowired
+    private CustomAuthenticationSuccessHandler authenticationSuccessHandler;
+
+    @Autowired
+    private ForcePasswordChangeFilter forcePasswordChangeFilter;
+
     @Bean
     public PasswordEncoder passwordEncoder() {
-        // Return a no-op encoder that doesn't actually encrypt the password
-        return new PasswordEncoder() {
-            @Override
-            public String encode(CharSequence rawPassword) {
-                return rawPassword.toString();
-            }
-
-            @Override
-            public boolean matches(CharSequence rawPassword, String encodedPassword) {
-                return rawPassword.toString().equals(encodedPassword);
-            }
-        };
+        return new BCryptPasswordEncoder();
     }
 
     @Bean
@@ -56,56 +47,75 @@ public class SecurityConfig {
     public AuthenticationManager authenticationManager(AuthenticationConfiguration authConfig) throws Exception {
         return authConfig.getAuthenticationManager();
     }
-    
-    @Bean
-    public AuthenticationSuccessHandler roleBasedAuthenticationSuccessHandler() {
-        return new AuthenticationSuccessHandler() {
-            @Override
-            public void onAuthenticationSuccess(HttpServletRequest request, HttpServletResponse response, 
-                                              Authentication authentication) throws IOException, ServletException {
-                Collection<? extends GrantedAuthority> authorities = authentication.getAuthorities();
-                
-                boolean isAdmin = authorities.stream()
-                    .anyMatch(authority -> authority.getAuthority().equals("ROLE_ADMIN"));
-                
-                if (isAdmin) {
-                    response.sendRedirect("/admin");
-                } else {
-                    response.sendRedirect("/welcome");
-                }
-            }
-        };
-    }
 
     @Bean
     public SecurityFilterChain filterChain(HttpSecurity http) throws Exception {
         http
             .csrf()
-                .ignoringAntMatchers("/css/**", "/js/**", "/images/**")
+                .ignoringAntMatchers("/css/**", "/js/**", "/images/**", "/api/mobile/**")
             .and()
+            .addFilterBefore(forcePasswordChangeFilter, UsernamePasswordAuthenticationFilter.class)
             .authorizeRequests()
-                .antMatchers("/css/**", "/js/**", "/images/**").permitAll()
-                .antMatchers("/login", "/register").permitAll()
+                // Static resources accessible to all
+                .antMatchers("/css/**", "/js/**", "/images/**", "/uploads/**").permitAll()
+                
+                // Mobile API endpoints - handle their own security
+                .antMatchers("/api/mobile/**").permitAll()
+                
+                // Public pages
+                .antMatchers("/login", "/register", "/forgot-password").permitAll()
+                
+                // Admin section
                 .antMatchers("/admin/**").hasRole("ADMIN")
+                
+                // Clinic owner section
+                .antMatchers("/clinic/dashboard/**", "/clinic/manage/**").hasRole("CLINIC_OWNER")
+                
+                // Doctor specific pages
+                .antMatchers("/doctor/dashboard/**", "/patients/examination/*/procedures/**", "/examination/*/procedures/**").hasRole("DOCTOR")
+                
+                // Receptionist specific pages
+                .antMatchers("/appointments/management/**").hasAnyRole("RECEPTIONIST", "ADMIN", "DOCTOR")
+                
+                // Patient management - accessible to all staff
+                .antMatchers("/patients/**").hasAnyRole("DOCTOR", "STAFF", "RECEPTIONIST", "ADMIN", "CLINIC_OWNER")
+                
+                // Follow-up management - accessible to all staff
+                .antMatchers("/follow-up/**").hasAnyRole("DOCTOR", "STAFF", "RECEPTIONIST", "ADMIN", "CLINIC_OWNER")
+                
+                // Welcome page and basic features - accessible to all authenticated users
+                .antMatchers("/welcome", "/profile/**").authenticated()
+                
+                // Catch all other requests
                 .anyRequest().authenticated()
             .and()
             .formLogin()
                 .loginPage("/login")
                 .loginProcessingUrl("/login")
-                .successHandler(roleBasedAuthenticationSuccessHandler())
+                .successHandler(authenticationSuccessHandler)
                 .failureUrl("/login?error=true")
                 .permitAll()
             .and()
             .logout()
                 .logoutUrl("/logout")
-                .logoutSuccessUrl("/login?logout")
+                .logoutSuccessUrl("/logout-success")
                 .invalidateHttpSession(true)
                 .clearAuthentication(true)
                 .deleteCookies("JSESSIONID")
+                .logoutRequestMatcher(new AntPathRequestMatcher("/logout"))
                 .permitAll()
             .and()
             .exceptionHandling()
-                .accessDeniedPage("/access-denied");
+                .accessDeniedPage("/access-denied")
+            .and()
+            .sessionManagement()
+                .maximumSessions(1)
+                .expiredUrl("/login?expired")
+            .and()
+            .and()
+            .headers()
+                .frameOptions().deny()
+                .xssProtection().block(true);
         
         return http.build();
     }

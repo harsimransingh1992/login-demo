@@ -2,12 +2,14 @@
 <%@ taglib prefix="c" uri="http://java.sun.com/jsp/jstl/core"%>
 <%@ taglib prefix="fmt" uri="http://java.sun.com/jsp/jstl/fmt"%>
 <%@ taglib prefix="fn" uri="http://java.sun.com/jsp/jstl/functions"%>
+<%@ taglib prefix="sec" uri="http://www.springframework.org/security/tags"%>
 
 <!DOCTYPE html>
 <html>
 <head>
     <title>Examination Details - PeriDesk</title>
     <meta name="_csrf" content="${_csrf.token}"/>
+    <meta name="_csrf_header" content="${_csrf.headerName}"/>
     <meta name="viewport" content="width=device-width, initial-scale=1.0">
     <link rel="stylesheet" href="${pageContext.request.contextPath}/css/style.css">
     <link href="https://fonts.googleapis.com/css2?family=Poppins:wght@300;400;500;600;700&display=swap" rel="stylesheet">
@@ -15,6 +17,10 @@
     <link rel="stylesheet" href="https://cdn.jsdelivr.net/npm/flatpickr/dist/flatpickr.min.css">
     <script src="https://code.jquery.com/jquery-3.6.4.min.js"></script>
     <script src="https://cdn.jsdelivr.net/npm/flatpickr"></script>
+    
+    <!-- Include common menu styles -->
+    <jsp:include page="/WEB-INF/views/common/menuStyles.jsp" />
+    
     <style>
         body {
             font-family: 'Poppins', sans-serif;
@@ -25,94 +31,40 @@
             line-height: 1.6;
         }
         
+        /* Style for disabled form elements for receptionists */
+        .form-control:disabled {
+            background-color: #f8f9fa !important;
+            color: #6c757d !important;
+            cursor: not-allowed !important;
+            opacity: 0.7 !important;
+            border-color: #dee2e6 !important;
+        }
+        
+        .form-control:disabled:focus {
+            box-shadow: none !important;
+            border-color: #dee2e6 !important;
+        }
+        
+        /* Style for read-only doctor assignment text */
+        .read-only-doctor {
+            font-weight: 500;
+            color: #2c3e50;
+            padding: 8px 12px;
+            background-color: #f8f9fa;
+            border: 1px solid #dee2e6;
+            border-radius: 4px;
+            display: inline-block;
+            min-width: 200px;
+        }
+        
+        .read-only-doctor.not-assigned {
+            color: #7f8c8d;
+            font-style: italic;
+        }
+        
         .welcome-container {
             display: flex;
             min-height: 100vh;
-            flex-direction: row;
-        }
-        
-        .sidebar-menu {
-            width: 280px;
-            background: linear-gradient(180deg, #ffffff, #f8f9fa);
-            padding: 30px;
-            box-shadow: 0 0 25px rgba(0, 0, 0, 0.05);
-            display: flex;
-            flex-direction: column;
-            position: relative;
-            z-index: 10;
-            transition: all 0.3s ease;
-        }
-        
-        .logo {
-            display: flex;
-            align-items: center;
-            gap: 15px;
-            margin-bottom: 35px;
-        }
-        
-        .logo img {
-            width: 40px;
-            height: 40px;
-            filter: drop-shadow(0 4px 6px rgba(0, 0, 0, 0.1));
-        }
-        
-        .logo h1 {
-            font-size: 1.5rem;
-            color: #2c3e50;
-            margin: 0;
-            font-weight: 600;
-            letter-spacing: 0.5px;
-        }
-        
-        .action-card {
-            background: white;
-            padding: 16px 20px;
-            border-radius: 10px;
-            box-shadow: 0 4px 10px rgba(0, 0, 0, 0.03);
-            transition: all 0.3s;
-            text-decoration: none;
-            border: 1px solid #f0f0f0;
-            margin-bottom: 15px;
-            display: flex;
-            align-items: center;
-            gap: 12px;
-        }
-        
-        .action-card i {
-            font-size: 1.2rem;
-            color: #3498db;
-            width: 30px;
-        }
-        
-        .action-card:hover {
-            transform: translateX(5px);
-            background: linear-gradient(135deg, #3498db, #2980b9);
-            color: white;
-            border-color: transparent;
-            box-shadow: 0 6px 15px rgba(52, 152, 219, 0.2);
-        }
-        
-        .action-card:hover h3,
-        .action-card:hover p,
-        .action-card:hover i {
-            color: white;
-        }
-        
-        .action-card h3 {
-            margin: 0;
-            color: #2c3e50;
-            font-size: 1rem;
-            font-weight: 600;
-        }
-        
-        .action-card p {
-            margin: 4px 0 0 0;
-            color: #7f8c8d;
-            font-size: 0.8rem;
-        }
-        
-        .card-text {
-            flex: 1;
         }
         
         .main-content {
@@ -176,6 +128,17 @@
             background: #7f8c8d;
             transform: translateY(-2px);
             box-shadow: 0 4px 12px rgba(127, 140, 141, 0.2);
+        }
+        
+        .btn-success {
+            background: linear-gradient(135deg, #2ecc71, #27ae60);
+            color: white;
+        }
+        
+        .btn-success:hover {
+            background: linear-gradient(135deg, #27ae60, #229954);
+            transform: translateY(-2px);
+            box-shadow: 0 4px 12px rgba(46, 204, 113, 0.2);
         }
         
         .footer {
@@ -437,7 +400,7 @@
         .tooltip-container .tooltip-text {
             visibility: hidden;
             width: 200px;
-            background-color: #333;
+            background-color: #2c3e50;
             color: #fff;
             text-align: center;
             border-radius: 6px;
@@ -446,23 +409,10 @@
             z-index: 1;
             bottom: 125%;
             left: 50%;
-            transform: translateX(-50%);
+            margin-left: -100px;
             opacity: 0;
             transition: opacity 0.3s;
-            font-size: 0.85rem;
-            font-weight: normal;
-            box-shadow: 0 2px 5px rgba(0,0,0,0.2);
-        }
-        
-        .tooltip-container .tooltip-text::after {
-            content: "";
-            position: absolute;
-            top: 100%;
-            left: 50%;
-            margin-left: -5px;
-            border-width: 5px;
-            border-style: solid;
-            border-color: #333 transparent transparent transparent;
+            font-size: 0.8rem;
         }
         
         .tooltip-container:hover .tooltip-text {
@@ -472,29 +422,74 @@
         
         /* Doctor Assignment Styles */
         .doctor-dropdown {
-            width: 100%;
-            padding: 10px;
+            padding: 8px 12px;
             border: 1px solid #ddd;
-            border-radius: 6px;
-            font-family: 'Poppins', sans-serif;
-            font-size: 0.9rem;
+            border-radius: 4px;
+            font-size: 14px;
+            width: 200px;
+            background-color: white;
+            cursor: pointer;
             transition: all 0.3s ease;
         }
         
         .doctor-dropdown.doctor-assigned {
             border-color: #3498db;
-            background-color: #f0f7ff;
+            background-color: #f8f9fa;
+            font-weight: 500;
+        }
+        
+        .doctor-dropdown option {
+            padding: 8px;
+        }
+        
+        .doctor-dropdown option:checked {
+            background-color: #3498db;
+            color: white;
+            font-weight: 500;
+        }
+        
+        .doctor-dropdown option[value="remove"] {
+            color: #e74c3c;
+            font-style: italic;
+        }
+        
+        .doctor-dropdown option[value="remove"]:checked {
+            background-color: #e74c3c;
+            color: white;
+        }
+        
+        /* Style for disabled doctor dropdown specifically */
+        #doctorSelect:disabled {
+            background-color: #e9ecef !important;
+            color: #495057 !important;
+            cursor: not-allowed !important;
+            opacity: 0.8 !important;
+            border-color: #ced4da !important;
+            font-weight: 500 !important;
+        }
+        
+        #doctorSelect:disabled option {
+            color: #495057 !important;
+        }
+        
+        /* Style for doctor assignment info message */
+        .doctor-assignment-info {
+            display: block;
+            margin-top: 8px;
+            color: #6c757d;
+            font-size: 0.875rem;
+            font-style: italic;
+        }
+        
+        .doctor-assignment-info i {
+            margin-right: 5px;
+            color: #17a2b8;
         }
         
         /* Responsive Design */
         @media (max-width: 768px) {
             .welcome-container {
                 flex-direction: column;
-            }
-            
-            .sidebar-menu {
-                width: 100%;
-                padding: 15px;
             }
             
             .main-content {
@@ -598,6 +593,11 @@
             font-size: 0.95rem;
         }
         
+        .modal .form-group label.required:after {
+            content: " *";
+            color: #e74c3c;
+        }
+        
         .modal .form-control {
             width: 100%;
             padding: 12px;
@@ -624,7 +624,7 @@
         }
         
         .modal textarea.form-control {
-            min-height: 120px;
+            min-height: 150px;
             resize: vertical;
         }
         
@@ -638,11 +638,21 @@
         }
         
         .modal .btn {
-            padding: 12px 25px;
-            font-size: 0.95rem;
-            border-radius: 8px;
+            padding: 6px 12px;
+            font-size: 0.85rem;
+            border-radius: 4px;
             font-weight: 500;
-            transition: all 0.3s ease;
+            transition: all 0.2s ease;
+            min-width: 80px;
+            height: 32px;
+            display: inline-flex;
+            align-items: center;
+            justify-content: center;
+            gap: 4px;
+        }
+        
+        .modal .btn i {
+            font-size: 0.8rem;
         }
         
         .modal .btn-primary {
@@ -653,8 +663,8 @@
         
         .modal .btn-primary:hover {
             background: linear-gradient(135deg, #2980b9, #1c6ea4);
-            transform: translateY(-2px);
-            box-shadow: 0 4px 12px rgba(52, 152, 219, 0.2);
+            transform: translateY(-1px);
+            box-shadow: 0 2px 4px rgba(52, 152, 219, 0.2);
         }
         
         .modal .btn-secondary {
@@ -665,8 +675,24 @@
         
         .modal .btn-secondary:hover {
             background: #7f8c8d;
-            transform: translateY(-2px);
-            box-shadow: 0 4px 12px rgba(127, 140, 141, 0.2);
+            transform: translateY(-1px);
+            box-shadow: 0 2px 4px rgba(127, 140, 141, 0.2);
+        }
+        
+        /* Form validation styles */
+        .modal .form-control.error {
+            border-color: #e74c3c;
+        }
+        
+        .modal .error-message {
+            color: #e74c3c;
+            font-size: 0.85rem;
+            margin-top: 5px;
+            display: none;
+        }
+        
+        .modal .form-control.error + .error-message {
+            display: block;
         }
         
         /* Responsive Modal */
@@ -686,45 +712,245 @@
             }
             
             .modal .btn {
-                padding: 10px 20px;
+                padding: 5px 10px;
+                font-size: 0.8rem;
+                height: 28px;
+                min-width: 70px;
+            }
+        }
+        
+        /* Denture Photos Styles */
+        .denture-photos-grid {
+            display: grid;
+            grid-template-columns: repeat(auto-fit, minmax(300px, 1fr));
+            gap: 20px;
+            margin-top: 15px;
+        }
+        
+        .denture-photo-item {
+            background: #f8f9fa;
+            border-radius: 8px;
+            padding: 15px;
+            border: 1px solid #e9ecef;
+            transition: all 0.3s ease;
+        }
+        
+        .denture-photo-item:hover {
+            box-shadow: 0 4px 12px rgba(0, 0, 0, 0.1);
+            transform: translateY(-2px);
+        }
+        
+        .photo-preview {
+            text-align: center;
+            margin-bottom: 15px;
+        }
+        
+        .denture-thumbnail {
+            max-width: 100%;
+            max-height: 200px;
+            border-radius: 6px;
+            cursor: pointer;
+            transition: transform 0.3s ease;
+            border: 2px solid #e9ecef;
+        }
+        
+        .denture-thumbnail:hover {
+            transform: scale(1.05);
+            border-color: #3498db;
+        }
+        
+        .denture-thumbnail.error {
+            border-color: #e74c3c;
+            background-color: #fdf2f2;
+            display: flex;
+            align-items: center;
+            justify-content: center;
+            min-height: 150px;
+            color: #e74c3c;
+            font-weight: 500;
+        }
+        
+        .image-error-message {
+            text-align: center;
+            color: #e74c3c;
+            font-size: 0.9rem;
+            margin-top: 10px;
+        }
+        
+        .photo-actions {
+            display: flex;
+            flex-direction: column;
+            gap: 10px;
+        }
+        
+        .photo-label {
+            font-weight: 600;
+            color: #2c3e50;
+            text-align: center;
+            font-size: 1rem;
+        }
+        
+        .action-buttons {
+            display: flex;
+            gap: 8px;
+            justify-content: center;
+        }
+        
+        .btn-sm {
+            padding: 6px 12px;
+            font-size: 0.8rem;
+            border-radius: 4px;
+        }
+        
+        /* Image Modal Styles */
+        .image-modal {
+            display: none;
+            position: fixed;
+            z-index: 1000;
+            left: 0;
+            top: 0;
+            width: 100%;
+            height: 100%;
+            background-color: rgba(0, 0, 0, 0.8);
+            backdrop-filter: blur(5px);
+        }
+        
+        .image-modal-content {
+            position: relative;
+            margin: auto;
+            display: flex;
+            flex-direction: column;
+            align-items: center;
+            justify-content: center;
+            height: 100%;
+            max-width: 90%;
+            max-height: 90%;
+        }
+        
+        .modal-image {
+            max-width: 100%;
+            max-height: 80vh;
+            object-fit: contain;
+            border-radius: 8px;
+            box-shadow: 0 10px 30px rgba(0, 0, 0, 0.3);
+        }
+        
+        .modal-header {
+            position: absolute;
+            top: 20px;
+            left: 50%;
+            transform: translateX(-50%);
+            background: rgba(0, 0, 0, 0.7);
+            color: white;
+            padding: 10px 20px;
+            border-radius: 25px;
+            font-weight: 500;
+            z-index: 1001;
+        }
+        
+        .modal-close {
+            position: absolute;
+            top: 20px;
+            right: 30px;
+            color: white;
+            font-size: 35px;
+            font-weight: bold;
+            cursor: pointer;
+            z-index: 1001;
+            background: rgba(0, 0, 0, 0.5);
+            border-radius: 50%;
+            width: 50px;
+            height: 50px;
+            display: flex;
+            align-items: center;
+            justify-content: center;
+            transition: all 0.3s ease;
+        }
+        
+        .modal-close:hover {
+            background: rgba(0, 0, 0, 0.8);
+            transform: scale(1.1);
+        }
+        
+        .modal-actions {
+            position: absolute;
+            bottom: 20px;
+            left: 50%;
+            transform: translateX(-50%);
+            display: flex;
+            gap: 10px;
+            z-index: 1001;
+        }
+        
+        .modal-btn {
+            background: rgba(52, 152, 219, 0.9);
+            color: white;
+            border: none;
+            padding: 10px 20px;
+            border-radius: 25px;
+            cursor: pointer;
+            font-weight: 500;
+            transition: all 0.3s ease;
+            text-decoration: none;
+            display: inline-flex;
+            align-items: center;
+            gap: 8px;
+        }
+        
+        .modal-btn:hover {
+            background: rgba(52, 152, 219, 1);
+            transform: translateY(-2px);
+            box-shadow: 0 4px 12px rgba(52, 152, 219, 0.3);
+        }
+        
+        .modal-btn.download {
+            background: rgba(46, 204, 113, 0.9);
+        }
+        
+        .modal-btn.download:hover {
+            background: rgba(46, 204, 113, 1);
+            box-shadow: 0 4px 12px rgba(46, 204, 113, 0.3);
+        }
+        
+        /* Responsive adjustments */
+        @media (max-width: 768px) {
+            .denture-photos-grid {
+                grid-template-columns: 1fr;
+            }
+            
+            .action-buttons {
+                flex-direction: column;
+            }
+            
+            .modal-image {
+                max-height: 70vh;
+            }
+            
+            .modal-close {
+                top: 10px;
+                right: 15px;
+                width: 40px;
+                height: 40px;
+                font-size: 25px;
+            }
+            
+            .modal-header {
+                top: 10px;
+                padding: 8px 16px;
+                font-size: 0.9rem;
+            }
+            
+            .modal-actions {
+                bottom: 10px;
+                flex-direction: column;
+                gap: 8px;
             }
         }
     </style>
 </head>
 <body>
     <div class="welcome-container">
-        <div class="sidebar-menu">
-            <div class="logo">
-                <img src="${pageContext.request.contextPath}/images/tooth-repair.svg" alt="PeriDesk Logo">
-                <h1>PeriDesk</h1>
-            </div>
-            <a href="${pageContext.request.contextPath}/welcome" class="action-card">
-                <i class="fas fa-clipboard-list"></i>
-                <div class="card-text">
-                    <h3>Waiting Lobby</h3>
-                    <p>View waiting patients</p>
-                </div>
-            </a>
-            <a href="${pageContext.request.contextPath}/patients/register" class="action-card">
-                <i class="fas fa-user-plus"></i>
-                <div class="card-text">
-                    <h3>Register Patient</h3>
-                    <p>Add new patient</p>
-                </div>
-            </a>
-            <a href="${pageContext.request.contextPath}/patients/list" class="action-card">
-                <i class="fas fa-users"></i>
-                <div class="card-text">
-                    <h3>View Patients</h3>
-                    <p>Manage records</p>
-                </div>
-            </a>
-            <div class="footer">
-                <p class="copyright">© 2024 PeriDesk. All rights reserved.</p>
-                <p>Powered by <span class="powered-by">Navtech</span><span class="navtech">Labs</span></p>
-            </div>
-        </div>
-        
+        <jsp:include page="/WEB-INF/views/common/menu.jsp" />
         <div class="main-content">
             <div class="welcome-header">
                 <h1 class="welcome-message">Examination Details</h1>
@@ -735,31 +961,64 @@
             
             <div id="notification" class="notification"></div>
             
+            <!-- Role-based message for receptionists -->
+            <c:if test="${currentUserRole == 'RECEPTIONIST'}">
+                <div class="alert alert-info" style="background: #e3f2fd; border: 1px solid #2196f3; color: #1976d2; padding: 15px; border-radius: 8px; margin-bottom: 20px;">
+                    <i class="fas fa-info-circle"></i>
+                    <strong>View Only Mode:</strong> Receptionists can only view examination details. Editing is restricted to doctors and staff members.
+                </div>
+            </c:if>
+            
             <div class="examination-container">
                 <div class="examination-header">
                     <h2>Tooth ${examination.toothNumber} Examination</h2>
                     <div class="header-actions">
+                        <!-- Only show action buttons for non-receptionists -->
+                        <c:if test="${currentUserRole != 'RECEPTIONIST'}">
                         <div class="tooltip-container">
                             <c:choose>
-                                <c:when test="${examination.assignedDoctor == null}">
-                                    <a href="#" 
-                                       class="btn btn-primary disabled" 
-                                       id="startProcedureBtn">
-                                        <i class="fas fa-play-circle"></i> Start Procedure
+                                <c:when test="${examination.assignedDoctorId == null}">
+                                    <a href="#" class="btn btn-primary disabled" disabled>
+                                        <i class="fas fa-play"></i> Start Procedure
                                     </a>
+                                    <span class="tooltip-text">Please assign a doctor first</span>
+                                </c:when>
+                                <c:when test="${not empty examination.procedure}">
+                                    <a href="#" class="btn btn-secondary disabled" disabled>
+                                        <i class="fas fa-play"></i> Start Procedure
+                                    </a>
+                                    <span class="tooltip-text">Procedure is already started</span>
                                 </c:when>
                                 <c:otherwise>
-                                    <a href="${pageContext.request.contextPath}/patients/examination/${examination.id}/procedures" 
-                                       class="btn btn-primary" 
-                                       id="startProcedureBtn">
-                                        <i class="fas fa-play-circle"></i> Start Procedure
+                                    <a href="${pageContext.request.contextPath}/patients/examination/${examination.id}/procedures" class="btn btn-primary">
+                                        <i class="fas fa-play"></i> Start Procedure
                                     </a>
                                 </c:otherwise>
                             </c:choose>
-                            <span class="tooltip-text" id="procedureBtnTooltip">
-                                ${examination.assignedDoctor == null ? 'Please assign a doctor first' : 'Start procedure for this examination'}
-                            </span>
                         </div>
+                        
+                        <!-- View Attached Procedure Button -->
+                        <div class="tooltip-container">
+                            <c:choose>
+                                <c:when test="${empty examination.procedure}">
+                                    <a href="#" 
+                                       class="btn btn-secondary disabled" 
+                                       id="viewProcedureBtn">
+                                        <i class="fas fa-list-alt"></i> View Procedure
+                                    </a>
+                                    <span class="tooltip-text">No procedure attached to this examination yet</span>
+                                </c:when>
+                                <c:otherwise>
+                                    <a href="${pageContext.request.contextPath}/patients/examination/${examination.id}/lifecycle" 
+                                       class="btn btn-primary" 
+                                       id="viewProcedureBtn">
+                                        <i class="fas fa-list-alt"></i> View Procedure
+                                    </a>
+                                    <span class="tooltip-text">View attached procedure details and lifecycle</span>
+                                </c:otherwise>
+                            </c:choose>
+                        </div>
+                        </c:if>
                     </div>
                 </div>
                 <div class="examination-meta">
@@ -792,161 +1051,322 @@
                         </span>
                     </div>
                     <div class="meta-item">
-                        <span class="meta-label">Treatment Start Date</span>
-                        <input type="text" 
-                               class="treatment-date-picker" 
-                               id="treatmentStartingDate"
-                               data-exam-id="${examination.id}"
-                               data-raw-date="${examination.treatmentStartingDate}"
-                               value="<c:if test="${not empty examination.treatmentStartingDate}"><fmt:parseDate value="${examination.treatmentStartingDate}" pattern="yyyy-MM-dd'T'HH:mm" var="parsedDate"/><fmt:formatDate value="${parsedDate}" pattern="yyyy-MM-dd HH:mm"/></c:if>"
-                               placeholder="Select date">
-                    </div>
-                    <div class="meta-item">
                         <span class="meta-label">Assigned Doctor</span>
-                        <select id="doctorSelect" class="doctor-dropdown ${examination.assignedDoctor != null ? 'doctor-assigned' : ''}">
-                            <option value="">--Select--</option>
-                            <option value="remove" ${examination.assignedDoctor != null ? '' : 'disabled'}>-- Remove Doctor --</option>
-                            <c:forEach var="doctor" items="${doctorDetails}">
-                                <option value="${doctor.id}" ${examination.assignedDoctor != null && examination.assignedDoctor.id == doctor.id ? 'selected' : ''}>${doctor.doctorName}</option>
-                            </c:forEach>
-                        </select>
+                        <span class="meta-value">
+                            <c:choose>
+                                <c:when test="${currentUserRole == 'RECEPTIONIST'}">
+                                    <!-- Show as read-only text for receptionists -->
+                                    <c:choose>
+                                        <c:when test="${examination.assignedDoctorId != null}">
+                                            <c:forEach items="${doctors}" var="doctor">
+                                                <c:if test="${doctor.id == examination.assignedDoctorId}">
+                                                    <span class="read-only-doctor">${doctor.firstName} ${doctor.lastName}</span>
+                                                </c:if>
+                                            </c:forEach>
+                                        </c:when>
+                                        <c:otherwise>
+                                            <span class="read-only-doctor not-assigned">Not Assigned</span>
+                                        </c:otherwise>
+                                    </c:choose>
+                                </c:when>
+                                <c:otherwise>
+                                    <!-- Show as dropdown for other roles -->
+                                    <!-- Debug: assignedDoctorId = ${examination.assignedDoctorId} -->
+                                    <!-- Debug: doctors count = ${fn:length(doctors)} -->
+                                    <select id="doctorSelect" class="form-control" 
+                                            <c:if test="${examination.assignedDoctorId != null}">disabled</c:if>>
+                                        <option value="">Select Doctor</option>
+                                        <c:forEach items="${doctors}" var="doctor">
+                                            <!-- Debug: doctor.id = ${doctor.id}, assignedDoctorId = ${examination.assignedDoctorId} -->
+                                            <option value="${doctor.id}" 
+                                                    <c:if test="${examination.assignedDoctorId != null and doctor.id == examination.assignedDoctorId}">selected</c:if>>
+                                                ${doctor.firstName} ${doctor.lastName}
+                                            </option>
+                                        </c:forEach>
+                                    </select>
+                                    <c:if test="${examination.assignedDoctorId != null}">
+                                        <small class="doctor-assignment-info">
+                                            <i class="fas fa-info-circle"></i> Doctor assignment cannot be changed once set
+                                        </small>
+                                    </c:if>
+                                </c:otherwise>
+                            </c:choose>
+                        </span>
                     </div>
                 </div>
                 
-                <form id="examinationForm">
+                <!-- Denture Photos Section -->
+                <c:if test="${not empty examination.upperDenturePicturePath or not empty examination.lowerDenturePicturePath or not empty examination.xrayPicturePath}">
+                <div class="examination-container">
+                    <h3><i class="fas fa-images"></i> Dental Photos</h3>
+                    <div class="denture-photos-grid">
+                        <c:if test="${not empty examination.upperDenturePicturePath}">
+                        <div class="denture-photo-item">
+                            <div class="photo-preview">
+                                <img src="${pageContext.request.contextPath}/uploads/${examination.upperDenturePicturePath}" 
+                                     alt="Upper Denture" class="denture-thumbnail" 
+                                     onclick="openImageModal('${pageContext.request.contextPath}/uploads/${examination.upperDenturePicturePath}', 'Upper Denture')">
+                            </div>
+                            <div class="photo-actions">
+                                <span class="photo-label">Upper Denture</span>
+                                <div class="action-buttons">
+                                    <button type="button" class="btn btn-sm btn-primary" 
+                                            onclick="openImageModal('${pageContext.request.contextPath}/uploads/${examination.upperDenturePicturePath}', 'Upper Denture')">
+                                        <i class="fas fa-search-plus"></i> View
+                                    </button>
+                                    <a href="${pageContext.request.contextPath}/uploads/${examination.upperDenturePicturePath}" 
+                                       download="upper_denture_${examination.id}.jpg" class="btn btn-sm btn-success">
+                                        <i class="fas fa-download"></i> Download
+                                    </a>
+                                </div>
+                            </div>
+                        </div>
+                        </c:if>
+                        
+                        <c:if test="${not empty examination.lowerDenturePicturePath}">
+                        <div class="denture-photo-item">
+                            <div class="photo-preview">
+                                <img src="${pageContext.request.contextPath}/uploads/${examination.lowerDenturePicturePath}" 
+                                     alt="Lower Denture" class="denture-thumbnail" 
+                                     onclick="openImageModal('${pageContext.request.contextPath}/uploads/${examination.lowerDenturePicturePath}', 'Lower Denture')">
+                            </div>
+                            <div class="photo-actions">
+                                <span class="photo-label">Lower Denture</span>
+                                <div class="action-buttons">
+                                    <button type="button" class="btn btn-sm btn-primary" 
+                                            onclick="openImageModal('${pageContext.request.contextPath}/uploads/${examination.lowerDenturePicturePath}', 'Lower Denture')">
+                                        <i class="fas fa-search-plus"></i> View
+                                    </button>
+                                    <a href="${pageContext.request.contextPath}/uploads/${examination.lowerDenturePicturePath}" 
+                                       download="lower_denture_${examination.id}.jpg" class="btn btn-sm btn-success">
+                                        <i class="fas fa-download"></i> Download
+                                    </a>
+                                </div>
+                            </div>
+                        </div>
+                        </c:if>
+                        
+                        <c:if test="${not empty examination.xrayPicturePath}">
+                        <div class="denture-photo-item xray-photo">
+                            <div class="photo-preview">
+                                <img src="${pageContext.request.contextPath}/uploads/${examination.xrayPicturePath}" 
+                                     alt="X-Ray Image" class="denture-thumbnail" 
+                                     onclick="openImageModal('${pageContext.request.contextPath}/uploads/${examination.xrayPicturePath}', 'X-Ray Image')">
+                            </div>
+                            <div class="photo-actions">
+                                <span class="photo-label">X-Ray Image</span>
+                                <div class="action-buttons">
+                                    <button type="button" class="btn btn-sm btn-primary" 
+                                            onclick="openImageModal('${pageContext.request.contextPath}/uploads/${examination.xrayPicturePath}', 'X-Ray Image')">
+                                        <i class="fas fa-search-plus"></i> View
+                                    </button>
+                                    <a href="${pageContext.request.contextPath}/uploads/${examination.xrayPicturePath}" 
+                                       download="xray_${examination.id}.jpg" class="btn btn-sm btn-success">
+                                        <i class="fas fa-download"></i> Download
+                                    </a>
+                                </div>
+                            </div>
+                        </div>
+                        </c:if>
+                    </div>
+                </div>
+                </c:if>
+                
+                <!-- No Photos Message -->
+                <c:if test="${empty examination.upperDenturePicturePath and empty examination.lowerDenturePicturePath and empty examination.xrayPicturePath}">
+                <div class="examination-container">
+                    <h3><i class="fas fa-images"></i> Dental Photos</h3>
+                    <div style="text-align: center; padding: 40px; color: #7f8c8d;">
+                        <i class="fas fa-camera" style="font-size: 3rem; margin-bottom: 15px; opacity: 0.5;"></i>
+                        <p style="font-size: 1.1rem; margin: 0;">No dental photos have been uploaded for this examination.</p>
+                        <p style="font-size: 0.9rem; margin: 10px 0 0 0; opacity: 0.7;">Photos will appear here once uploaded during the procedure selection process.</p>
+                    </div>
+                </div>
+                </c:if>
+                
+                <form id="examinationForm" method="post" class="examination-details-compact">
                     <input type="hidden" id="examinationId" value="${examination.id}">
-                    <input type="hidden" id="patientId" value="${examination.patientId}">
+                    <input type="hidden" id="patientId" value="${examination.patient.id}">
                     <input type="hidden" id="toothNumber" value="${examination.toothNumber}">
                     
-                    <div class="form-sections-container">
-                        <!-- Basic Information Section -->
-                        <div class="form-section">
-                            <h3>Basic Information</h3>
-                            <div class="form-group">
-                                <label for="toothSurface">Surface</label>
-                                <select name="toothSurface" id="toothSurface" class="form-control">
-                                    <option value="">Select</option>
-                                    <c:forEach items="${toothSurfaces}" var="surface">
-                                        <option value="${surface}" ${examination.toothSurface == surface ? 'selected' : ''}>${surface}</option>
-                                    </c:forEach>
-                                </select>
+                    <!-- Chief Complaints Section -->
+                    <div class="chief-complaints-section">
+                        <h3>Chief Complaints</h3>
+                        <div class="form-group">
+                            <label for="chiefComplaints">Patient's Chief Complaints</label>
+                            <textarea name="chiefComplaints" id="chiefComplaints" rows="6" class="form-control"
+                                      <c:if test="${currentUserRole == 'RECEPTIONIST'}">disabled</c:if>>${examination.chiefComplaints}</textarea>
+                        </div>
+                    </div>
+                    
+                    <div class="form-grid">
+                        <!-- Left Column -->
+                        <div class="form-column">
+                            <div class="form-section">
+                                <h3>Basic Assessment</h3>
+                                <div class="form-group">
+                                    <label for="toothSurface">Surface</label>
+                                    <select name="toothSurface" id="toothSurface" class="form-control"
+                                            <c:if test="${currentUserRole == 'RECEPTIONIST'}">disabled</c:if>>
+                                        <option value="">Select</option>
+                                        <c:forEach items="${toothSurfaces}" var="surface">
+                                            <option value="${surface}" ${examination.toothSurface == surface ? 'selected' : ''}>${surface}</option>
+                                        </c:forEach>
+                                    </select>
+                                </div>
+                                <div class="form-group">
+                                    <label for="toothCondition">Condition</label>
+                                    <select name="toothCondition" id="toothCondition" class="form-control"
+                                            <c:if test="${currentUserRole == 'RECEPTIONIST'}">disabled</c:if>>
+                                        <option value="">Select</option>
+                                        <c:forEach items="${toothConditions}" var="condition">
+                                            <option value="${condition}" ${examination.toothCondition == condition ? 'selected' : ''}>${condition}</option>
+                                        </c:forEach>
+                                    </select>
+                                </div>
+                                <div class="form-group">
+                                    <label for="existingRestoration">Restoration</label>
+                                    <select name="existingRestoration" id="existingRestoration" class="form-control"
+                                            <c:if test="${currentUserRole == 'RECEPTIONIST'}">disabled</c:if>>
+                                        <option value="">Select</option>
+                                        <c:forEach items="${existingRestorations}" var="restoration">
+                                            <option value="${restoration}" ${examination.existingRestoration == restoration ? 'selected' : ''}>${restoration}</option>
+                                        </c:forEach>
+                                    </select>
+                                </div>
                             </div>
-                            <div class="form-group">
-                                <label for="toothCondition">Condition</label>
-                                <select name="toothCondition" id="toothCondition" class="form-control">
-                                    <option value="">Select</option>
-                                    <c:forEach items="${toothConditions}" var="condition">
-                                        <option value="${condition}" ${examination.toothCondition == condition ? 'selected' : ''}>${condition}</option>
-                                    </c:forEach>
-                                </select>
-                            </div>
-                            <div class="form-group">
-                                <label for="existingRestoration">Restoration</label>
-                                <select name="existingRestoration" id="existingRestoration" class="form-control">
-                                    <option value="">Select</option>
-                                    <c:forEach items="${existingRestorations}" var="restoration">
-                                        <option value="${restoration}" ${examination.existingRestoration == restoration ? 'selected' : ''}>${restoration}</option>
-                                    </c:forEach>
-                                </select>
+
+                            <div class="form-section">
+                                <h3>Periodontal Assessment</h3>
+                                <div class="form-group">
+                                    <label for="pocketDepth">Pocket Depth</label>
+                                    <select name="pocketDepth" id="pocketDepth" class="form-control"
+                                            <c:if test="${currentUserRole == 'RECEPTIONIST'}">disabled</c:if>>
+                                        <option value="">Select</option>
+                                        <c:forEach items="${pocketDepths}" var="depth">
+                                            <option value="${depth}" ${examination.pocketDepth == depth ? 'selected' : ''}>${depth}</option>
+                                        </c:forEach>
+                                    </select>
+                                </div>
+                                <div class="form-group">
+                                    <label for="bleedingOnProbing">Bleeding on Probing</label>
+                                    <select name="bleedingOnProbing" id="bleedingOnProbing" class="form-control"
+                                            <c:if test="${currentUserRole == 'RECEPTIONIST'}">disabled</c:if>>
+                                        <option value="">Select</option>
+                                        <c:forEach items="${bleedingOnProbings}" var="bleeding">
+                                            <option value="${bleeding}" ${examination.bleedingOnProbing == bleeding ? 'selected' : ''}>${bleeding}</option>
+                                        </c:forEach>
+                                    </select>
+                                </div>
+                                <div class="form-group">
+                                    <label for="plaqueScore">Plaque Score</label>
+                                    <select name="plaqueScore" id="plaqueScore" class="form-control"
+                                            <c:if test="${currentUserRole == 'RECEPTIONIST'}">disabled</c:if>>
+                                        <option value="">Select</option>
+                                        <c:forEach items="${plaqueScores}" var="score">
+                                            <option value="${score}" ${examination.plaqueScore == score ? 'selected' : ''}>${score}</option>
+                                        </c:forEach>
+                                    </select>
+                                </div>
+                                <div class="form-group">
+                                    <label for="gingivalRecession">Gingival Recession</label>
+                                    <select name="gingivalRecession" id="gingivalRecession" class="form-control"
+                                            <c:if test="${currentUserRole == 'RECEPTIONIST'}">disabled</c:if>>
+                                        <option value="">Select</option>
+                                        <c:forEach items="${gingivalRecessions}" var="recession">
+                                            <option value="${recession}" ${examination.gingivalRecession == recession ? 'selected' : ''}>${recession}</option>
+                                        </c:forEach>
+                                    </select>
+                                </div>
                             </div>
                         </div>
 
-                        <!-- Periodontal Assessment Section -->
-                        <div class="form-section">
-                            <h3>Periodontal Assessment</h3>
-                            <div class="form-group">
-                                <label for="pocketDepth">Pocket Depth</label>
-                                <select name="pocketDepth" id="pocketDepth" class="form-control">
-                                    <option value="">Select</option>
-                                    <c:forEach items="${pocketDepths}" var="depth">
-                                        <option value="${depth}" ${examination.pocketDepth == depth ? 'selected' : ''}>${depth}</option>
-                                    </c:forEach>
-                                </select>
-                            </div>
-                            <div class="form-group">
-                                <label for="bleedingOnProbing">Bleeding on Probing</label>
-                                <select name="bleedingOnProbing" id="bleedingOnProbing" class="form-control">
-                                    <option value="">Select</option>
-                                    <c:forEach items="${bleedingOnProbings}" var="bleeding">
-                                        <option value="${bleeding}" ${examination.bleedingOnProbing == bleeding ? 'selected' : ''}>${bleeding}</option>
-                                    </c:forEach>
-                                </select>
-                            </div>
-                            <div class="form-group">
-                                <label for="plaqueScore">Plaque Score</label>
-                                <select name="plaqueScore" id="plaqueScore" class="form-control">
-                                    <option value="">Select</option>
-                                    <c:forEach items="${plaqueScores}" var="score">
-                                        <option value="${score}" ${examination.plaqueScore == score ? 'selected' : ''}>${score}</option>
-                                    </c:forEach>
-                                </select>
-                            </div>
-                            <div class="form-group">
-                                <label for="gingivalRecession">Gingival Recession</label>
-                                <select name="gingivalRecession" id="gingivalRecession" class="form-control">
-                                    <option value="">Select</option>
-                                    <c:forEach items="${gingivalRecessions}" var="recession">
-                                        <option value="${recession}" ${examination.gingivalRecession == recession ? 'selected' : ''}>${recession}</option>
-                                    </c:forEach>
-                                </select>
+                        <!-- Right Column -->
+                        <div class="form-column">
+                            <div class="form-section">
+                                <h3>Clinical Assessment</h3>
+                                <div class="form-group">
+                                    <label for="toothMobility">Mobility</label>
+                                    <select name="toothMobility" id="toothMobility" class="form-control"
+                                            <c:if test="${currentUserRole == 'RECEPTIONIST'}">disabled</c:if>>
+                                        <option value="">Select</option>
+                                        <c:forEach items="${toothMobilities}" var="mobility">
+                                            <option value="${mobility}" ${examination.toothMobility == mobility ? 'selected' : ''}>${mobility}</option>
+                                        </c:forEach>
+                                    </select>
+                                </div>
+                                <div class="form-group">
+                                    <label for="toothVitality">Vitality</label>
+                                    <select name="toothVitality" id="toothVitality" class="form-control"
+                                            <c:if test="${currentUserRole == 'RECEPTIONIST'}">disabled</c:if>>
+                                        <option value="">Select</option>
+                                        <c:forEach items="${toothVitalities}" var="vitality">
+                                            <option value="${vitality}" ${examination.toothVitality == vitality ? 'selected' : ''}>${vitality}</option>
+                                        </c:forEach>
+                                    </select>
+                                </div>
+                                <div class="form-group">
+                                    <label for="toothSensitivity">Sensitivity</label>
+                                    <select name="toothSensitivity" id="toothSensitivity" class="form-control"
+                                            <c:if test="${currentUserRole == 'RECEPTIONIST'}">disabled</c:if>>
+                                        <option value="">Select</option>
+                                        <c:forEach items="${toothSensitivities}" var="sensitivity">
+                                            <option value="${sensitivity}" ${examination.toothSensitivity == sensitivity ? 'selected' : ''}>${sensitivity}</option>
+                                        </c:forEach>
+                                    </select>
+                                </div>
+                                <div class="form-group">
+                                    <label for="furcationInvolvement">Furcation</label>
+                                    <select name="furcationInvolvement" id="furcationInvolvement" class="form-control"
+                                            <c:if test="${currentUserRole == 'RECEPTIONIST'}">disabled</c:if>>
+                                        <option value="">Select</option>
+                                        <c:forEach items="${furcationInvolvements}" var="furcation">
+                                            <option value="${furcation}" ${examination.furcationInvolvement == furcation ? 'selected' : ''}>${furcation}</option>
+                                        </c:forEach>
+                                    </select>
+                                </div>
                             </div>
                         </div>
+                    </div>
 
-                        <!-- Clinical Assessment Section -->
-                        <div class="form-section">
-                            <h3>Clinical Assessment</h3>
-                            <div class="form-group">
-                                <label for="toothMobility">Mobility</label>
-                                <select name="toothMobility" id="toothMobility" class="form-control">
-                                    <option value="">Select</option>
-                                    <c:forEach items="${toothMobilities}" var="mobility">
-                                        <option value="${mobility}" ${examination.toothMobility == mobility ? 'selected' : ''}>${mobility}</option>
-                                    </c:forEach>
-                                </select>
-                            </div>
-                            <div class="form-group">
-                                <label for="toothVitality">Vitality</label>
-                                <select name="toothVitality" id="toothVitality" class="form-control">
-                                    <option value="">Select</option>
-                                    <c:forEach items="${toothVitalities}" var="vitality">
-                                        <option value="${vitality}" ${examination.toothVitality == vitality ? 'selected' : ''}>${vitality}</option>
-                                    </c:forEach>
-                                </select>
-                            </div>
-                            <div class="form-group">
-                                <label for="toothSensitivity">Sensitivity</label>
-                                <select name="toothSensitivity" id="toothSensitivity" class="form-control">
-                                    <option value="">Select</option>
-                                    <c:forEach items="${toothSensitivities}" var="sensitivity">
-                                        <option value="${sensitivity}" ${examination.toothSensitivity == sensitivity ? 'selected' : ''}>${sensitivity}</option>
-                                    </c:forEach>
-                                </select>
-                            </div>
-                            <div class="form-group">
-                                <label for="furcationInvolvement">Furcation</label>
-                                <select name="furcationInvolvement" id="furcationInvolvement" class="form-control">
-                                    <option value="">Select</option>
-                                    <c:forEach items="${furcationInvolvements}" var="furcation">
-                                        <option value="${furcation}" ${examination.furcationInvolvement == furcation ? 'selected' : ''}>${furcation}</option>
-                                    </c:forEach>
-                                </select>
-                            </div>
+                    <!-- Advised Section -->
+                    <div class="form-section notes-section">
+                        <h3>Treatment Advised</h3>
+                        <div class="form-group">
+                            <label for="advised">Treatment/Procedure Advised</label>
+                            <textarea name="advised" id="advised" rows="3" class="form-control"
+                                      <c:if test="${currentUserRole == 'RECEPTIONIST'}">disabled</c:if>>${examination.advised}</textarea>
                         </div>
+                    </div>
 
-                        <!-- Notes Section -->
-                        <div class="form-section notes-section">
-                            <h3>Clinical Notes</h3>
-                            <div class="form-group">
-                                <label for="examinationNotes">Notes</label>
-                                <textarea name="examinationNotes" id="examinationNotes" class="form-control" rows="4">${examination.examinationNotes}</textarea>
-                            </div>
+                    <!-- Notes Section -->
+                    <div class="form-section notes-section">
+                        <h3>Clinical Notes</h3>
+                        <div class="form-group">
+                            <label for="examinationNotes">Notes</label>
+                            <textarea name="examinationNotes" id="examinationNotes" rows="4" class="form-control"
+                                      <c:if test="${currentUserRole == 'RECEPTIONIST'}">disabled</c:if>>${examination.examinationNotes}</textarea>
                         </div>
+                    </div>
 
-                        <!-- Form Actions -->
-                        <div class="form-actions">
-                            <button type="button" onclick="window.location.href='${pageContext.request.contextPath}/patients/details/${patient.id}'" class="btn btn-secondary">Cancel</button>
-                            <button type="submit" class="btn btn-primary disabled" id="updateExaminationBtn" disabled>Update Examination</button>
-                        </div>
+                    <!-- Form Actions -->
+                    <div class="form-actions">
+                        <button type="button" onclick="window.location.href='${pageContext.request.contextPath}/patients/details/${patient.id}'" class="btn btn-secondary">Cancel</button>
+                        
+                        <!-- Only show Update button to doctors and admins -->
+                        <c:if test="${currentUserRole != 'RECEPTIONIST'}">
+                        <sec:authorize access="hasAnyRole('DOCTOR', 'ADMIN')">
+                            <button type="submit" id="updateExaminationBtn" class="btn btn-primary disabled" disabled>Update Examination</button>
+                        </sec:authorize>
+                        
+                        <!-- Show message for other roles -->
+                        <sec:authorize access="!hasAnyRole('DOCTOR', 'ADMIN')">
+                            <div class="tooltip-container">
+                                <button type="button" class="btn btn-primary disabled" disabled>Update Examination</button>
+                                <span class="tooltip-text">Only doctors and administrators can update examinations</span>
+                            </div>
+                        </sec:authorize>
+                        </c:if>
                     </div>
                 </form>
             </div>
@@ -962,31 +1382,34 @@
                 <div class="form-section">
                     <h3>Basic Information</h3>
                     <div class="form-group">
-                        <label for="toothSurface">Surface</label>
-                        <select name="toothSurface" id="toothSurface" class="form-control">
+                        <label for="toothSurface" class="required">Surface</label>
+                        <select name="toothSurface" id="toothSurface" class="form-control" required>
                             <option value="">Select</option>
                             <c:forEach items="${toothSurfaces}" var="surface">
                                 <option value="${surface}" ${examination.toothSurface == surface ? 'selected' : ''}>${surface}</option>
                             </c:forEach>
                         </select>
+                        <div class="error-message">Please select a surface</div>
                     </div>
                     <div class="form-group">
-                        <label for="toothCondition">Condition</label>
-                        <select name="toothCondition" id="toothCondition" class="form-control">
+                        <label for="toothCondition" class="required">Condition</label>
+                        <select name="toothCondition" id="toothCondition" class="form-control" required>
                             <option value="">Select</option>
                             <c:forEach items="${toothConditions}" var="condition">
                                 <option value="${condition}" ${examination.toothCondition == condition ? 'selected' : ''}>${condition}</option>
                             </c:forEach>
                         </select>
+                        <div class="error-message">Please select a condition</div>
                     </div>
                     <div class="form-group">
-                        <label for="existingRestoration">Restoration</label>
-                        <select name="existingRestoration" id="existingRestoration" class="form-control">
+                        <label for="existingRestoration" class="required">Restoration</label>
+                        <select name="existingRestoration" id="existingRestoration" class="form-control" required>
                             <option value="">Select</option>
                             <c:forEach items="${existingRestorations}" var="restoration">
                                 <option value="${restoration}" ${examination.existingRestoration == restoration ? 'selected' : ''}>${restoration}</option>
                             </c:forEach>
                         </select>
+                        <div class="error-message">Please select a restoration</div>
                     </div>
                 </div>
 
@@ -1072,12 +1495,23 @@
                     </div>
                 </div>
 
+                <!-- Advised Section -->
+                <div class="form-section notes-section">
+                    <h3>Treatment Advised</h3>
+                    <div class="form-group">
+                        <label for="advised">Treatment/Procedure Advised</label>
+                        <textarea name="advised" id="advised" rows="3" class="form-control"
+                                  <c:if test="${currentUserRole == 'RECEPTIONIST'}">disabled</c:if>>${examination.advised}</textarea>
+                    </div>
+                </div>
+
                 <!-- Notes Section -->
                 <div class="form-section notes-section">
                     <h3>Clinical Notes</h3>
                     <div class="form-group">
                         <label for="examinationNotes">Notes</label>
-                        <textarea name="examinationNotes" id="examinationNotes" class="form-control" rows="4">${examination.examinationNotes}</textarea>
+                        <textarea name="examinationNotes" id="examinationNotes" rows="4" class="form-control"
+                                  <c:if test="${currentUserRole == 'RECEPTIONIST'}">disabled</c:if>>${examination.examinationNotes}</textarea>
                     </div>
                 </div>
 
@@ -1091,479 +1525,232 @@
     </div>
     
     <script>
+        // Add context path variable
+        const contextPath = '${pageContext.request.contextPath}';
+
         document.addEventListener('DOMContentLoaded', function() {
             const form = document.getElementById('examinationForm');
-            const doctorSelect = document.getElementById('doctorSelect');
             const notification = document.getElementById('notification');
-            const updateExaminationBtn = document.getElementById('updateExaminationBtn');
-            const startProcedureBtn = document.getElementById('startProcedureBtn');
             const csrfToken = document.querySelector('meta[name="_csrf"]').content;
-            
-            // Add event listener for Start Procedure button if doctor is assigned
-            if (startProcedureBtn && !startProcedureBtn.classList.contains('disabled')) {
-                startProcedureBtn.addEventListener('click', function(e) {
-                    // Check if there are unsaved changes
-                    if (checkFormChanges()) {
-                        // Prevent the default navigation
-                        e.preventDefault();
-                        
-                        // Show confirmation dialog
-                        if (confirm("You have unsaved changes to this examination. Click OK to save changes before proceeding, or Cancel to discard changes.")) {
-                            // User chose to save changes
-                            const targetUrl = this.getAttribute('href');
-                            
-                            // Trigger form submission
-                            submitExaminationForm().then(success => {
-                                if (success) {
-                                    // After successful save, navigate to the procedures page
-                                    window.location.href = targetUrl;
-                                }
-                            });
+            const updateButton = document.getElementById('updateExaminationBtn');
+
+            // Enable update button when any form field changes
+            const formFields = form.querySelectorAll('select, textarea');
+            formFields.forEach(field => {
+                field.addEventListener('change', function() {
+                    updateButton.classList.remove('disabled');
+                    updateButton.disabled = false;
+                });
+            });
+
+            // Handle doctor selection change
+            document.getElementById('doctorSelect').addEventListener('change', function() {
+                const selectedValue = this.value;
+                const examinationId = '${examination.id}';
+                const currentDoctorId = '${examination.assignedDoctorId}';
+                
+                // If no doctor is currently assigned, show confirmation popup
+                if (!currentDoctorId && selectedValue) {
+                    const confirmed = confirm('Are you sure you want to assign this doctor? Once assigned, the doctor cannot be changed.');
+                    if (!confirmed) {
+                        // Reset to empty selection
+                        this.value = '';
+                        return;
+                    }
+                }
+                
+                // If a doctor is already assigned, prevent changes
+                if (currentDoctorId && selectedValue !== currentDoctorId) {
+                    alert('Doctor assignment cannot be changed once set. Please contact an administrator if you need to make changes.');
+                    // Reset to current doctor
+                    this.value = currentDoctorId;
+                    return;
+                }
+                
+                // Get CSRF token
+                const token = $("meta[name='_csrf']").attr("content");
+                const header = $("meta[name='_csrf_header']").attr("content");
+                
+                $.ajax({
+                    url: contextPath + '/patients/tooth-examination/assign-doctor',
+                    type: 'POST',
+                    contentType: 'application/json',
+                    headers: {
+                        [header]: token
+                    },
+                    data: JSON.stringify({
+                        examinationId: examinationId,
+                        doctorId: selectedValue
+                    }),
+                    success: function(response) {
+                        if (response.success) {
+                            // Show success message
+                            showNotification('Doctor assigned successfully! The assignment cannot be changed.', false);
+                            // Disable the dropdown after successful assignment
+                            document.getElementById('doctorSelect').disabled = true;
+                            // Add the info message
+                            const infoMessage = document.createElement('small');
+                            infoMessage.className = 'doctor-assignment-info';
+                            infoMessage.innerHTML = '<i class="fas fa-info-circle"></i> Doctor assignment cannot be changed once set';
+                            document.getElementById('doctorSelect').parentNode.appendChild(infoMessage);
+                            // Reload the page after a short delay to show updated state
+                            setTimeout(() => {
+                            window.location.reload();
+                            }, 2000);
                         } else {
-                            // User chose to discard changes, continue with navigation
-                            window.location.href = this.getAttribute('href');
+                            alert('Error: ' + (response.message || 'Failed to update doctor assignment'));
                         }
-                    }
-                    // If no changes, the default navigation will happen
-                });
-            }
-            
-            // Store original form values to track changes
-            const originalFormValues = {};
-            const formElements = form.elements;
-            
-            // Capture initial form values
-            for (let i = 0; i < formElements.length; i++) {
-                const element = formElements[i];
-                if (element.name) {
-                    originalFormValues[element.name] = element.value;
-                } else if (element.id) {
-                    originalFormValues[element.id] = element.value;
-                }
-            }
-            
-            // Add change event listeners to all form fields
-            for (let i = 0; i < formElements.length; i++) {
-                const element = formElements[i];
-                element.addEventListener('change', checkFormChanges);
-                element.addEventListener('input', checkFormChanges);
-            }
-            
-            // Function to check if any form field has changed
-            function checkFormChanges() {
-                let hasChanges = false;
-                
-                for (let i = 0; i < formElements.length; i++) {
-                    const element = formElements[i];
-                    const elementId = element.name || element.id;
-                    
-                    if (elementId && originalFormValues[elementId] !== undefined) {
-                        if (element.value !== originalFormValues[elementId]) {
-                            hasChanges = true;
-                            break;
-                        }
-                    }
-                }
-                
-                // Enable or disable the update button based on changes
-                if (hasChanges) {
-                    updateExaminationBtn.classList.remove('disabled');
-                    updateExaminationBtn.disabled = false;
-                } else {
-                    updateExaminationBtn.classList.add('disabled');
-                    updateExaminationBtn.disabled = true;
-                }
-                
-                return hasChanges;
-            }
-            
-            // Function to check for unsaved changes before navigating away
-            function checkUnsavedChanges(element) {
-                if (checkFormChanges()) {
-                    if (!confirm("You have unsaved changes to this examination. Click OK to save changes before proceeding, or Cancel to discard changes.")) {
-                        return true; // User chose to discard changes, continue navigation
-                    }
-                    
-                    // User chose to save changes
-                    // Get the URL from the element
-                    const targetUrl = element.getAttribute('href');
-                    
-                    // Trigger form submission programmatically
-                    submitExaminationForm().then(success => {
-                        if (success) {
-                            // After successful save, navigate to the procedures page
-                            window.location.href = targetUrl;
-                        }
-                    });
-                    
-                    return false; // Prevent the default navigation for now
-                }
-                
-                return true; // No changes, allow navigation
-            }
-            
-            // Function to submit the form programmatically
-            async function submitExaminationForm() {
-                // Collect form data
-                const data = {
-                    id: document.getElementById('examinationId').value,
-                    patientId: document.getElementById('patientId').value,
-                    toothNumber: document.getElementById('toothNumber').value,
-                    toothSurface: document.getElementById('toothSurface').value,
-                    toothCondition: document.getElementById('toothCondition').value,
-                    existingRestoration: document.getElementById('existingRestoration').value,
-                    pocketDepth: document.getElementById('pocketDepth').value,
-                    bleedingOnProbing: document.getElementById('bleedingOnProbing').value,
-                    plaqueScore: document.getElementById('plaqueScore').value,
-                    gingivalRecession: document.getElementById('gingivalRecession').value,
-                    toothMobility: document.getElementById('toothMobility').value,
-                    toothVitality: document.getElementById('toothVitality').value,
-                    toothSensitivity: document.getElementById('toothSensitivity').value,
-                    furcationInvolvement: document.getElementById('furcationInvolvement').value,
-                    examinationNotes: document.getElementById('examinationNotes').value
-                };
-                
-                // Only include non-empty values
-                Object.keys(data).forEach(key => {
-                    if (data[key] === '') {
-                        delete data[key];
+                    },
+                    error: function(xhr, status, error) {
+                        alert('Error: ' + error);
                     }
                 });
-                
-                try {
-                    const response = await fetch('${pageContext.request.contextPath}/patients/examination/update', {
-                        method: 'POST',
-                        headers: {
-                            'Content-Type': 'application/json',
-                            'X-CSRF-TOKEN': csrfToken
-                        },
-                        body: JSON.stringify(data)
-                    });
-                    
-                    const result = await response.json();
-                    
-                    if (result.success) {
-                        showNotification('Examination updated successfully');
-                        // Update the original form values to reflect the saved state
-                        for (let i = 0; i < formElements.length; i++) {
-                            const element = formElements[i];
-                            if (element.name) {
-                                originalFormValues[element.name] = element.value;
-                            } else if (element.id) {
-                                originalFormValues[element.id] = element.value;
-                            }
-                        }
-                        // Disable the update button since changes are now saved
-                        updateExaminationBtn.classList.add('disabled');
-                        updateExaminationBtn.disabled = true;
-                        
-                        return true;
-                    } else {
-                        showNotification('Error: ' + (result.message || 'Failed to update examination'), true);
-                        return false;
-                    }
-                } catch (error) {
-                    console.error('Error updating examination:', error);
-                    showNotification('Error: ' + error.message, true);
-                    return false;
-                }
-            }
-            
+            });
+
             // Function to show notification
             function showNotification(message, isError = false) {
                 notification.textContent = message;
                 notification.className = 'notification ' + (isError ? 'error' : 'success');
                 notification.style.display = 'block';
-                
-                // Hide after 5 seconds
-                setTimeout(() => {
-                    notification.style.display = 'none';
-                }, 5000);
             }
-            
-            // Check for URL parameters on page load
-            function getUrlParameter(name) {
-                const urlParams = new URLSearchParams(window.location.search);
-                return urlParams.get(name);
-            }
-            
-            // Check for error message in URL
-            const errorMsg = getUrlParameter('error');
-            if (errorMsg) {
-                showNotification(errorMsg, true);
-            }
-            
-            // Check for flash message on page load
-            const flashMessage = sessionStorage.getItem('flashMessage');
-            const flashMessageType = sessionStorage.getItem('flashMessageType');
-            
-            if (flashMessage) {
-                showNotification(flashMessage, flashMessageType === 'error');
-                // Clear the flash message
-                sessionStorage.removeItem('flashMessage');
-                sessionStorage.removeItem('flashMessageType');
-            }
-            
+
             // Handle form submission
-            form.addEventListener('submit', async function(e) {
+            form.addEventListener('submit', function(e) {
                 e.preventDefault();
-                await submitExaminationForm();
-            });
-            
-            // Handle doctor assignment
-            doctorSelect.addEventListener('change', async function() {
-                const doctorId = this.value;
-                const examinationId = document.getElementById('examinationId').value;
                 
-                if (!doctorId) return;
-                
-                const isRemove = doctorId === 'remove';
-                const startProcedureBtn = document.getElementById('startProcedureBtn');
-                
-                try {
-                    const response = await fetch('${pageContext.request.contextPath}/patients/tooth-examination/assign-doctor', {
-                        method: 'POST',
-                        headers: {
-                            'Content-Type': 'application/json',
-                            'X-CSRF-TOKEN': csrfToken
-                        },
-                        body: JSON.stringify({
-                            examinationId: examinationId,
-                            doctorId: isRemove ? null : doctorId
-                        })
-                    });
-                    
-                    const result = await response.json();
-                    
-                    if (result.success) {
-                        showNotification(isRemove ? 'Doctor removed successfully' : 'Doctor assigned successfully');
-                        
-                        // Update the Start Procedure button state based on doctor assignment
-                        if (isRemove) {
-                            startProcedureBtn.classList.add('disabled');
-                            startProcedureBtn.setAttribute('href', '#');
-                            document.getElementById('procedureBtnTooltip').textContent = 'Please assign a doctor first';
-                            this.classList.remove('doctor-assigned');
-                            
-                            // Remove any existing event listeners by replacing the button with its clone
-                            const newStartProcedureBtn = startProcedureBtn.cloneNode(true);
-                            startProcedureBtn.parentNode.replaceChild(newStartProcedureBtn, startProcedureBtn);
-                            
-                            // Update the reference to the new button
-                            window.startProcedureBtn = newStartProcedureBtn;
-                        } else {
-                            startProcedureBtn.classList.remove('disabled');
-                            startProcedureBtn.setAttribute('href', '${pageContext.request.contextPath}/patients/examination/${examination.id}/procedures');
-                            document.getElementById('procedureBtnTooltip').textContent = 'Start procedure for this examination';
-                            this.classList.add('doctor-assigned');
-                            
-                            // Remove any existing event listeners by replacing the button with its clone
-                            const newStartProcedureBtn = startProcedureBtn.cloneNode(true);
-                            startProcedureBtn.parentNode.replaceChild(newStartProcedureBtn, startProcedureBtn);
-                            
-                            // Update the reference to the new button
-                            window.startProcedureBtn = newStartProcedureBtn;
-                            
-                            // Add click event listener to the new button
-                            newStartProcedureBtn.addEventListener('click', function(e) {
-                                // Check if there are unsaved changes
-                                if (checkFormChanges()) {
-                                    // Prevent the default navigation
-                                    e.preventDefault();
-                                    
-                                    // Show confirmation dialog
-                                    if (confirm("You have unsaved changes to this examination. Click OK to save changes before proceeding, or Cancel to discard changes.")) {
-                                        // User chose to save changes
-                                        const targetUrl = this.getAttribute('href');
-                                        
-                                        // Trigger form submission
-                                        submitExaminationForm().then(success => {
-                                            if (success) {
-                                                // After successful save, navigate to the procedures page
-                                                window.location.href = targetUrl;
-                                            }
-                                        });
-                                    } else {
-                                        // User chose to discard changes, continue with navigation
-                                        window.location.href = this.getAttribute('href');
-                                    }
-                                }
-                                // If no changes, the default navigation will happen
-                            });
-                        }
-                    } else {
-                        showNotification('Error: ' + (result.message || 'Failed to update doctor assignment'), true);
-                        
-                        // Reset the select if there was an error
-                        const currentDoctorId = '${examination.assignedDoctor != null ? examination.assignedDoctor.id : ""}';
-                        this.value = currentDoctorId || '';
-                    }
-                } catch (error) {
-                    console.error('Error assigning doctor:', error);
-                    showNotification('Error: ' + error.message, true);
-                    
-                    // Reset the select if there was an error
-                    const currentDoctorId = '${examination.assignedDoctor != null ? examination.assignedDoctor.id : ""}';
-                    this.value = currentDoctorId || '';
-                }
-            });
+                const formData = {
+                    id: '${examination.id}',
+                    toothSurface: document.getElementById('toothSurface').value,
+                    toothCondition: document.getElementById('toothCondition').value,
+                    existingRestoration: document.getElementById('existingRestoration').value,
+                    toothMobility: document.getElementById('toothMobility').value,
+                    pocketDepth: document.getElementById('pocketDepth').value,
+                    bleedingOnProbing: document.getElementById('bleedingOnProbing').value,
+                    plaqueScore: document.getElementById('plaqueScore').value,
+                    gingivalRecession: document.getElementById('gingivalRecession').value,
+                    toothVitality: document.getElementById('toothVitality').value,
+                    furcationInvolvement: document.getElementById('furcationInvolvement').value,
+                    toothSensitivity: document.getElementById('toothSensitivity').value,
+                    examinationNotes: document.getElementById('examinationNotes').value,
+                    chiefComplaints: document.getElementById('chiefComplaints').value,
+                    advised: document.getElementById('advised').value
+                };
 
-            // Initialize flatpickr for treatment date picker
-            const treatmentDatePicker = document.getElementById('treatmentStartingDate');
-            if (treatmentDatePicker) {
-                const fp = flatpickr(treatmentDatePicker, {
-                    enableTime: true,
-                    dateFormat: "Y-m-d H:i",
-                    time_24hr: true,
-                    defaultDate: treatmentDatePicker.dataset.rawDate || new Date(),
-                    minuteIncrement: 5,
-                    allowInput: false,
-                    clickOpens: true,
-                    closeOnSelect: false
-                });
+                // Get CSRF token
+                const token = $("meta[name='_csrf']").attr("content");
+                const header = $("meta[name='_csrf_header']").attr("content");
 
-                // Create and style the button container
-                const buttonContainer = document.createElement('div');
-                buttonContainer.style.cssText = `
-                    position: absolute;
-                    bottom: 0;
-                    left: 0;
-                    right: 0;
-                    display: flex;
-                    justify-content: flex-end;
-                    gap: 10px;
-                    padding: 10px;
-                    background: #fff;
-                    border-top: 1px solid #eee;
-                    z-index: 1000;
-                `;
-
-                // Create and style the "Now" button
-                const nowButton = document.createElement('button');
-                nowButton.style.cssText = `
-                    padding: 6px 12px;
-                    background: #3498db;
-                    color: white;
-                    border: none;
-                    border-radius: 4px;
-                    font-size: 12px;
-                    cursor: pointer;
-                    min-width: 100px;
-                `;
-                nowButton.textContent = 'Set Current Time';
-                nowButton.addEventListener('click', function(e) {
-                    e.preventDefault();
-                    const now = new Date();
-                    fp.setDate(now);
-                });
-
-                // Create and style the "Save" button
-                const saveButton = document.createElement('button');
-                saveButton.style.cssText = `
-                    padding: 6px 12px;
-                    background: #2ecc71;
-                    color: white;
-                    border: none;
-                    border-radius: 4px;
-                    font-size: 12px;
-                    cursor: pointer;
-                    min-width: 100px;
-                `;
-                saveButton.textContent = 'Save Time';
-                saveButton.addEventListener('click', function(e) {
-                    e.preventDefault();
-                    const selectedDate = fp.selectedDates[0];
-                    if (selectedDate) {
-                        // Get the examination ID from the input's data attribute or hidden field
-                        const examId = treatmentDatePicker.dataset.examId || document.getElementById('examinationId').value;
-                        console.log('Save button clicked, using examination ID:', examId);
-                        updateTreatmentDate(selectedDate, examId);
-                        fp.close();
-                    }
-                });
-
-                // Add the buttons to the container
-                buttonContainer.appendChild(nowButton);
-                buttonContainer.appendChild(saveButton);
-
-                // Add the container to the calendar
-                const calendarContainer = fp.calendarContainer;
-                calendarContainer.style.paddingBottom = '50px';
-                calendarContainer.appendChild(buttonContainer);
-
-                // Ensure the calendar has enough space for the buttons
-                const calendar = calendarContainer.querySelector('.flatpickr-calendar');
-                if (calendar) {
-                    calendar.style.paddingBottom = '50px';
-                }
-            }
-
-            // Function to update treatment date
-            function updateTreatmentDate(date, examinationId) {
-                if (!date) return;
-                
-                const csrfToken = document.querySelector("meta[name='_csrf']").content;
-                
-                // Format the date in 24-hour format
-                const formattedDate = flatpickr.formatDate(date, "Y-m-d H:i");
-                console.log('Sending date to backend:', formattedDate);
-                console.log('Examination ID:', examinationId);
-                
-                // Ensure examinationId is properly set
-                if (!examinationId) {
-                    // Try to get it from the hidden input
-                    examinationId = document.getElementById('examinationId').value;
-                    console.log('Using examination ID from hidden input:', examinationId);
-                }
-                
-                if (!examinationId) {
-                    showNotification('Error: Missing examination ID', true);
-                    return;
-                }
-                
-                fetch('${pageContext.request.contextPath}/patients/tooth-examination/update-treatment-date', {
+                fetch(contextPath + '/patients/examination/update', {
                     method: 'POST',
                     headers: {
                         'Content-Type': 'application/json',
-                        'X-CSRF-TOKEN': csrfToken
+                        [header]: token
                     },
-                    body: JSON.stringify({
-                        examinationId: examinationId,
-                        treatmentStartDate: formattedDate
-                    })
+                    body: JSON.stringify(formData)
                 })
-                .then(response => {
-                    console.log('Response status:', response.status);
-                    if (!response.ok) {
-                        return response.json().then(data => {
-                            throw new Error(data.message || 'Failed to update treatment date');
-                        });
-                    }
-                    return response.json();
-                })
+                .then(response => response.json())
                 .then(data => {
-                    console.log('Response data:', data);
                     if (data.success) {
-                        showNotification('Treatment start date updated successfully');
-                        // Update the input field with the formatted date
-                        const input = document.getElementById('treatmentStartingDate');
-                        if (input) {
-                            // Format the date for display
-                            const displayDate = flatpickr.formatDate(date, "Y-m-d H:i");
-                            input.value = displayDate;
-                            // Also update the data attribute
-                            input.dataset.rawDate = formattedDate;
-                        }
+                        showNotification(data.message, false);
+                        // Optionally refresh the page after a short delay
+                        setTimeout(() => {
+                            window.location.reload();
+                        }, 1500);
                     } else {
-                        throw new Error(data.message || 'Failed to update treatment date');
+                        showNotification(data.message || 'Failed to update examination', true);
                     }
                 })
                 .catch(error => {
-                    console.error('Error updating treatment date:', error);
-                    showNotification(`Error: ${error.message}`, true);
+                    console.error('Error:', error);
+                    showNotification('An error occurred while updating the examination', true);
                 });
+            });
+        });
+
+        // Image Modal Functions
+        let currentImageUrl = '';
+        let currentImageTitle = '';
+        
+        function openImageModal(imageUrl, title) {
+            currentImageUrl = imageUrl;
+            currentImageTitle = title;
+            
+            document.getElementById('modalImage').src = imageUrl;
+            document.getElementById('modalHeader').textContent = title;
+            document.getElementById('imageModal').style.display = 'block';
+            
+            // Prevent body scroll when modal is open
+            document.body.style.overflow = 'hidden';
+        }
+        
+        function closeImageModal() {
+            document.getElementById('imageModal').style.display = 'none';
+            document.body.style.overflow = 'auto';
+        }
+        
+        function downloadImage() {
+            if (currentImageUrl) {
+                const link = document.createElement('a');
+                link.href = currentImageUrl;
+                link.download = currentImageTitle.toLowerCase().replace(/\s+/g, '_') + '_' + '${examination.id}' + '.jpg';
+                document.body.appendChild(link);
+                link.click();
+                document.body.removeChild(link);
+            }
+        }
+        
+        // Close modal when clicking outside the image
+        document.getElementById('imageModal').addEventListener('click', function(e) {
+            if (e.target === this) {
+                closeImageModal();
             }
         });
+        
+        // Close modal with Escape key
+        document.addEventListener('keydown', function(e) {
+            if (e.key === 'Escape' && document.getElementById('imageModal').style.display === 'block') {
+                closeImageModal();
+            }
+        });
+        
+        // Handle image loading errors
+        document.addEventListener('DOMContentLoaded', function() {
+            const images = document.querySelectorAll('.denture-thumbnail');
+            images.forEach(function(img) {
+                img.addEventListener('error', function() {
+                    console.error('Failed to load image:', this.src);
+                    this.classList.add('error');
+                    this.alt = 'Image failed to load';
+                    
+                    // Add error message below the image
+                    const errorMsg = document.createElement('div');
+                    errorMsg.className = 'image-error-message';
+                    errorMsg.textContent = 'Image failed to load: ' + this.src;
+                    this.parentNode.appendChild(errorMsg);
+                });
+                
+                img.addEventListener('load', function() {
+                    console.log('Successfully loaded image:', this.src);
+                });
+            });
+        });
     </script>
+    
+    <!-- Image Modal -->
+    <div id="imageModal" class="image-modal">
+        <div class="image-modal-content">
+            <div class="modal-header" id="modalHeader">Denture Photo</div>
+            <span class="modal-close" onclick="closeImageModal()">&times;</span>
+            <img id="modalImage" class="modal-image" src="" alt="Denture Photo">
+            <div class="modal-actions">
+                <button type="button" class="modal-btn" onclick="downloadImage()">
+                    <i class="fas fa-download"></i> Download
+                </button>
+                <button type="button" class="modal-btn" onclick="closeImageModal()">
+                    <i class="fas fa-times"></i> Close
+                </button>
+            </div>
+        </div>
+    </div>
 </body>
 </html> 

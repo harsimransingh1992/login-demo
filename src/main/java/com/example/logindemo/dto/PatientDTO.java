@@ -5,6 +5,9 @@ import lombok.Getter;
 import lombok.Setter;
 import org.springframework.format.annotation.DateTimeFormat;
 
+import java.time.LocalDate;
+import java.time.Period;
+import java.time.ZoneId;
 import java.util.Date;
 import java.util.List;
 
@@ -17,6 +20,8 @@ public class PatientDTO {
     private String firstName;
 
     private String lastName;
+
+    private String registrationCode;
 
     @DateTimeFormat(pattern = "yyyy-MM-dd")
     private Date dateOfBirth;
@@ -45,7 +50,7 @@ public class PatientDTO {
 
     private OccupationDTO occupation;
 
-    private ReferralDTO referral;
+    private ReferralDTO referralModel;
 
     private Boolean checkedIn;
 
@@ -57,5 +62,21 @@ public class PatientDTO {
     
     // This field is not persisted but used for file upload
     private transient org.springframework.web.multipart.MultipartFile profilePicture;
+
+    private Integer age;
+    
+    // Audit fields
+    private String createdBy;
+    private String registeredClinic;
+    private Date createdAt;
+
+    public Integer getAge() {
+        if (dateOfBirth == null) {
+            return null;
+        }
+        LocalDate birthDate = dateOfBirth.toInstant().atZone(ZoneId.systemDefault()).toLocalDate();
+        LocalDate currentDate = LocalDate.now();
+        return Period.between(birthDate, currentDate).getYears();
+    }
 
 }

@@ -1,40 +1,31 @@
 package com.example.logindemo.controller;
 
-import com.example.logindemo.dto.DoctorDetailDTO;
+import com.example.logindemo.dto.ClinicDTO;
 import com.example.logindemo.dto.ProcedurePriceDTO;
 import com.example.logindemo.dto.UserDTO;
-import com.example.logindemo.model.CityTier;
-import com.example.logindemo.model.DentalDepartment;
-import com.example.logindemo.model.DoctorDetail;
-import com.example.logindemo.model.ProcedurePrice;
-import com.example.logindemo.model.User;
-import com.example.logindemo.model.CheckInRecord;
-import com.example.logindemo.model.Patient;
-import com.example.logindemo.repository.DoctorDetailRepository;
-import com.example.logindemo.repository.ProcedurePriceRepository;
-import com.example.logindemo.repository.UserRepository;
-import com.example.logindemo.repository.CheckInRecordRepository;
-import com.example.logindemo.repository.PatientRepository;
-import com.example.logindemo.service.DoctorDetailService;
+import com.example.logindemo.model.*;
+import com.example.logindemo.repository.*;
+import com.example.logindemo.service.ClinicService;
+import com.example.logindemo.service.UserService;
+import com.example.logindemo.service.ProcedurePriceService;
+import com.example.logindemo.service.DoctorTargetService;
+import com.example.logindemo.service.MotivationQuoteService;
 import lombok.extern.slf4j.Slf4j;
 import org.modelmapper.ModelMapper;
 import org.springframework.beans.factory.annotation.Autowired;
+import org.springframework.http.HttpStatus;
 import org.springframework.http.ResponseEntity;
 import org.springframework.jdbc.core.JdbcTemplate;
-import org.springframework.security.access.prepost.PreAuthorize;
 import org.springframework.security.crypto.password.PasswordEncoder;
 import org.springframework.stereotype.Controller;
 import org.springframework.ui.Model;
 import org.springframework.web.bind.annotation.*;
+import org.springframework.web.servlet.mvc.support.RedirectAttributes;
 
 import javax.annotation.Resource;
-import java.util.ArrayList;
-import java.util.Arrays;
-import java.util.HashMap;
-import java.util.List;
-import java.util.Map;
-import java.util.Optional;
 import java.time.LocalDateTime;
+import java.util.*;
+import java.util.stream.Collectors;
 
 @Controller
 @RequestMapping("/admin")
@@ -44,12 +35,6 @@ public class AdminController {
     @Resource(name = "userRepository")
     private UserRepository userRepository;
 
-    @Resource(name = "doctorDetailRepository")
-    private DoctorDetailRepository doctorDetailRepository;
-    
-    @Resource(name = "doctorDetailService")
-    private DoctorDetailService doctorDetailService;
-    
     @Resource(name = "procedurePriceRepository")
     private ProcedurePriceRepository procedurePriceRepository;
     
@@ -68,130 +53,188 @@ public class AdminController {
     @Autowired
     private JdbcTemplate jdbcTemplate;
 
+    @Autowired
+    private UserService userService;
+    
+    @Autowired
+    private ClinicService clinicService;
+
+    @Resource(name = "clinicRepository")
+    private ClinicRepository clinicRepository;
+
+    @Resource(name = "procedurePriceService")
+    private ProcedurePriceService procedurePriceService;
+
+    @Resource(name = "procedurePriceHistoryRepository")
+    private ProcedurePriceHistoryRepository procedurePriceHistoryRepository;
+    
+    @Autowired
+    private DoctorTargetService doctorTargetService;
+
+    @Autowired
+    private MotivationQuoteService motivationQuoteService;
+
     @GetMapping
-    public String adminDashboard() {
+    public String adminDashboard(Model model) {
+        model.addAttribute("userCount", userService.countUsers());
+        model.addAttribute("clinicCount", clinicService.getAllClinics().size());
         return "admin/dashboard";
     }
     
-    // User Management
     @GetMapping("/users")
     public String listUsers(Model model) {
-        List<User> users = userRepository.findAll();
+        List<UserDTO> users = userService.getAllUsers();
         model.addAttribute("users", users);
-        return "admin/users";
+        return "admin/userList";
     }
     
-    @GetMapping("/users/create")
+    @GetMapping("/users/new")
     public String showCreateUserForm(Model model) {
-        model.addAttribute("user", new User());
-        return "admin/create-user";
+        UserDTO userDTO = new UserDTO();
+        model.addAttribute("user", userDTO);
+        model.addAttribute("clinics", clinicService.getAllClinics());
+        model.addAttribute("roles", UserRole.values());
+        model.addAttribute("specializations", DentalSpecialization.values());
+        return "admin/createUser";
     }
     
-    @PostMapping("/users/create")
-    public String createUser(@ModelAttribute User user, Model model) {
-        // Check if username already exists
-        if (userRepository.findByUsername(user.getUsername()).isPresent()) {
-            model.addAttribute("error", "Username already exists");
-            return "admin/create-user";
+    @PostMapping("/users")
+    public String createUser(@ModelAttribute UserDTO userDTO, 
+                            @RequestParam(required = false) String specialization,
+                            RedirectAttributes redirectAttributes) {
+        try {
+            // If the created user is a doctor, set the specialization
+            if (userDTO.getRole() == UserRole.DOCTOR && specialization != null && !specialization.isEmpty()) {
+                try {
+                    userDTO.setSpecialization(specialization);
+                } catch (IllegalArgumentException e) {
+                    userDTO.setSpecialization(DentalSpecialization.GENERAL_DENTISTRY.name());
+                }
+            }
+
+            userService.createUser(userDTO);
+            redirectAttributes.addFlashAttribute("successMessage", "User created successfully");
+            return "redirect:/admin/users";
+        } catch (Exception e) {
+            redirectAttributes.addFlashAttribute("errorMessage", "Error creating user: " + e.getMessage());
+            return "redirect:/admin/users/new";
         }
-        
-        // Encode password
-        user.setPassword(passwordEncoder.encode(user.getPassword()));
-        user.setOnboardDoctors(new ArrayList<>());
-        
-        // Save user
-        userRepository.save(user);
-        return "redirect:/admin/users?success";
+    }
+    
+    @GetMapping("/users/{id}")
+    public String getUserDetails(@PathVariable Long id, Model model) {
+        return userService.getUserById(id)
+            .map(user -> {
+                model.addAttribute("user", user);
+                return "admin/userDetails";
+            })
+            .orElse("redirect:/admin/users?error=User+not+found");
     }
     
     @GetMapping("/users/{id}/edit")
     public String showEditUserForm(@PathVariable Long id, Model model) {
-        Optional<User> user = userRepository.findById(id);
-        if (!user.isPresent()) {
-            return "redirect:/admin/users?error=User not found";
-        }
-        
-        model.addAttribute("user", user.get());
-        return "admin/edit-user";
-    }
-    
-    @PostMapping("/users/{id}/edit")
-    public String updateUser(@PathVariable Long id, @ModelAttribute User userForm, 
-                          @RequestParam(value = "newPassword", required = false) String newPassword,
-                          Model model) {
-        Optional<User> userOpt = userRepository.findById(id);
-        if (!userOpt.isPresent()) {
-            return "redirect:/admin/users?error=User not found";
-        }
-        
-        User user = userOpt.get();
-        
-        // Check if username is being changed and if it's already taken
-        if (!user.getUsername().equals(userForm.getUsername())) {
-            if (userRepository.findByUsername(userForm.getUsername()).isPresent()) {
-                model.addAttribute("error", "Username already exists");
+        return userService.getUserById(id)
+            .map(user -> {
                 model.addAttribute("user", user);
-                return "admin/edit-user";
-            }
-            user.setUsername(userForm.getUsername());
-        }
-        
-        // Update city tier
-        user.setCityTier(userForm.getCityTier());
-        
-        // Update password if provided
-        if (newPassword != null && !newPassword.trim().isEmpty()) {
-            user.setPassword(passwordEncoder.encode(newPassword));
-        }
-        
-        userRepository.save(user);
-        return "redirect:/admin/users?success=updated";
+                model.addAttribute("clinics", clinicService.getAllClinics());
+                model.addAttribute("roles", UserRole.values());
+                model.addAttribute("specializations", DentalSpecialization.values());
+                
+                // If the user is a doctor, get the existing specialization from the user directly
+                if (user.getRole() == UserRole.DOCTOR && user.getSpecialization() != null) {
+                    model.addAttribute("currentSpecialization", user.getSpecialization());
+                }
+                
+                return "admin/editUser";
+            })
+            .orElse("redirect:/admin/users?error=User+not+found");
     }
     
-    @PostMapping("/users/update-tier")
-    @PreAuthorize("hasRole('ADMIN')")
-    public String updateUserCityTier(@RequestParam("userId") Long userId, 
-                                    @RequestParam(value = "cityTier", required = false) String cityTier,
-                                    Model model) {
-        log.info("Updating city tier for user ID: {} to {}", userId, cityTier);
-        
-        // Find the user
-        Optional<User> userOpt = userRepository.findById(userId);
-        if (userOpt.isEmpty()) {
-            log.error("User not found with ID: {}", userId);
-            return "redirect:/admin/users?error=User not found";
-        }
-        
-        User user = userOpt.get();
-        
-        // Update city tier
-        if (cityTier != null && !cityTier.isEmpty()) {
-            try {
-                CityTier tier = CityTier.valueOf("TIER" + cityTier);
-                user.setCityTier(tier);
-                log.info("Set city tier to: {}", tier);
-            } catch (IllegalArgumentException e) {
-                log.error("Invalid city tier: {}", cityTier, e);
-                return "redirect:/admin/users?error=Invalid city tier";
+    @PostMapping("/users/{id}")
+    public String updateUser(@PathVariable Long id, 
+                            @ModelAttribute UserDTO userDTO, 
+                            @RequestParam(required = false) String specialization,
+                            RedirectAttributes redirectAttributes) {
+        try {
+            // If the updated user is a doctor, set the specialization
+            if (userDTO.getRole() == UserRole.DOCTOR && specialization != null && !specialization.isEmpty()) {
+                try {
+                    userDTO.setSpecialization(specialization);
+                } catch (IllegalArgumentException e) {
+                    userDTO.setSpecialization(DentalSpecialization.GENERAL_DENTISTRY.name());
+                }
             }
-        } else {
-            // If cityTier is empty, set to null
-            user.setCityTier(null);
-            log.info("Cleared city tier for user");
+            
+            UserDTO updatedUser = userService.updateUser(id, userDTO);
+            
+            redirectAttributes.addFlashAttribute("successMessage", "User updated successfully");
+            return "redirect:/admin/users/" + id;
+        } catch (Exception e) {
+            redirectAttributes.addFlashAttribute("errorMessage", "Error updating user: " + e.getMessage());
+            return "redirect:/admin/users/" + id + "/edit";
+        }
+    }
+    
+    @PostMapping("/users/{id}/delete")
+    public String deleteUser(@PathVariable Long id, RedirectAttributes redirectAttributes) {
+        try {
+            userService.deleteUser(id);
+            redirectAttributes.addFlashAttribute("successMessage", "User deleted successfully");
+        } catch (Exception e) {
+            redirectAttributes.addFlashAttribute("errorMessage", "Error deleting user: " + e.getMessage());
+        }
+        return "redirect:/admin/users";
+    }
+    
+    @PostMapping("/users/{id}/reset-password")
+    public String resetUserPassword(@PathVariable Long id, RedirectAttributes redirectAttributes) {
+        try {
+            User user = userRepository.findById(id)
+                .orElseThrow(() -> new RuntimeException("User not found"));
+            
+            // Generate a random password
+            String newPassword = generateRandomPassword();
+            
+            // Set the new password and force change flag
+            user.setPassword(passwordEncoder.encode(newPassword));
+            user.setForcePasswordChange(true);
+            userRepository.save(user);
+            
+            // Add success message with the new password
+            redirectAttributes.addFlashAttribute("successMessage", 
+                "Password reset successful. New password: " + newPassword);
+            
+            return "redirect:/admin/users/" + id;
+        } catch (Exception e) {
+            redirectAttributes.addFlashAttribute("errorMessage", 
+                "Error resetting password: " + e.getMessage());
+            return "redirect:/admin/users/" + id;
+        }
+    }
+    
+    private String generateRandomPassword() {
+        // Generate a random 8-character password
+        String chars = "ABCDEFGHIJKLMNOPQRSTUVWXYZabcdefghijklmnopqrstuvwxyz0123456789!@#$%^&*";
+        StringBuilder password = new StringBuilder();
+        Random random = new Random();
+        
+        for (int i = 0; i < 8; i++) {
+            password.append(chars.charAt(random.nextInt(chars.length())));
         }
         
-        // Save user
-        userRepository.save(user);
-        log.info("User city tier updated successfully");
-        
-        return "redirect:/admin/users?tierUpdated=true";
+        return password.toString();
     }
     
     // Doctor Management
     @GetMapping("/doctors")
     public String listDoctors(Model model) {
-        List<DoctorDetail> doctors = doctorDetailRepository.findAll();
-        List<User> clinics = userRepository.findAll();
+        // Since UserRepository doesn't have findByRole yet, use a filter on findAll
+        List<User> allUsers = userRepository.findAll();
+        List<User> doctors = allUsers.stream()
+            .filter(user -> user.getRole() == UserRole.DOCTOR)
+            .collect(Collectors.toList());
+        
+        List<ClinicModel> clinics = clinicRepository.findAll();
         
         model.addAttribute("doctors", doctors);
         model.addAttribute("clinics", clinics);
@@ -200,89 +243,165 @@ public class AdminController {
     
     @GetMapping("/doctors/create")
     public String showCreateDoctorForm(Model model) {
-        model.addAttribute("doctor", new DoctorDetailDTO());
-        model.addAttribute("clinics", userRepository.findAll());
-        return "admin/create-doctor";
+        // Redirect to the regular user creation form
+        return "redirect:/admin/users/new";
     }
     
     @PostMapping("/doctors/create")
-    public String createDoctor(@ModelAttribute DoctorDetailDTO doctorDTO, @RequestParam Long clinicId, Model model) {
-        try {
-            Optional<User> clinic = userRepository.findById(clinicId);
-            if (!clinic.isPresent()) {
-                model.addAttribute("error", "Clinic not found");
-                model.addAttribute("clinics", userRepository.findAll());
-                return "admin/create-doctor";
-            }
-            
-            DoctorDetail doctor = new DoctorDetail();
-            doctor.setDoctorName(doctorDTO.getDoctorName());
-            doctor.setOnboardClinic(clinic.get());
-            
-            doctorDetailRepository.save(doctor);
-            return "redirect:/admin/doctors?success";
-        } catch (Exception e) {
-            model.addAttribute("error", "Error creating doctor: " + e.getMessage());
-            model.addAttribute("clinics", userRepository.findAll());
-            return "admin/create-doctor";
-        }
+    public String createDoctor(@ModelAttribute UserDTO doctorDTO, 
+                         @RequestParam Long clinicId,
+                         @RequestParam(required = false) String specialization,
+                         @RequestParam String doctorMobileNumber,
+                         @RequestParam String doctorBirthday,
+                         Model model) {
+        // No longer needed as we're using User entity with DOCTOR role
+        return "redirect:/admin/users/new";
     }
     
     @PostMapping("/doctors/{id}/delete")
     @ResponseBody
     public ResponseEntity<?> deleteDoctor(@PathVariable Long id) {
         try {
-            Optional<DoctorDetail> doctor = doctorDetailRepository.findById(id);
-            if (!doctor.isPresent()) {
-                return ResponseEntity.badRequest().body(Map.of("success", false, "message", "Doctor not found"));
+            // Simply update the user's role instead of deleting a doctor record
+            Optional<User> user = userRepository.findById(id);
+            if (!user.isPresent()) {
+                return ResponseEntity.status(HttpStatus.NOT_FOUND)
+                    .body(Map.of("success", false, "message", "Doctor not found"));
             }
             
-            doctorDetailRepository.delete(doctor.get());
+            // Update the user to a different role or delete the user entirely
+            user.get().setRole(UserRole.STAFF); // Change to staff, or use userService.deleteUser(id)
+            userRepository.save(user.get());
+            
             return ResponseEntity.ok(Map.of("success", true));
         } catch (Exception e) {
-            return ResponseEntity.badRequest().body(Map.of("success", false, "message", e.getMessage()));
+            return ResponseEntity.status(HttpStatus.INTERNAL_SERVER_ERROR)
+                .body(Map.of("success", false, "message", e.getMessage()));
         }
     }
     
     @GetMapping("/doctors/{id}/edit")
     public String showEditDoctorForm(@PathVariable Long id, Model model) {
-        Optional<DoctorDetail> doctor = doctorDetailRepository.findById(id);
-        if (!doctor.isPresent()) {
-            return "redirect:/admin/doctors?error=not-found";
-        }
-        
-        model.addAttribute("doctor", doctor.get());
-        model.addAttribute("clinics", userRepository.findAll());
-        return "admin/edit-doctor";
+        return "redirect:/admin/users/" + id + "/edit";
     }
     
     @PostMapping("/doctors/{id}/edit")
-    public String updateDoctor(@PathVariable Long id, @ModelAttribute DoctorDetailDTO doctorDTO, 
-                              @RequestParam Long clinicId, Model model) {
+    public String updateDoctor(@PathVariable Long id, 
+                              @ModelAttribute UserDTO doctorDTO, 
+                              @RequestParam Long clinicId,
+                              @RequestParam(required = false) String specialization,
+                              @RequestParam String doctorMobileNumber,
+                              @RequestParam String doctorBirthday,
+                              Model model) {
+        // Redirect to the user edit path instead
+        return "redirect:/admin/users/" + id + "/edit";
+    }
+    
+    // Clinic Management
+    @GetMapping("/clinics")
+    public String listClinics(Model model) {
+        List<ClinicDTO> clinics = clinicService.getAllClinics();
+        model.addAttribute("clinics", clinics);
+        return "admin/clinics/list";
+    }
+
+    @GetMapping("/clinics/new")
+    public String showCreateClinicForm(Model model) {
+        model.addAttribute("clinic", new ClinicDTO());
+        model.addAttribute("users", userService.getAllUsers());
+        model.addAttribute("cityTiers", CityTier.values());
+        return "admin/clinics/form";
+    }
+
+    @PostMapping("/clinics/save")
+    public String saveClinic(@ModelAttribute ClinicDTO clinicDTO, 
+                           @RequestParam(required = false) Long ownerId,
+                           RedirectAttributes redirectAttributes) {
         try {
-            Optional<DoctorDetail> existingDoctor = doctorDetailRepository.findById(id);
-            if (!existingDoctor.isPresent()) {
-                return "redirect:/admin/doctors?error=not-found";
+            // Validate mandatory fields
+            if (clinicDTO.getClinicId() == null || clinicDTO.getClinicId().trim().isEmpty()) {
+                redirectAttributes.addFlashAttribute("errorMessage", "Clinic ID is required");
+                return "redirect:/admin/clinics/new";
             }
             
-            Optional<User> clinic = userRepository.findById(clinicId);
-            if (!clinic.isPresent()) {
-                model.addAttribute("error", "Clinic not found");
-                model.addAttribute("doctor", existingDoctor.get());
-                model.addAttribute("clinics", userRepository.findAll());
-                return "admin/edit-doctor";
+            if (clinicDTO.getClinicName() == null || clinicDTO.getClinicName().trim().isEmpty()) {
+                redirectAttributes.addFlashAttribute("errorMessage", "Clinic Name is required");
+                return "redirect:/admin/clinics/new";
             }
             
-            DoctorDetail doctor = existingDoctor.get();
-            doctor.setDoctorName(doctorDTO.getDoctorName());
-            doctor.setOnboardClinic(clinic.get());
+            if (clinicDTO.getCityTier() == null) {
+                redirectAttributes.addFlashAttribute("errorMessage", "City Tier is required");
+                return "redirect:/admin/clinics/new";
+            }
             
-            doctorDetailRepository.save(doctor);
-            return "redirect:/admin/doctors?success=updated";
+            // Set owner if provided
+            if (ownerId != null) {
+                UserDTO owner = userService.getUserById(ownerId)
+                    .orElseThrow(() -> new RuntimeException("Owner not found"));
+                clinicDTO.setOwner(owner);
+            }
+            
+            // Save the clinic using service
+            ClinicDTO savedClinic = clinicService.createClinic(clinicDTO);
+            
+            redirectAttributes.addFlashAttribute("successMessage", "Clinic created successfully");
+            return "redirect:/admin/clinics";
         } catch (Exception e) {
-            model.addAttribute("error", "Error updating doctor: " + e.getMessage());
-            model.addAttribute("clinics", userRepository.findAll());
-            return "admin/edit-doctor";
+            redirectAttributes.addFlashAttribute("errorMessage", "Error creating clinic: " + e.getMessage());
+            return "redirect:/admin/clinics/new";
+        }
+    }
+
+    @GetMapping("/clinics/edit/{id}")
+    public String showEditClinicForm(@PathVariable Long id, Model model) {
+        try {
+            ClinicDTO clinic = clinicService.getClinicById(id)
+                    .orElseThrow(() -> new RuntimeException("Clinic not found"));
+
+            model.addAttribute("clinic", clinic);
+            return "admin/clinics/form";
+        } catch (Exception e) {
+            return "redirect:/admin/clinics?error=not-found";
+        }
+    }
+
+    @PostMapping("/clinics/edit/{id}")
+    public String updateClinic(@PathVariable Long id,
+                               @ModelAttribute ClinicDTO clinicDTO,
+                               RedirectAttributes redirectAttributes) {
+        try {
+            // Validate clinic name
+            if (clinicDTO.getClinicName() == null || clinicDTO.getClinicName().trim().isEmpty()) {
+                redirectAttributes.addFlashAttribute("errorMessage", "Clinic Name is required");
+                return "redirect:/admin/clinics/edit/" + id;
+            }
+
+            // Get existing clinic to preserve other fields
+            ClinicDTO existingClinic = clinicService.getClinicById(id)
+                    .orElseThrow(() -> new RuntimeException("Clinic not found"));
+
+            // Only update the clinic name
+            existingClinic.setClinicName(clinicDTO.getClinicName());
+
+            // Update the clinic using service
+            ClinicDTO updatedClinic = clinicService.updateClinic(id, existingClinic);
+
+            redirectAttributes.addFlashAttribute("successMessage", "Clinic name updated successfully");
+            return "redirect:/admin/clinics";
+        } catch (Exception e) {
+            redirectAttributes.addFlashAttribute("errorMessage", "Error updating clinic: " + e.getMessage());
+            return "redirect:/admin/clinics/edit/" + id;
+        }
+    }
+
+    @PostMapping("/clinics/{id}/delete")
+    @ResponseBody
+    public ResponseEntity<?> deleteClinic(@PathVariable Long id) {
+        try {
+            clinicService.deleteClinic(id);
+            return ResponseEntity.ok(Map.of("success", true));
+        } catch (Exception e) {
+            return ResponseEntity.badRequest().body(Map.of("success", false, "message", e.getMessage()));
         }
     }
     
@@ -312,7 +431,10 @@ public class AdminController {
     }
     
     @PostMapping("/prices/create")
-    public String createProcedurePrice(@ModelAttribute ProcedurePriceDTO procedureDTO, Model model) {
+    public String createProcedurePrice(@ModelAttribute ProcedurePriceDTO procedureDTO, 
+                                     @RequestParam(required = false) String changeReason,
+                                     @RequestParam(required = false) String effectiveFrom,
+                                     Model model) {
         try {
             // Validate all required fields
             if (procedureDTO.getProcedureName() == null || procedureDTO.getProcedureName().trim().isEmpty()) {
@@ -343,13 +465,32 @@ public class AdminController {
                 return "admin/create-procedure";
             }
             
+            // Create the procedure price
             ProcedurePrice procedurePrice = new ProcedurePrice();
             procedurePrice.setProcedureName(procedureDTO.getProcedureName());
             procedurePrice.setCityTier(procedureDTO.getCityTier());
             procedurePrice.setPrice(procedureDTO.getPrice());
             procedurePrice.setDentalDepartment(procedureDTO.getDentalDepartment());
             
-            procedurePriceRepository.save(procedurePrice);
+            // Save the procedure first to get its ID
+            procedurePrice = procedurePriceRepository.save(procedurePrice);
+            
+            // Create the initial price history record
+            ProcedurePriceHistory history = new ProcedurePriceHistory();
+            history.setProcedure(procedurePrice);
+            history.setPrice(procedureDTO.getPrice());
+            history.setChangeReason(changeReason != null ? changeReason : "Initial price");
+            
+            // Set effective from date if provided, otherwise use current time
+            if (effectiveFrom != null && !effectiveFrom.trim().isEmpty()) {
+                history.setEffectiveFrom(LocalDateTime.parse(effectiveFrom.replace(" ", "T")));
+            } else {
+                history.setEffectiveFrom(LocalDateTime.now());
+            }
+            
+            // Save the history record
+            procedurePriceHistoryRepository.save(history);
+            
             return "redirect:/admin/prices?success";
         } catch (Exception e) {
             model.addAttribute("error", "Error creating procedure price: " + e.getMessage());
@@ -373,7 +514,8 @@ public class AdminController {
     }
     
     @PostMapping("/prices/{id}/edit")
-    public String updateProcedurePrice(@PathVariable Long id, @ModelAttribute ProcedurePriceDTO procedureDTO, Model model) {
+    public String updateProcedurePrice(@PathVariable Long id, @ModelAttribute ProcedurePriceDTO procedureDTO, 
+                                     @RequestParam(required = false) String changeReason, Model model) {
         try {
             Optional<ProcedurePrice> existingProcedure = procedurePriceRepository.findById(id);
             if (!existingProcedure.isPresent()) {
@@ -413,13 +555,8 @@ public class AdminController {
                 return "admin/edit-procedure";
             }
             
-            ProcedurePrice procedurePrice = existingProcedure.get();
-            procedurePrice.setProcedureName(procedureDTO.getProcedureName());
-            procedurePrice.setCityTier(procedureDTO.getCityTier());
-            procedurePrice.setPrice(procedureDTO.getPrice());
-            procedurePrice.setDentalDepartment(procedureDTO.getDentalDepartment());
-            
-            procedurePriceRepository.save(procedurePrice);
+            // Update the procedure price with history
+            procedurePriceService.updateProcedurePrice(id, procedureDTO, changeReason);
             return "redirect:/admin/prices?success=updated";
         } catch (Exception e) {
             model.addAttribute("error", "Error updating procedure price: " + e.getMessage());
@@ -541,5 +678,158 @@ public class AdminController {
             log.error("Error fixing database manually: {}", e.getMessage());
             return "redirect:/admin/database-status?error=" + e.getMessage();
         }
+    }
+    
+    // Target Management Methods
+    @GetMapping("/targets")
+    public String listTargets(Model model) {
+        List<DoctorTarget> targets = doctorTargetService.getAllTargets();
+        model.addAttribute("targets", targets);
+        model.addAttribute("cityTiers", CityTier.values());
+        return "admin/targets";
+    }
+    
+    @GetMapping("/targets/new")
+    public String showCreateTargetForm(Model model) {
+        DoctorTarget target = new DoctorTarget();
+        model.addAttribute("target", target);
+        model.addAttribute("cityTiers", CityTier.values());
+        return "admin/create-target";
+    }
+    
+    @PostMapping("/targets/create")
+    public String createTarget(@ModelAttribute DoctorTarget target, RedirectAttributes redirectAttributes) {
+        try {
+            doctorTargetService.createTarget(target);
+            redirectAttributes.addFlashAttribute("successMessage", "Target created successfully");
+            return "redirect:/admin/targets";
+        } catch (Exception e) {
+            redirectAttributes.addFlashAttribute("errorMessage", "Error creating target: " + e.getMessage());
+            return "redirect:/admin/targets/new";
+        }
+    }
+    
+    @GetMapping("/targets/{id}/edit")
+    public String showEditTargetForm(@PathVariable Long id, Model model) {
+        try {
+            DoctorTarget target = doctorTargetService.getTargetById(id);
+            model.addAttribute("target", target);
+            model.addAttribute("cityTiers", CityTier.values());
+            return "admin/edit-target";
+        } catch (Exception e) {
+            return "redirect:/admin/targets?error=Target+not+found";
+        }
+    }
+    
+    @PostMapping("/targets/{id}/edit")
+    public String updateTarget(@PathVariable Long id, @ModelAttribute DoctorTarget target, RedirectAttributes redirectAttributes) {
+        try {
+            doctorTargetService.updateTarget(id, target);
+            redirectAttributes.addFlashAttribute("successMessage", "Target updated successfully");
+            return "redirect:/admin/targets";
+        } catch (Exception e) {
+            redirectAttributes.addFlashAttribute("errorMessage", "Error updating target: " + e.getMessage());
+            return "redirect:/admin/targets/" + id + "/edit";
+        }
+    }
+    
+    @PostMapping("/targets/{id}/delete")
+    @ResponseBody
+    public ResponseEntity<?> deleteTarget(@PathVariable Long id) {
+        try {
+            doctorTargetService.deleteTarget(id);
+            return ResponseEntity.ok(Map.of("success", true, "message", "Target deleted successfully"));
+        } catch (Exception e) {
+            return ResponseEntity.badRequest().body(Map.of("success", false, "message", e.getMessage()));
+        }
+    }
+    
+    @PostMapping("/targets/{id}/activate")
+    @ResponseBody
+    public ResponseEntity<?> activateTarget(@PathVariable Long id) {
+        try {
+            doctorTargetService.activateTarget(id);
+            return ResponseEntity.ok(Map.of("success", true, "message", "Target activated successfully"));
+        } catch (Exception e) {
+            return ResponseEntity.badRequest().body(Map.of("success", false, "message", e.getMessage()));
+        }
+    }
+    
+    @PostMapping("/targets/{id}/deactivate")
+    @ResponseBody
+    public ResponseEntity<?> deactivateTarget(@PathVariable Long id) {
+        try {
+            doctorTargetService.deactivateTarget(id);
+            return ResponseEntity.ok(Map.of("success", true, "message", "Target deactivated successfully"));
+        } catch (Exception e) {
+            return ResponseEntity.badRequest().body(Map.of("success", false, "message", e.getMessage()));
+        }
+    }
+
+    @GetMapping("/reports")
+    public String reports(Model model) {
+        return "admin/reports";
+    }
+    
+    // Motivation Quote Management
+    
+    @GetMapping("/motivation-quotes")
+    public String listMotivationQuotes(Model model) {
+        List<MotivationQuote> quotes = motivationQuoteService.getAllActiveQuotes();
+        model.addAttribute("quotes", quotes);
+        return "admin/motivationQuotes";
+    }
+    
+    @GetMapping("/motivation-quotes/new")
+    public String showCreateMotivationQuoteForm(Model model) {
+        model.addAttribute("quote", new MotivationQuote());
+        return "admin/motivationQuoteForm";
+    }
+    
+    @PostMapping("/motivation-quotes")
+    public String createMotivationQuote(@ModelAttribute MotivationQuote quote, RedirectAttributes redirectAttributes) {
+        try {
+            motivationQuoteService.saveQuote(quote);
+            redirectAttributes.addFlashAttribute("success", "Motivation quote created successfully!");
+        } catch (Exception e) {
+            log.error("Error creating motivation quote", e);
+            redirectAttributes.addFlashAttribute("error", "Error creating motivation quote: " + e.getMessage());
+        }
+        return "redirect:/admin/motivation-quotes";
+    }
+    
+    @GetMapping("/motivation-quotes/{id}/edit")
+    public String showEditMotivationQuoteForm(@PathVariable Long id, Model model) {
+        Optional<MotivationQuote> quote = motivationQuoteService.getQuoteById(id);
+        if (quote.isPresent()) {
+            model.addAttribute("quote", quote.get());
+            return "admin/motivationQuoteForm";
+        } else {
+            return "redirect:/admin/motivation-quotes?error=Quote not found";
+        }
+    }
+    
+    @PostMapping("/motivation-quotes/{id}")
+    public String updateMotivationQuote(@PathVariable Long id, @ModelAttribute MotivationQuote quote, RedirectAttributes redirectAttributes) {
+        try {
+            motivationQuoteService.updateQuote(id, quote);
+            redirectAttributes.addFlashAttribute("success", "Motivation quote updated successfully!");
+        } catch (Exception e) {
+            log.error("Error updating motivation quote", e);
+            redirectAttributes.addFlashAttribute("error", "Error updating motivation quote: " + e.getMessage());
+        }
+        return "redirect:/admin/motivation-quotes";
+    }
+    
+    @PostMapping("/motivation-quotes/{id}/delete")
+    public String deleteMotivationQuote(@PathVariable Long id, RedirectAttributes redirectAttributes) {
+        try {
+            motivationQuoteService.deleteQuote(id);
+            redirectAttributes.addFlashAttribute("success", "Motivation quote deleted successfully!");
+        } catch (Exception e) {
+            log.error("Error deleting motivation quote", e);
+            redirectAttributes.addFlashAttribute("error", "Error deleting motivation quote: " + e.getMessage());
+        }
+        return "redirect:/admin/motivation-quotes";
     }
 } 

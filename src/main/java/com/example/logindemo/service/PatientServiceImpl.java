@@ -6,7 +6,6 @@ import com.example.logindemo.dto.PatientDTO;
 import com.example.logindemo.dto.ToothClinicalExaminationDTO;
 import com.example.logindemo.model.*;
 import com.example.logindemo.repository.CheckInRecordRepository;
-import com.example.logindemo.repository.DoctorDetailRepository;
 import com.example.logindemo.repository.PatientRepository;
 import com.example.logindemo.repository.ToothClinicalExaminationRepository;
 import com.example.logindemo.repository.UserRepository;
@@ -15,6 +14,10 @@ import com.example.logindemo.utils.PeriDeskUtils;
 import lombok.NonNull;
 import lombok.extern.slf4j.Slf4j;
 import org.modelmapper.ModelMapper;
+import org.springframework.data.domain.Page;
+import org.springframework.data.domain.Pageable;
+import org.springframework.security.core.Authentication;
+import org.springframework.security.core.context.SecurityContextHolder;
 import org.springframework.stereotype.Component;
 import org.springframework.stereotype.Service;
 import org.springframework.web.multipart.MultipartFile;
@@ -22,6 +25,8 @@ import org.springframework.web.multipart.MultipartFile;
 import javax.annotation.Resource;
 import java.io.IOException;
 import java.time.LocalDateTime;
+import java.util.Calendar;
+import java.util.Collections;
 import java.util.Date;
 import java.util.List;
 import java.util.Optional;
@@ -40,8 +45,8 @@ public class PatientServiceImpl implements PatientService{
     @Resource
     private PatientMapper patientMapper;
 
-    @Resource
-    UserRepository userRepository;
+    @Resource(name="userRepository")
+    private UserRepository userRepository;
 
     @Resource(name = "checkInRecordRepository")
     private CheckInRecordRepository checkInRecordRepository;
@@ -49,12 +54,11 @@ public class PatientServiceImpl implements PatientService{
     @Resource(name="toothClinicalExaminationRepository")
     private ToothClinicalExaminationRepository toothClinicalExaminationRepository;
 
-    @Resource(name="doctorDetailRepository")
-    private DoctorDetailRepository doctorDetailRepository;
-
     @Resource(name="fileStorageService")
     private FileStorageService fileStorageService;
 
+    @Resource
+    private UserService userService;
 
     @Override
     public void checkInPatient(Long patientId, String currentClinicId) {
@@ -127,6 +131,17 @@ public class PatientServiceImpl implements PatientService{
     public void registerPatient(PatientDTO patientDTO) {
         log.info("Registering new patient: {}", patientDTO.getFirstName());
         try {
+            // Get current user and clinic
+            Authentication authentication = SecurityContextHolder.getContext().getAuthentication();
+            String username = authentication.getName();
+            
+            User currentUser = userService.findByUsername(username)
+                .orElseThrow(() -> new RuntimeException("Current user not found"));
+            
+            if (currentUser.getClinic() == null) {
+                throw new RuntimeException("Current user is not associated with any clinic");
+            }
+            
             // Convert PatientDTO to Patient entity
             Patient patient = new Patient();
             patient.setFirstName(patientDTO.getFirstName());
@@ -142,7 +157,17 @@ public class PatientServiceImpl implements PatientService{
             patient.setMedicalHistory(patientDTO.getMedicalHistory());
             patient.setEmergencyContactName(patientDTO.getEmergencyContactName());
             patient.setEmergencyContactPhoneNumber(patientDTO.getEmergencyContactPhoneNumber());
+            patient.setProfilePicturePath(patientDTO.getProfilePicturePath());
             
+            // Set audit fields
+            patient.setCreatedBy(currentUser);
+            patient.setRegisteredClinic(currentUser.getClinic());
+            patient.setCreatedAt(new Date());
+            
+            // Generate and set registration code
+            String registrationCode = generateRegistrationCode();
+            patient.setRegistrationCode(registrationCode);
+            patientDTO.setRegistrationCode(registrationCode);
             
             // Handle occupation conversion
             if (patientDTO.getOccupation() != null) {
@@ -158,11 +183,11 @@ public class PatientServiceImpl implements PatientService{
             }
             
             // Set referral model
-            if (patientDTO.getReferral() != null) {
+            if (patientDTO.getReferralModel() != null) {
                 try {
-                    patient.setReferralModel(ReferralModel.valueOf(patientDTO.getReferral().getName()));
+                    patient.setReferralModel(ReferralModel.valueOf(patientDTO.getReferralModel().getName()));
                 } catch (IllegalArgumentException e) {
-                    log.warn("Invalid referral model value: {}", patientDTO.getReferral().getName());
+                    log.warn("Invalid referral model value: {}", patientDTO.getReferralModel().getName());
                     patient.setReferralModel(ReferralModel.OTHER);
                 }
             }
@@ -172,11 +197,38 @@ public class PatientServiceImpl implements PatientService{
             
             // Save the patient
             patientRepository.save(patient);
-            log.info("Successfully registered patient with ID: {}", patient.getId());
+            log.info("Successfully registered patient with ID: {} and registration code: {} by user: {} at clinic: {}", 
+                patient.getId(), registrationCode, currentUser.getUsername(), currentUser.getClinic().getClinicName());
         } catch (Exception e) {
             log.error("Error registering patient: {}", e.getMessage(), e);
             throw new RuntimeException("Failed to register patient: " + e.getMessage(), e);
         }
+    }
+
+    /**
+     * Generates a registration code in the format SDC+YYYY+MM+sequence
+     * @return the generated registration code
+     */
+    private String generateRegistrationCode() {
+        LocalDateTime now = LocalDateTime.now();
+        String year = String.valueOf(now.getYear());
+        String month = String.format("%02d", now.getMonthValue());
+        
+        // Get the count of patients registered in the current month
+        Calendar calendar = Calendar.getInstance();
+        calendar.set(Calendar.DAY_OF_MONTH, 1);
+        calendar.set(Calendar.HOUR_OF_DAY, 0);
+        calendar.set(Calendar.MINUTE, 0);
+        calendar.set(Calendar.SECOND, 0);
+        Date startOfMonth = calendar.getTime();
+        
+        calendar.add(Calendar.MONTH, 1);
+        Date endOfMonth = calendar.getTime();
+        
+        long sequence = patientRepository.countByRegistrationDateBetween(startOfMonth, endOfMonth) + 1;
+        
+        // Format: SDC+YYYY+MM+sequence (padded to 4 digits)
+        return String.format("SDC%s%s%04d", year, month, sequence);
     }
 
     @Override
@@ -186,15 +238,57 @@ public class PatientServiceImpl implements PatientService{
     }
 
     @Override
-    public List<PatientDTO> getCheckedInPatients() {
-        List<Patient> waitingPatients = patientRepository.findByCheckedInTrue();
+    public Page<PatientDTO> getAllPatientsPaginated(Pageable pageable) {
+        Page<Patient> patientsPage = patientRepository.findAll(pageable);
+        return patientsPage.map(patientMapper::toDto);
+    }
+
+    @Override
+    public Page<PatientDTO> searchPatientsPaginated(String searchType, String query, Pageable pageable) {
+        Page<Patient> patientsPage;
         
-        // Fix any checked-in patients without check-in records
-        for (Patient patient : waitingPatients) {
-            if (patient.getCurrentCheckInRecord() == null) {
-                fixMissingCheckInRecord(patient);
-            }
+        switch (searchType) {
+            case "name":
+                patientsPage = patientRepository.findByFirstNameContainingIgnoreCaseOrLastNameContainingIgnoreCase(query, query, pageable);
+                break;
+            case "phone":
+                patientsPage = patientRepository.findByPhoneNumberContaining(query, pageable);
+                break;
+            case "registration":
+                patientsPage = patientRepository.findByRegistrationCodeContainingIgnoreCase(query, pageable);
+                break;
+            case "examination":
+                try {
+                    Long examinationId = Long.parseLong(query);
+                    patientsPage = patientRepository.findByExaminationId(examinationId, pageable);
+                } catch (NumberFormatException e) {
+                    // Return empty page if query is not a valid number
+                    patientsPage = Page.empty(pageable);
+                }
+                break;
+            default:
+                patientsPage = patientRepository.findAll(pageable);
+                break;
         }
+        
+        return patientsPage.map(patientMapper::toDto);
+    }
+
+    @Override
+    public List<PatientDTO> getCheckedInPatients() {
+        Authentication authentication = SecurityContextHolder.getContext().getAuthentication();
+        String username = authentication.getName();
+        
+        User loggedInUser = userService.findByUsername(username)
+            .orElseThrow(() -> new RuntimeException("User not found"));
+            
+        if (loggedInUser.getClinic() == null) {
+            log.warn("User {} has no clinic associated", username);
+            return Collections.emptyList();
+        }
+        
+        List<Patient> waitingPatients = patientRepository.findByCheckedInTrueAndCurrentCheckInRecord_Clinic(loggedInUser.getClinic());
+        log.info("Found {} checked-in patients for clinic {}", waitingPatients.size(), loggedInUser.getClinic().getId());
         
         return waitingPatients.stream().map(patientMapper::toDto).toList();
     }
@@ -235,14 +329,23 @@ public class PatientServiceImpl implements PatientService{
                 toothClinicalExamination.setPatient(patients.get());
                 toothClinicalExamination.setExaminationDate(LocalDateTime.now());
                 
+                // Set OPD doctor if provided
+                if (request.getOpdDoctorId() != null) {
+                    User opdDoctor = userRepository.findById(request.getOpdDoctorId())
+                        .orElseThrow(() -> new RuntimeException("OPD doctor not found"));
+                    toothClinicalExamination.setOpdDoctor(opdDoctor);
+                    log.info("Set OPD doctor to: {}", opdDoctor.getFirstName() + " " + opdDoctor.getLastName());
+                }
+                
                 // Get current clinic user and set it as examination clinic
                 String currentClinicUsername = PeriDeskUtils.getCurrentClinicUserName();
-                Optional<User> currentClinic = userRepository.findByUsername(currentClinicUsername);
-                if (currentClinic.isPresent()) {
-                    toothClinicalExamination.setExaminationClinic(currentClinic.get());
-                    log.info("Setting examination clinic to: {}", currentClinicUsername);
+                Optional<User> currentUser = userRepository.findByUsername(currentClinicUsername);
+                if (currentUser.isPresent() && currentUser.get().getClinic() != null) {
+                    ClinicModel clinic = currentUser.get().getClinic();
+                    toothClinicalExamination.setExaminationClinic(clinic);
+                    log.info("Setting examination clinic to: {}", clinic.getClinicName());
                 } else {
-                    log.warn("Could not find clinic with username: {}", currentClinicUsername);
+                    log.warn("Could not find clinic for user: {}", currentClinicUsername);
                 }
                 
                 toothClinicalExaminationRepository.save(toothClinicalExamination);
@@ -306,6 +409,12 @@ public class PatientServiceImpl implements PatientService{
             if (request.getExaminationNotes() != null) {
                 examination.setExaminationNotes(request.getExaminationNotes());
             }
+            if (request.getChiefComplaints() != null) {
+                examination.setChiefComplaints(request.getChiefComplaints());
+            }
+            if (request.getAdvised() != null) {
+                examination.setAdvised(request.getAdvised());
+            }
             
             // Save the updated examination
             toothClinicalExaminationRepository.save(examination);
@@ -332,10 +441,14 @@ public class PatientServiceImpl implements PatientService{
                 examination.setAssignedDoctor(null);
                 log.info("Removed doctor assignment from examination ID {}", examinationId);
             } else {
-                // Case: Assign a doctor
-                // Find the doctor in DoctorDetail repository
-                DoctorDetail doctor = doctorDetailRepository.findById(doctorId)
+                // Case: Assign a doctor - now using User entity directly
+                User doctor = userRepository.findById(doctorId)
                     .orElseThrow(() -> new IllegalArgumentException("Doctor not found with ID: " + doctorId));
+                
+                // Verify the user is a doctor
+                if (doctor.getRole() != UserRole.DOCTOR) {
+                    throw new IllegalArgumentException("User ID " + doctorId + " is not a doctor");
+                }
                 
                 // Update the examination with the doctor
                 examination.setAssignedDoctor(doctor);
@@ -456,6 +569,15 @@ public class PatientServiceImpl implements PatientService{
                 }
             }
             
+            if (patientDTO.getReferralModel() != null) {
+                try {
+                    existingPatient.setReferralModel(ReferralModel.valueOf(patientDTO.getReferralModel().getName()));
+                } catch (IllegalArgumentException e) {
+                    log.warn("Invalid referral model value: {}", patientDTO.getReferralModel().getName());
+                    existingPatient.setReferralModel(ReferralModel.OTHER);
+                }
+            }
+            
             // Save the updated patient
             patientRepository.save(existingPatient);
             log.info("Successfully updated patient with ID: {}", patientId);
@@ -463,6 +585,22 @@ public class PatientServiceImpl implements PatientService{
             log.error("Error updating patient: {}", e.getMessage(), e);
             throw new RuntimeException("Failed to update patient: " + e.getMessage(), e);
         }
+    }
+
+    @Override
+    public Optional<Patient> getPatientById(Long id) {
+        return patientRepository.findById(id);
+    }
+
+    @Override
+    public Patient savePatient(Patient patient) {
+        return patientRepository.save(patient);
+    }
+
+    @Override
+    public PatientDTO findByRegistrationCode(String registrationCode) {
+        Optional<Patient> patient = patientRepository.findByRegistrationCode(registrationCode);
+        return patient.map(patientMapper::toDto).orElse(null);
     }
 
 }

@@ -2,6 +2,7 @@
 <%@ taglib prefix="c" uri="http://java.sun.com/jsp/jstl/core"%>
 <%@ taglib prefix="fmt" uri="http://java.sun.com/jsp/jstl/fmt"%>
 <%@ taglib prefix="fn" uri="http://java.sun.com/jsp/jstl/functions"%>
+<%@ taglib prefix="sec" uri="http://www.springframework.org/security/tags"%>
 
 <!DOCTYPE html>
 <html>
@@ -13,6 +14,10 @@
     <link href="https://fonts.googleapis.com/css2?family=Poppins:wght@300;400;500;600;700&display=swap" rel="stylesheet">
     <link rel="stylesheet" href="https://cdnjs.cloudflare.com/ajax/libs/font-awesome/6.4.0/css/all.min.css">
     <script src="https://code.jquery.com/jquery-3.6.4.min.js"></script>
+    
+    <!-- Include common menu styles -->
+    <jsp:include page="/WEB-INF/views/common/menuStyles.jsp" />
+    
     <style>
         body {
             font-family: 'Poppins', sans-serif;
@@ -389,51 +394,15 @@
 </head>
 <body>
     <div class="welcome-container">
-        <div class="sidebar-menu">
-            <div class="logo">
-                <img src="${pageContext.request.contextPath}/images/tooth-repair.svg" alt="PeriDesk Logo">
-                <h1>PeriDesk</h1>
-            </div>
-            <a href="${pageContext.request.contextPath}/welcome" class="action-card">
-                <i class="fas fa-clipboard-list"></i>
-                <div class="card-text">
-                    <h3>Waiting Lobby</h3>
-                    <p>View waiting patients</p>
-                </div>
-            </a>
-            <a href="${pageContext.request.contextPath}/patients/register" class="action-card">
-                <i class="fas fa-user-plus"></i>
-                <div class="card-text">
-                    <h3>Register Patient</h3>
-                    <p>Add new patient</p>
-                </div>
-            </a>
-            <a href="${pageContext.request.contextPath}/patients/list" class="action-card">
-                <i class="fas fa-users"></i>
-                <div class="card-text">
-                    <h3>View Patients</h3>
-                    <p>Manage records</p>
-                </div>
-            </a>
-            <a href="${pageContext.request.contextPath}/patients/appointments" class="action-card">
-                <i class="fas fa-calendar-alt"></i>
-                <div class="card-text">
-                    <h3>Appointments</h3>
-                    <p>Today's schedule</p>
-                </div>
-            </a>
-            <div class="footer">
-                <p class="copyright">© 2024 PeriDesk. All rights reserved.</p>
-                <p>Powered by <span class="powered-by">Navtech</span><span class="navtech">Labs</span></p>
-            </div>
-        </div>
-        
+        <jsp:include page="/WEB-INF/views/common/menu.jsp" />
         <div class="main-content">
             <div class="welcome-header">
                 <h1 class="welcome-message">Payment Review</h1>
-                <a href="${pageContext.request.contextPath}/patients/examination/${examination.id}" class="btn btn-primary">
-                    <i class="fas fa-arrow-left"></i> Back to Examination
-                </a>
+                <div>
+                    <a href="${pageContext.request.contextPath}/patients/examination/${examinationId}" class="btn btn-secondary">
+                        <i class="fas fa-arrow-left"></i> Back to Examination
+                    </a>
+                </div>
             </div>
             
             <div id="notification" class="notification"></div>
@@ -469,33 +438,42 @@
                     </div>
                     <div class="meta-item">
                         <span class="meta-label">Doctor</span>
-                        <span class="meta-value">${examination.assignedDoctor.doctorName}</span>
+                        <span class="meta-value">
+                            <c:choose>
+                                <c:when test="${examination.assignedDoctorId != null}">
+                                    <c:forEach items="${doctorDetails}" var="doctor">
+                                        <c:if test="${doctor.id == examination.assignedDoctorId}">
+                                            ${doctor.firstName} ${doctor.lastName}
+                                    </c:if>
+                                    </c:forEach>
+                                </c:when>
+                                <c:otherwise>Not Assigned</c:otherwise>
+                            </c:choose>
+                        </span>
                     </div>
                 </div>
                 
                 <div class="payment-header">
-                    <h2>Selected Procedures</h2>
+                    <h2>Selected Procedure</h2>
                 </div>
                 
                 <table class="procedures-table">
                     <thead>
                         <tr>
-                            <th style="width: 5%">#</th>
-                            <th style="width: 55%">Procedure</th>
+                            <th style="width: 60%">Procedure</th>
                             <th style="width: 25%">Department</th>
                             <th style="width: 15%" class="price-col">Price</th>
                         </tr>
                     </thead>
                     <tbody>
-                        <c:if test="${empty procedures}">
+                        <c:if test="${empty procedure}">
                             <tr>
-                                <td colspan="4" style="text-align: center;">No procedures selected</td>
+                                <td colspan="3" style="text-align: center;">No procedure selected</td>
                             </tr>
                         </c:if>
                         
-                        <c:forEach var="procedure" items="${procedures}" varStatus="loop">
+                        <c:if test="${not empty procedure}">
                             <tr>
-                                <td>${loop.index + 1}</td>
                                 <td>${procedure.procedureName}</td>
                                 <td>
                                     <c:set var="deptName" value="Other" />
@@ -533,12 +511,10 @@
                                 </td>
                                 <td class="price-col">₹${procedure.price}</td>
                             </tr>
-                        </c:forEach>
                         
-                        <c:if test="${not empty procedures}">
                             <tr class="total-row">
-                                <td colspan="3" class="total-label">Total Amount</td>
-                                <td class="total-amount">₹${totalAmount}</td>
+                                <td colspan="2" class="total-label">Total Amount</td>
+                                <td class="total-amount">₹${procedure.price}</td>
                             </tr>
                         </c:if>
                     </tbody>
@@ -546,12 +522,12 @@
                 
                 <div class="notes-section">
                     <h3><i class="fas fa-info-circle"></i> Payment Information</h3>
-                    <p>Please review the selected procedures and total amount before proceeding to payment. Once confirmed, these procedures will be scheduled for the patient's treatment plan.</p>
+                    <p>Please review the selected procedure and total amount before proceeding to payment. Once confirmed, this procedure will be scheduled for the patient's treatment plan.</p>
                 </div>
                 
                 <div class="payment-actions">
                     <a href="${pageContext.request.contextPath}/patients/examination/${examination.id}/procedures" class="btn btn-secondary">
-                        <i class="fas fa-edit"></i> Edit Procedures
+                        <i class="fas fa-edit"></i> Edit Procedure
                     </a>
                     <div>
                         <button id="collect-payment-btn" class="btn btn-primary">

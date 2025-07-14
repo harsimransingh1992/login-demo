@@ -2,6 +2,7 @@
 <%@ taglib prefix="c" uri="http://java.sun.com/jsp/jstl/core"%>
 <%@ taglib prefix="fmt" uri="http://java.sun.com/jsp/jstl/fmt"%>
 <%@ taglib prefix="fn" uri="http://java.sun.com/jsp/jstl/functions"%>
+<%@ taglib prefix="sec" uri="http://www.springframework.org/security/tags"%>
 
 <!DOCTYPE html>
 <html>
@@ -23,6 +24,14 @@
     <script src="https://cdn.jsdelivr.net/npm/flatpickr"></script>
     <script src="https://cdn.jsdelivr.net/npm/flatpickr/dist/l10n/default.js"></script>
     <script src="https://cdn.jsdelivr.net/npm/flatpickr/dist/plugins/confirmDate/confirmDate.js"></script>
+    <script>
+        // Add context path variable
+        const contextPath = '${pageContext.request.contextPath}';
+    </script>
+    <script src="${pageContext.request.contextPath}/js/patient-details.js"></script>
+    
+    <!-- Include common menu styles -->
+    <jsp:include page="/WEB-INF/views/common/menuStyles.jsp" />
 
     <style>
         /* Enhanced Base Styles */
@@ -40,90 +49,6 @@
             min-height: 100vh;
             flex-direction: row;
             background: #f8fafc;
-        }
-        
-        .sidebar-menu {
-            width: 280px;
-            background: white;
-            padding: 30px;
-            box-shadow: 0 0 20px rgba(0, 0, 0, 0.05);
-            display: flex;
-            flex-direction: column;
-            position: relative;
-            z-index: 10;
-            transition: all 0.3s ease;
-        }
-        
-        .logo {
-            display: flex;
-            align-items: center;
-            gap: 15px;
-            margin-bottom: 35px;
-        }
-        
-        .logo img {
-            width: 40px;
-            height: 40px;
-            filter: drop-shadow(0 4px 6px rgba(0, 0, 0, 0.1));
-        }
-        
-        .logo h1 {
-            font-size: 1.5rem;
-            color: #2c3e50;
-            margin: 0;
-            font-weight: 600;
-            letter-spacing: 0.5px;
-        }
-        
-        .action-card {
-            background: white;
-            padding: 16px 20px;
-            border-radius: 10px;
-            box-shadow: 0 4px 10px rgba(0, 0, 0, 0.03);
-            transition: all 0.3s;
-            text-decoration: none;
-            border: 1px solid #f0f0f0;
-            margin-bottom: 15px;
-            display: flex;
-            align-items: center;
-            gap: 12px;
-        }
-        
-        .action-card i {
-            font-size: 1.2rem;
-            color: #3498db;
-            width: 30px;
-        }
-        
-        .action-card:hover {
-            transform: translateX(5px);
-            background: linear-gradient(135deg, #3498db, #2980b9);
-            color: white;
-            border-color: transparent;
-            box-shadow: 0 6px 15px rgba(52, 152, 219, 0.2);
-        }
-        
-        .action-card:hover h3,
-        .action-card:hover p,
-        .action-card:hover i {
-            color: white;
-        }
-        
-        .action-card h3 {
-            margin: 0;
-            color: #2c3e50;
-            font-size: 1rem;
-            font-weight: 600;
-        }
-        
-        .action-card p {
-            margin: 4px 0 0 0;
-            color: #7f8c8d;
-            font-size: 0.8rem;
-        }
-        
-        .card-text {
-            flex: 1;
         }
         
         .main-content {
@@ -280,11 +205,6 @@
         @media (max-width: 768px) {
             .welcome-container {
                 flex-direction: column;
-            }
-            
-            .sidebar-menu {
-                width: 100%;
-                padding: 15px;
             }
             
             .main-content {
@@ -453,45 +373,21 @@
         
         .quadrant {
             display: flex;
-            flex-direction: row;
-            gap: 12px;
-        }
-        
-        .tooth {
-            position: relative;
-            display: flex;
-            flex-direction: column;
-            align-items: center;
-            cursor: pointer;
-            transition: transform 0.2s;
-            margin: 0 5px;
-            height: 90px; /* Add fixed height for consistent layout */
-        }
-        
-        .tooth:hover {
-            transform: translateY(-3px);
-        }
-        
-        .tooth-graphic {
-            width: 40px;
-            height: 40px;
-            display: flex;
-            flex-direction: column;
+            flex-wrap: wrap;
             justify-content: center;
-            align-items: center;
-            position: relative;
-            margin-bottom: 20px; /* Add space below the tooth image */
+            gap: 10px;
+            padding: 20px;
+            background: #f8f9fa;
+            border-radius: 12px;
+            margin: 10px;
         }
         
-        .tooth-number-bottom {
-            margin-top: 5px;
-            font-size: 0.85rem;
-            color: #2c3e50;
-            font-weight: 600;
-            background-color: rgba(255, 255, 255, 0.9);
-            border-radius: 8px;
-            padding: 1px 4px;
-            box-shadow: 0 1px 2px rgba(0, 0, 0, 0.1);
+        .upper-right, .upper-left {
+            flex-direction: row;
+        }
+        
+        .lower-right, .lower-left {
+            flex-direction: row;
         }
         
         .jaw-separator {
@@ -639,14 +535,15 @@
         }
         
         .modal-content {
-            background-color: white;
-            margin: 2% auto;
-            padding: 30px;
-            border-radius: 12px;
-            width: 95%;
-            max-width: 1200px;
-            position: relative;
-            box-shadow: 0 5px 15px rgba(0, 0, 0, 0.1);
+            background-color: #fefefe;
+            margin: 5% auto;
+            padding: 20px;
+            border: 1px solid #888;
+            border-radius: 8px;
+            box-shadow: 0 4px 6px rgba(0, 0, 0, 0.1);
+            max-width: 900px;
+            max-height: 90vh;
+            overflow-y: auto;
         }
         
         .modal-content h2 {
@@ -659,75 +556,90 @@
         }
         
         .close {
-            position: absolute;
-            right: 30px;
-            top: 30px;
-            font-size: 28px;
+            float: right;
+            font-size: 24px;
+            font-weight: bold;
             cursor: pointer;
-            color: #666;
-            transition: color 0.3s ease;
-            background: none;
-            border: none;
-            padding: 0;
-            line-height: 1;
+            color: #6c757d;
         }
         
         .close:hover {
-            color: #000;
+            color: #343a40;
         }
         
         /* Form Sections in Modal */
-        .modal .form-sections-container {
+        .form-grid {
             display: grid;
-            grid-template-columns: repeat(auto-fit, minmax(300px, 1fr));
-            gap: 30px;
-            margin-top: 20px;
+            grid-template-columns: 1fr 1fr;
+            gap: 20px;
+            margin-bottom: 20px;
         }
         
-        .modal .form-section {
+        .form-column {
+            display: flex;
+            flex-direction: column;
+            gap: 15px;
+        }
+        
+        .form-section {
             background: #f8f9fa;
-            padding: 25px;
-            border-radius: 10px;
-            box-shadow: 0 2px 4px rgba(0, 0, 0, 0.05);
-            border: 1px solid #eee;
+            padding: 15px;
+            border-radius: 6px;
+            border: 1px solid #e9ecef;
         }
         
-        .modal .form-section h3 {
-            color: #3498db;
-            font-size: 1.1rem;
-            margin-bottom: 25px;
-            padding-bottom: 10px;
-            border-bottom: 1px solid #eee;
-            font-weight: 600;
+        .form-section h3 {
+            margin-top: 0;
+            margin-bottom: 15px;
+            color: #495057;
+            font-size: 1.1em;
         }
         
-        .modal .form-group {
-            margin-bottom: 25px;
+        .form-group {
+            margin-bottom: 12px;
         }
         
-        .modal .form-group label {
+        .form-group label {
             display: block;
-            color: #2c3e50;
-            margin-bottom: 10px;
+            margin-bottom: 5px;
+            color: #495057;
             font-weight: 500;
-            font-size: 0.95rem;
         }
         
-        .modal .form-control {
+        .form-group select,
+        .form-group input {
             width: 100%;
-            padding: 12px;
-            border: 1px solid #ddd;
-            border-radius: 8px;
-            font-family: 'Poppins', sans-serif;
-            font-size: 0.95rem;
-            transition: all 0.3s ease;
+            padding: 8px;
+            border: 1px solid #ced4da;
+            border-radius: 4px;
             background-color: white;
         }
         
-        .modal .form-control:focus {
-            outline: none;
-            border-color: #3498db;
-            box-shadow: 0 0 0 3px rgba(52, 152, 219, 0.1);
+        .form-actions {
+            display: flex;
+            justify-content: flex-end;
+            gap: 10px;
+            margin-top: 20px;
+            padding-top: 20px;
+            border-top: 1px solid #dee2e6;
+        }
+        
+        .btn {
+            padding: 8px 16px;
+            border-radius: 4px;
+            border: none;
+            cursor: pointer;
+            font-weight: 500;
+        }
+        
+        .btn-primary {
+            background-color: #007bff;
+            color: white;
+        }
+        
+        .btn-secondary {
+            background-color: #6c757d;
+            color: white;
         }
         
         /* Modal Select Dropdown Styles */
@@ -1118,46 +1030,103 @@
         .meta-item strong {
             color: #2c3e50;
         }
+
+        .tooth {
+            position: relative;
+            display: flex;
+            flex-direction: column;
+            align-items: center;
+            cursor: pointer;
+            transition: transform 0.2s;
+            margin: 0 5px;
+            height: 90px; /* Add fixed height for consistent layout */
+        }
+        
+        .tooth:hover {
+            transform: translateY(-3px);
+        }
+
+        .tooth-graphic {
+            width: 40px;
+            height: 40px;
+            display: flex;
+            flex-direction: column;
+            justify-content: center;
+            align-items: center;
+            position: relative;
+            margin-bottom: 20px; /* Add space below the tooth image */
+        }
+
+        .tooth-number-bottom {
+            margin-top: 5px;
+            font-size: 0.85rem;
+            color: #2c3e50;
+            font-weight: 600;
+            background-color: rgba(255, 255, 255, 0.9);
+            border-radius: 8px;
+            padding: 1px 4px;
+            box-shadow: 0 1px 2px rgba(0, 0, 0, 0.1);
+        }
+
+        .quadrant {
+            display: flex;
+            flex-wrap: wrap;
+            justify-content: center;
+            gap: 10px;
+            padding: 20px;
+            background: #f8f9fa;
+            border-radius: 12px;
+            margin: 10px;
+        }
+
+        .upper-right, .upper-left {
+            flex-direction: row;
+        }
+
+        .lower-right, .lower-left {
+            flex-direction: row;
+        }
+
+        /* Add this to your existing styles */
+        .not-started {
+            color: #666;
+            font-style: italic;
+        }
     </style>
 </head>
 <body>
 <div class="welcome-container">
-    <div class="sidebar-menu">
-        <div class="logo">
-            <img src="${pageContext.request.contextPath}/images/tooth-repair.svg" alt="PeriDesk Logo">
-            <h1>PeriDesk</h1>
-        </div>
-        <a href="${pageContext.request.contextPath}/patients/list" class="action-card">
-            <i class="fas fa-users"></i>
-            <div class="card-text">
-                <h3>Patients</h3>
-                <p>View all patients</p>
-            </div>
-        </a>
-        <a href="${pageContext.request.contextPath}/patients/appointments" class="action-card">
-            <i class="fas fa-calendar-alt"></i>
-            <div class="card-text">
-                <h3>Appointments</h3>
-                <p>Today's schedule</p>
-            </div>
-        </a>
-        <div class="footer">
-            <p class="copyright">© 2024 PeriDesk. All rights reserved.</p>
-            <p>Powered by <span class="powered-by">Navtech</span><span class="navtech">Labs</span></p>
-        </div>
-    </div>
+    <jsp:include page="/WEB-INF/views/common/menu.jsp" />
     <div class="main-content">
         <div class="welcome-header">
             <h1 class="welcome-message">Patient Details</h1>
             <div>
-                <a href="${pageContext.request.contextPath}/patient/edit/${patient.id}" class="btn btn-secondary">
-                    <i class="fas fa-edit"></i> Edit Patient
+                <a href="${pageContext.request.contextPath}/patients/edit/${patient.id}" class="btn btn-secondary">
+                    <i class="fas fa-edit"></i> Edit
                 </a>
                 <a href="${pageContext.request.contextPath}/patients/list" class="btn btn-primary">
                     <i class="fas fa-arrow-left"></i> Back to Patients
                 </a>
             </div>
         </div>
+        
+        <!-- Check-in Status Notification -->
+        <c:if test="${!patient.checkedIn && currentUserRole != 'RECEPTIONIST'}">
+            <div class="alert alert-warning" style="margin: 20px 0; padding: 15px; background-color: #fff3cd; border: 1px solid #ffeaa7; border-radius: 8px; color: #856404;">
+                <div style="display: flex; align-items: center; gap: 10px;">
+                    <i class="fas fa-exclamation-triangle" style="font-size: 1.2em; color: #f39c12;"></i>
+                    <div>
+                        <strong>Patient Not Checked In</strong>
+                        <p style="margin: 5px 0 0 0; font-size: 0.9em;">
+                            This patient is not currently checked in. New tooth examinations cannot be added until the patient is checked in.
+                            <a href="${pageContext.request.contextPath}/patients/list" style="color: #856404; text-decoration: underline;">
+                                Go to patient list to check in
+                            </a>
+                        </p>
+                    </div>
+                </div>
+            </div>
+        </c:if>
         
         <div class="patient-details-container">
             <div class="patient-header">
@@ -1178,15 +1147,28 @@
                 <!-- Patient name and other details -->
                 <div class="patient-details">
                     <h2 class="patient-name">${patient.firstName} ${patient.lastName}</h2>
-                    <p class="patient-id">Patient ID: ${patient.id}</p>
+                    <p class="patient-id">Patient ID: ${patient.id} | Registration Code: ${patient.registrationCode}</p>
                     <div class="patient-meta">
-                        <span class="meta-item"><i class="fas fa-calendar-alt"></i> Age: <strong>${patient.age}</strong></span>
+                        <span class="meta-item"><i class="fas fa-calendar-alt"></i> Age: <strong>${patient.age} years</strong></span>
                         <span class="meta-item"><i class="fas fa-venus-mars"></i> Gender: <strong>${patient.gender}</strong></span>
                         <span class="meta-item"><i class="fas fa-phone"></i> Phone: <strong>${patient.phoneNumber}</strong></span>
+                        <span class="meta-item">
+                            <i class="fas fa-user-check"></i> Status: 
+                            <strong>
+                                <c:choose>
+                                    <c:when test="${patient.checkedIn}">
+                                        <span style="color: #27ae60;">Checked In</span>
+                                    </c:when>
+                                    <c:otherwise>
+                                        <span style="color: #7f8c8d;">Not Checked In</span>
+                                    </c:otherwise>
+                                </c:choose>
+                            </strong>
+                        </span>
                     </div>
                 </div>
                 <div class="patient-actions">
-                    <a href="${pageContext.request.contextPath}/patient/edit/${patient.id}" class="btn btn-secondary">
+                    <a href="${pageContext.request.contextPath}/patients/edit/${patient.id}" class="btn btn-secondary">
                         <i class="fas fa-edit"></i> Edit
                     </a>
                 </div>
@@ -1200,40 +1182,54 @@
                         <span class="info-value">${patient.firstName} ${patient.lastName}</span>
                     </div>
                     <div class="info-item">
+                        <span class="info-label">Date of Birth</span>
+                        <span class="info-value">
+                            <fmt:formatDate value="${patient.dateOfBirth}" pattern="dd/MM/yyyy"/>
+                        </span>
+                    </div>
+                    <div class="info-item">
+                        <span class="info-label">Age</span>
+                        <span class="info-value">${patient.age} years</span>
+                    </div>
+                    <div class="info-item">
                         <span class="info-label">Gender</span>
                         <span class="info-value">${patient.gender}</span>
                     </div>
                     <div class="info-item">
-                        <span class="info-label">Age</span>
-                        <span class="info-value">${patient.age}</span>
-                    </div>
-                    <div class="info-item">
-                        <span class="info-label">Mobile Number</span>
-                        <span class="info-value">${patient.phoneNumber}</span>
-                    </div>
-                    <div class="info-item">
-                        <span class="info-label">Email</span>
-                        <span class="info-value">${patient.email}</span>
+                        <span class="info-label">Occupation</span>
+                        <span class="info-value">${not empty patient.occupation ? patient.occupation.displayName : 'Not specified'}</span>
                     </div>
                 </div>
                 
                 <div class="info-section">
-                    <h3>Location Details</h3>
+                    <h3>Contact Information</h3>
                     <div class="info-item">
-                        <span class="info-label">Address</span>
-                        <span class="info-value">${patient.streetAddress}</span>
+                        <span class="info-label">Phone Number</span>
+                        <span class="info-value">${patient.phoneNumber}</span>
+                    </div>
+                    <div class="info-item">
+                        <span class="info-label">Email</span>
+                        <span class="info-value">${not empty patient.email ? patient.email : 'Not provided'}</span>
+                    </div>
+                </div>
+                
+                <div class="info-section">
+                    <h3>Address Information</h3>
+                    <div class="info-item">
+                        <span class="info-label">Street Address</span>
+                        <span class="info-value">${not empty patient.streetAddress ? patient.streetAddress : 'Not provided'}</span>
                     </div>
                     <div class="info-item">
                         <span class="info-label">State</span>
-                        <span class="info-value">${patient.state}</span>
+                        <span class="info-value">${not empty patient.state ? patient.state : 'Not provided'}</span>
                     </div>
                     <div class="info-item">
                         <span class="info-label">City</span>
-                        <span class="info-value">${patient.city}</span>
+                        <span class="info-value">${not empty patient.city ? patient.city : 'Not provided'}</span>
                     </div>
                     <div class="info-item">
                         <span class="info-label">Pincode</span>
-                        <span class="info-value">${patient.pincode}</span>
+                        <span class="info-value">${not empty patient.pincode ? patient.pincode : 'Not provided'}</span>
                     </div>
                 </div>
                 
@@ -1244,6 +1240,92 @@
                         <span class="info-value">${not empty patient.medicalHistory ? patient.medicalHistory : 'None reported'}</span>
                     </div>
                 </div>
+                
+                <div class="info-section">
+                    <h3>Registration Information</h3>
+                    <div class="info-item">
+                        <span class="info-label">Registration Code</span>
+                        <span class="info-value">${patient.registrationCode}</span>
+                    </div>
+                    <div class="info-item">
+                        <span class="info-label">Registration Date</span>
+                        <span class="info-value">
+                            <fmt:formatDate value="${patient.registrationDate}" pattern="dd/MM/yyyy"/>
+                        </span>
+                    </div>
+                    <div class="info-item">
+                        <span class="info-label">Referral Source</span>
+                        <span class="info-value">${not empty patient.referralModel ? patient.referralModel.displayName : 'Not specified'}</span>
+                    </div>
+                    <div class="info-item">
+                        <span class="info-label">Current Status</span>
+                        <span class="info-value">
+                            <c:choose>
+                                <c:when test="${patient.checkedIn}">
+                                    <span style="color: #27ae60; font-weight: 500;">
+                                        <i class="fas fa-user-check"></i> Checked In
+                                    </span>
+                                </c:when>
+                                <c:otherwise>
+                                    <span style="color: #7f8c8d;">
+                                        <i class="fas fa-user"></i> Not Checked In
+                                    </span>
+                                </c:otherwise>
+                            </c:choose>
+                        </span>
+                    </div>
+                    <div class="info-item">
+                        <span class="info-label">Created By</span>
+                        <span class="info-value">
+                            <c:choose>
+                                <c:when test="${not empty patient.createdBy}">
+                                    <i class="fas fa-user-plus"></i> ${patient.createdBy}
+                                </c:when>
+                                <c:otherwise>
+                                    <span style="color: #6c757d; font-style: italic;">Not recorded</span>
+                                </c:otherwise>
+                            </c:choose>
+                        </span>
+                    </div>
+                    <div class="info-item">
+                        <span class="info-label">Registered At</span>
+                        <span class="info-value">
+                            <c:choose>
+                                <c:when test="${not empty patient.registeredClinic}">
+                                    <i class="fas fa-hospital"></i> ${patient.registeredClinic}
+                                </c:when>
+                                <c:otherwise>
+                                    <span style="color: #6c757d; font-style: italic;">Not recorded</span>
+                                </c:otherwise>
+                            </c:choose>
+                        </span>
+                    </div>
+                    <div class="info-item">
+                        <span class="info-label">Created At</span>
+                        <span class="info-value">
+                            <c:choose>
+                                <c:when test="${not empty patient.createdAt}">
+                                    <i class="fas fa-clock"></i> <fmt:formatDate value="${patient.createdAt}" pattern="dd/MM/yyyy HH:mm"/>
+                                </c:when>
+                                <c:otherwise>
+                                    <span style="color: #6c757d; font-style: italic;">Not recorded</span>
+                                </c:otherwise>
+                            </c:choose>
+                        </span>
+                    </div>
+                </div>
+                
+                <div class="info-section">
+                    <h3>Emergency Contact</h3>
+                    <div class="info-item">
+                        <span class="info-label">Emergency Contact Name</span>
+                        <span class="info-value">${not empty patient.emergencyContactName ? patient.emergencyContactName : 'Not provided'}</span>
+                    </div>
+                    <div class="info-item">
+                        <span class="info-label">Emergency Contact Phone</span>
+                        <span class="info-value">${not empty patient.emergencyContactPhoneNumber ? patient.emergencyContactPhoneNumber : 'Not provided'}</span>
+                    </div>
+                </div>
             </div>
         </div>
         
@@ -1251,64 +1333,85 @@
         <div class="patient-details-container dental-chart-section">
             <div class="patient-header">
             <h2>Dental Chart</h2>
-                <p class="chart-instructions">Click on a tooth to add or edit examination record</p>
+                <c:choose>
+                    <c:when test="${currentUserRole == 'RECEPTIONIST'}">
+                        <p class="chart-instructions" style="color: #e74c3c; font-weight: 500;">
+                            <i class="fas fa-info-circle"></i> 
+                            Receptionists cannot add or edit tooth examinations. Please contact a doctor or staff member for clinical procedures.
+                        </p>
+                    </c:when>
+                    <c:otherwise>
+                        <c:choose>
+                            <c:when test="${!patient.checkedIn}">
+                                <p class="chart-instructions" style="color: #e74c3c; font-weight: 500;">
+                                    <i class="fas fa-exclamation-triangle"></i> 
+                                    Patient must be checked in before adding new tooth examinations. Please check in the patient first.
+                                </p>
+                            </c:when>
+                            <c:otherwise>
+                                <p class="chart-instructions">Click on a tooth to add or edit examination record</p>
+                            </c:otherwise>
+                        </c:choose>
+                    </c:otherwise>
+                </c:choose>
             </div>
             
-            <div class="dental-chart">
+            <div class="dental-chart" 
+                 <c:if test="${currentUserRole == 'RECEPTIONIST' || !patient.checkedIn}">style="opacity: 0.6; pointer-events: none;"</c:if>>
                 <!-- Upper Teeth (Maxillary) -->
             <div class="teeth-row upper-teeth">
                     <!-- Upper Right (Q1) -->
                     <div class="quadrant upper-right">
-                        <div class="tooth" onclick="openToothDetails(18)">
+                        <div class="tooth" data-tooth-number="18">
                             <div class="tooth-graphic">
                                 <img src="${pageContext.request.contextPath}/images/teeth/upper-molar.svg" alt="Tooth 18">
                                 <span class="tooth-number-bottom">18</span>
                             </div>
                             <div class="tooth-number">UR8</div>
                     </div>
-                    <div class="tooth" onclick="openToothDetails(17)">
+                        <div class="tooth" data-tooth-number="17">
                             <div class="tooth-graphic">
                                 <img src="${pageContext.request.contextPath}/images/teeth/upper-molar.svg" alt="Tooth 17">
                                 <span class="tooth-number-bottom">17</span>
                             </div>
                             <div class="tooth-number">UR7</div>
                     </div>
-                    <div class="tooth" onclick="openToothDetails(16)">
+                        <div class="tooth" data-tooth-number="16">
                             <div class="tooth-graphic">
                                 <img src="${pageContext.request.contextPath}/images/teeth/upper-molar.svg" alt="Tooth 16">
                                 <span class="tooth-number-bottom">16</span>
                     </div>
                             <div class="tooth-number">UR6</div>
                         </div>
-                    <div class="tooth" onclick="openToothDetails(15)">
+                        <div class="tooth" data-tooth-number="15">
                             <div class="tooth-graphic">
                                 <img src="${pageContext.request.contextPath}/images/teeth/upper-premolar.svg" alt="Tooth 15">
                                 <span class="tooth-number-bottom">15</span>
                             </div>
                             <div class="tooth-number">UR5</div>
                     </div>
-                    <div class="tooth" onclick="openToothDetails(14)">
+                        <div class="tooth" data-tooth-number="14">
                             <div class="tooth-graphic">
                                 <img src="${pageContext.request.contextPath}/images/teeth/upper-premolar.svg" alt="Tooth 14">
                                 <span class="tooth-number-bottom">14</span>
                             </div>
                             <div class="tooth-number">UR4</div>
                         </div>
-                    <div class="tooth" onclick="openToothDetails(13)">
+                        <div class="tooth" data-tooth-number="13">
                             <div class="tooth-graphic">
                                 <img src="${pageContext.request.contextPath}/images/teeth/upper-canine.svg" alt="Tooth 13">
                                 <span class="tooth-number-bottom">13</span>
                             </div>
                             <div class="tooth-number">UR3</div>
                         </div>
-                    <div class="tooth" onclick="openToothDetails(12)">
+                        <div class="tooth" data-tooth-number="12">
                             <div class="tooth-graphic">
                                 <img src="${pageContext.request.contextPath}/images/teeth/upper-incisor.svg" alt="Tooth 12">
                                 <span class="tooth-number-bottom">12</span>
                             </div>
                             <div class="tooth-number">UR2</div>
                     </div>
-                    <div class="tooth" onclick="openToothDetails(11)">
+                        <div class="tooth" data-tooth-number="11">
                             <div class="tooth-graphic">
                                 <img src="${pageContext.request.contextPath}/images/teeth/upper-incisor.svg" alt="Tooth 11">
                                 <span class="tooth-number-bottom">11</span>
@@ -1316,59 +1419,57 @@
                             <div class="tooth-number">UR1</div>
                     </div>
                 </div>
-
-                    <!-- Upper Left (Q2) -->
                     <div class="quadrant upper-left">
-                    <div class="tooth" onclick="openToothDetails(21)">
+                    <div class="tooth" data-tooth-number="21">
                             <div class="tooth-graphic">
                                 <img src="${pageContext.request.contextPath}/images/teeth/upper-incisor.svg" alt="Tooth 21">
                                 <span class="tooth-number-bottom">21</span>
                             </div>
                             <div class="tooth-number">UL1</div>
                     </div>
-                    <div class="tooth" onclick="openToothDetails(22)">
+                    <div class="tooth" data-tooth-number="22">
                             <div class="tooth-graphic">
                                 <img src="${pageContext.request.contextPath}/images/teeth/upper-incisor.svg" alt="Tooth 22">
                                 <span class="tooth-number-bottom">22</span>
                     </div>
                             <div class="tooth-number">UL2</div>
                         </div>
-                    <div class="tooth" onclick="openToothDetails(23)">
+                    <div class="tooth" data-tooth-number="23">
                             <div class="tooth-graphic">
                                 <img src="${pageContext.request.contextPath}/images/teeth/upper-canine.svg" alt="Tooth 23">
                                 <span class="tooth-number-bottom">23</span>
                     </div>
                             <div class="tooth-number">UL3</div>
                         </div>
-                    <div class="tooth" onclick="openToothDetails(24)">
+                    <div class="tooth" data-tooth-number="24">
                             <div class="tooth-graphic">
                                 <img src="${pageContext.request.contextPath}/images/teeth/upper-premolar.svg" alt="Tooth 24">
                                 <span class="tooth-number-bottom">24</span>
                             </div>
                             <div class="tooth-number">UL4</div>
                     </div>
-                    <div class="tooth" onclick="openToothDetails(25)">
+                    <div class="tooth" data-tooth-number="25">
                             <div class="tooth-graphic">
                                 <img src="${pageContext.request.contextPath}/images/teeth/upper-premolar.svg" alt="Tooth 25">
                                 <span class="tooth-number-bottom">25</span>
                             </div>
                             <div class="tooth-number">UL5</div>
                         </div>
-                    <div class="tooth" onclick="openToothDetails(26)">
+                    <div class="tooth" data-tooth-number="26">
                             <div class="tooth-graphic">
                                 <img src="${pageContext.request.contextPath}/images/teeth/upper-molar.svg" alt="Tooth 26">
                                 <span class="tooth-number-bottom">26</span>
                             </div>
                             <div class="tooth-number">UL6</div>
                     </div>
-                    <div class="tooth" onclick="openToothDetails(27)">
+                    <div class="tooth" data-tooth-number="27">
                             <div class="tooth-graphic">
                                 <img src="${pageContext.request.contextPath}/images/teeth/upper-molar.svg" alt="Tooth 27">
                                 <span class="tooth-number-bottom">27</span>
                             </div>
                             <div class="tooth-number">UL7</div>
                     </div>
-                    <div class="tooth" onclick="openToothDetails(28)">
+                    <div class="tooth" data-tooth-number="28">
                             <div class="tooth-graphic">
                                 <img src="${pageContext.request.contextPath}/images/teeth/upper-molar.svg" alt="Tooth 28">
                                 <span class="tooth-number-bottom">28</span>
@@ -1384,56 +1485,56 @@
             <div class="teeth-row lower-teeth">
                     <!-- Lower Right (Q4) -->
                     <div class="quadrant lower-right">
-                    <div class="tooth" onclick="openToothDetails(48)">
+                    <div class="tooth" data-tooth-number="48">
                             <div class="tooth-graphic">
                                 <img src="${pageContext.request.contextPath}/images/teeth/lower-molar.svg" alt="Tooth 48">
                                 <span class="tooth-number-bottom">48</span>
                             </div>
                             <div class="tooth-number">LR8</div>
                     </div>
-                    <div class="tooth" onclick="openToothDetails(47)">
+                    <div class="tooth" data-tooth-number="47">
                             <div class="tooth-graphic">
                                 <img src="${pageContext.request.contextPath}/images/teeth/lower-molar.svg" alt="Tooth 47">
                                 <span class="tooth-number-bottom">47</span>
                             </div>
                             <div class="tooth-number">LR7</div>
                     </div>
-                    <div class="tooth" onclick="openToothDetails(46)">
+                    <div class="tooth" data-tooth-number="46">
                             <div class="tooth-graphic">
                                 <img src="${pageContext.request.contextPath}/images/teeth/lower-molar.svg" alt="Tooth 46">
                                 <span class="tooth-number-bottom">46</span>
                     </div>
                             <div class="tooth-number">LR6</div>
                         </div>
-                    <div class="tooth" onclick="openToothDetails(45)">
+                    <div class="tooth" data-tooth-number="45">
                             <div class="tooth-graphic">
                                 <img src="${pageContext.request.contextPath}/images/teeth/lower-premolar.svg" alt="Tooth 45">
                                 <span class="tooth-number-bottom">45</span>
                             </div>
                             <div class="tooth-number">LR5</div>
                     </div>
-                    <div class="tooth" onclick="openToothDetails(44)">
+                    <div class="tooth" data-tooth-number="44">
                             <div class="tooth-graphic">
                                 <img src="${pageContext.request.contextPath}/images/teeth/lower-premolar.svg" alt="Tooth 44">
                                 <span class="tooth-number-bottom">44</span>
                     </div>
                             <div class="tooth-number">LR4</div>
                         </div>
-                    <div class="tooth" onclick="openToothDetails(43)">
+                    <div class="tooth" data-tooth-number="43">
                             <div class="tooth-graphic">
                                 <img src="${pageContext.request.contextPath}/images/teeth/lower-canine.svg" alt="Tooth 43">
                                 <span class="tooth-number-bottom">43</span>
                     </div>
                             <div class="tooth-number">LR3</div>
                         </div>
-                    <div class="tooth" onclick="openToothDetails(42)">
+                    <div class="tooth" data-tooth-number="42">
                             <div class="tooth-graphic">
                                 <img src="${pageContext.request.contextPath}/images/teeth/lower-incisor.svg" alt="Tooth 42">
                                 <span class="tooth-number-bottom">42</span>
                             </div>
                             <div class="tooth-number">LR2</div>
                     </div>
-                    <div class="tooth" onclick="openToothDetails(41)">
+                    <div class="tooth" data-tooth-number="41">
                             <div class="tooth-graphic">
                                 <img src="${pageContext.request.contextPath}/images/teeth/lower-incisor.svg" alt="Tooth 41">
                                 <span class="tooth-number-bottom">41</span>
@@ -1444,14 +1545,14 @@
 
                     <!-- Lower Left (Q3) -->
                     <div class="quadrant lower-left">
-                    <div class="tooth" onclick="openToothDetails(31)">
+                    <div class="tooth" data-tooth-number="31">
                             <div class="tooth-graphic">
                                 <img src="${pageContext.request.contextPath}/images/teeth/lower-incisor.svg" alt="Tooth 31">
                                 <span class="tooth-number-bottom">31</span>
                             </div>
                             <div class="tooth-number">LL1</div>
                     </div>
-                    <div class="tooth" onclick="openToothDetails(32)">
+                    <div class="tooth" data-tooth-number="32">
                             <div class="tooth-graphic">
                                 <img src="${pageContext.request.contextPath}/images/teeth/lower-incisor.svg" alt="Tooth 32">
                                 <span class="tooth-number-bottom">32</span>
@@ -1503,24 +1604,7 @@
             </div>
         </div>
 
-                <div class="chart-legend">
-                    <div class="legend-item">
-                        <div class="legend-icon healthy"></div>
-                        <span>Healthy</span>
-                    </div>
-                    <div class="legend-item">
-                        <div class="legend-icon caries"></div>
-                        <span>Caries</span>
-                    </div>
-                    <div class="legend-item">
-                        <div class="legend-icon restored"></div>
-                        <span>Restored</span>
-                    </div>
-                    <div class="legend-item">
-                        <div class="legend-icon missing"></div>
-                        <span>Missing</span>
-                    </div>
-                </div>
+
             </div>
         </div>
         
@@ -1534,13 +1618,13 @@
                 <div class="filter-group">
                     <label for="doctorDropdown">Filter by Doctor:</label>
                     <select id="doctorDropdown" class="custom-select" onchange="filterByDoctor(this.value)">
-                            <option value="all">All Examinations</option>
-                            <option value="unassigned">Unassigned Examinations</option>
+                        <option value="all">All Examinations</option>
+                        <option value="unassigned">Unassigned Examinations</option>
                         <c:forEach items="${doctorDetails}" var="doctor">
-                                <option value="${doctor.id}">${doctor.doctorName}</option>
-                            </c:forEach>
-                        </select>
-                    </div>
+                            <option value="${doctor.id}">${doctor.firstName} ${doctor.lastName}</option>
+                        </c:forEach>
+                    </select>
+                </div>
                 
                 <div class="filter-group">
                     <label for="clinicDropdown">Filter by Clinic:</label>
@@ -1549,10 +1633,11 @@
                         <c:set var="clinicsSeen" value="" />
                         <c:forEach items="${examinationHistory}" var="exam">
                             <c:if test="${not empty exam.examinationClinic}">
-                                <c:set var="clinicUsername" value="${exam.examinationClinic.username}" />
-                                <c:if test="${!fn:contains(clinicsSeen, clinicUsername)}">
-                                    <c:set var="clinicsSeen" value="${clinicsSeen}${clinicUsername}," />
-                                    <option value="${clinicUsername}">${clinicUsername}</option>
+                                <c:set var="clinicName" value="${exam.examinationClinic.clinicName}" />
+                                <c:set var="clinicId" value="${exam.examinationClinic.clinicId}" />
+                                <c:if test="${!fn:contains(clinicsSeen, clinicId)}">
+                                    <c:set var="clinicsSeen" value="${clinicsSeen}${clinicId}," />
+                                    <option value="${clinicId}">${clinicName}</option>
                                 </c:if>
                             </c:if>
                         </c:forEach>
@@ -1587,21 +1672,21 @@
                 <table id="examinationHistoryTable" class="table">
                             <thead>
                             <tr>
-                                <th>#</th>
+                                <th>Exam ID</th>
                                 <th>Tooth</th>
                                 <th>Examination Date</th>
                                 <th>Condition</th>
                                 <th>Treatment Start Date</th>
                                 <th>Notes</th>
                                 <th>Clinic</th>
-                                <th>Assigned Doctor</th>
+                                <th>Treating Doctor</th>
                                 <th>Actions</th>
                             </tr>
                             </thead>
                             <tbody>
                         <c:forEach items="${examinationHistory}" var="exam" varStatus="status">
                             <tr class="examination-row" onclick="openExaminationDetails('${exam.id}')">
-                                    <td class="index-col">${status.index + 1}</td>
+                                <td class="exam-id-col">${exam.id}</td>
                                 <td data-tooth="${exam.toothNumber}">${exam.toothNumber.toString().replace('TOOTH_', '')}</td>
                                     <td data-date="${exam.examinationDate}">
                                     <c:set var="dateStr" value="${exam.examinationDate}" />
@@ -1617,14 +1702,15 @@
                                 <td>${exam.toothCondition}</td>
                                 <td>
                                     <c:set var="rawDate" value="${exam.treatmentStartingDate}"/>
-                                    <input type="text" 
-                                           class="treatment-date-picker" 
-                                           data-exam-id="${exam.id}"
-                                           data-raw-date="${rawDate}"
-                                           value="<c:if test="${not empty rawDate}"><fmt:parseDate value="${rawDate}" pattern="yyyy-MM-dd'T'HH:mm" var="parsedDate"/><fmt:formatDate value="${parsedDate}" pattern="yyyy-MM-dd HH:mm"/></c:if>"
-                                           placeholder="Select date"
-                                           onchange="updateTreatmentDate(this.value, '${exam.id}')"
-                                           onclick="event.stopPropagation();">
+                                    <c:choose>
+                                        <c:when test="${not empty rawDate}">
+                                            <fmt:parseDate value="${rawDate}" pattern="yyyy-MM-dd'T'HH:mm" var="parsedDate"/>
+                                            <fmt:formatDate value="${parsedDate}" pattern="dd/MM/yyyy HH:mm"/>
+                                        </c:when>
+                                        <c:otherwise>
+                                            <span class="not-started">Not Started</span>
+                                        </c:otherwise>
+                                    </c:choose>
                                 </td>
                                 <td>
                                     <c:choose>
@@ -1643,29 +1729,30 @@
                                         </c:otherwise>
                                     </c:choose>
                                 </td>
-                                <td>
+                                <td data-clinic-id="${not empty exam.examinationClinic ? exam.examinationClinic.clinicId : ''}">
                                     <c:choose>
                                         <c:when test="${not empty exam.examinationClinic}">
-                                            <span class="clinic-code">${exam.examinationClinic.username}</span>
+                                            <span class="clinic-code">${exam.examinationClinic.clinicName}</span>
                                         </c:when>
                                         <c:otherwise>
-                                            <span class="no-data">--</span>
+                                            <span class="text-muted">-</span>
                                         </c:otherwise>
                                     </c:choose>
                                 </td>
-                                <td data-doctor="${exam.assignedDoctor != null ? exam.assignedDoctor.id : ''}">
-                                    <select onchange='assignDoctor(this.value, <c:out value="${exam.id}"/>)' class="doctor-dropdown ${exam.assignedDoctor != null ? 'doctor-assigned' : ''}" data-exam-id="${exam.id}" onclick="event.stopPropagation();">
-                                        <option value="">Assign Doctor</option>
-                                        <option value="remove" ${exam.assignedDoctor == null ? 'disabled' : ''}>
-                                            -- Remove Assignment --
-                                        </option>
+                                <td data-doctor="${exam.assignedDoctorId != null ? exam.assignedDoctorId : ''}">
+                                    <c:choose>
+                                        <c:when test="${exam.assignedDoctorId != null}">
                                         <c:forEach items="${doctorDetails}" var="doctor">
-                                            <option value="${doctor.id}" ${exam.assignedDoctor != null && exam.assignedDoctor.id == doctor.id ? 'selected' : ''}>
-                                                ${doctor.doctorName}
-                                            </option>
-                                            </c:forEach>
-                                        </select>
-                                    </td>
+                                                <c:if test="${doctor.id == exam.assignedDoctorId}">
+                                                ${doctor.firstName} ${doctor.lastName}
+                                                </c:if>
+                                        </c:forEach>
+                                        </c:when>
+                                        <c:otherwise>
+                                            Not Assigned
+                                        </c:otherwise>
+                                    </c:choose>
+                                </td>
                                 <td>
                                     <a href="${pageContext.request.contextPath}/patients/examination/${exam.id}" 
                                        class="btn btn-sm" 
@@ -1673,12 +1760,12 @@
                                        onclick="event.stopPropagation();">
                                         <i class="fas fa-eye"></i>
                                     </a>
-                                    </td>
-                                </tr>
-                            </c:forEach>
-                            </tbody>
-                        </table>
-                    </div>
+                                </td>
+                            </tr>
+                        </c:forEach>
+                        </tbody>
+                    </table>
+                </div>
             
             <c:if test="${empty examinationHistory}">
                 <div class="no-records-message">
@@ -1687,932 +1774,182 @@
             </c:if>
                     </div>
     </div>
-    <div id="toothModal" class="modal">
+    <!-- Tooth Examination Modal - Only show for non-receptionists -->
+    <c:if test="${currentUserRole != 'RECEPTIONIST'}">
+    <div id="toothModal" class="modal tooth-examination-modal">
         <div class="modal-content">
-            <span class="close" onclick="closeModal()">&times;</span>
-            <h2>Clinical Examination for Tooth <span id="selectedToothNumber"></span></h2>
-
-            <form id="toothExaminationForm" method="POST">
+            <span class="close">&times;</span>
+            <h2 style="margin: 0 0 15px 0; font-size: 1.2rem; color: #2c3e50;">Clinical Examination for Tooth <span id="selectedToothNumber"></span></h2>
+            <form id="toothExaminationForm" method="post" action="${pageContext.request.contextPath}/patients/tooth-examination/save">
+                <input type="hidden" id="examinationId" name="id" value="">
+                <input type="hidden" id="patientId" name="patientId" value="${patient.id}">
+                <input type="hidden" id="toothNumber" name="toothNumber" value="">
                 <input type="hidden" name="${_csrf.parameterName}" value="${_csrf.token}"/>
-                <input type="hidden" name="patientId" value="${patient.id}"/>
-                <input type="hidden" name="toothNumber" id="toothNumberInput"/>
 
-                <div class="form-sections-container">
-                    <!-- Basic Information Section -->
-                    <div class="form-section">
-                        <h3>Basic Information</h3>
-                        <div class="form-group">
-                            <label for="toothSurface">Surface</label>
-                            <select name="toothSurface" id="toothSurface">
-                                <option value="">Select</option>
-                                <c:forEach items="${toothSurfaces}" var="surface">
-                                    <option value="${surface}">${surface}</option>
-                                </c:forEach>
-                            </select>
+                <!-- Chief Complaints Section -->
+                <div class="chief-complaints-section">
+                    <h3>Chief Complaints</h3>
+                    <div class="form-group">
+                        <label for="chiefComplaints">Patient's Chief Complaints</label>
+                        <textarea name="chiefComplaints" id="chiefComplaints" rows="6" class="form-control" 
+                                  placeholder="Enter the patient's chief complaints in detail..."></textarea>
+                    </div>
+                </div>
+
+                <div class="form-grid">
+                    <!-- Left Column -->
+                    <div class="form-column">
+                        <div class="form-section">
+                            <h3>Basic Assessment</h3>
+                            <div class="form-group">
+                                <label for="toothSurface">Surface</label>
+                                <select name="toothSurface" id="toothSurface" class="form-control">
+                                    <option value="">Select</option>
+                                    <c:forEach items="${toothSurfaces}" var="surface">
+                                        <option value="${surface}">${surface}</option>
+                                    </c:forEach>
+                                </select>
+                            </div>
+                            <div class="form-group">
+                                <label for="toothCondition">Condition</label>
+                                <select name="toothCondition" id="toothCondition" class="form-control">
+                                    <option value="">Select</option>
+                                    <c:forEach items="${toothConditions}" var="condition">
+                                        <option value="${condition}">${condition}</option>
+                                    </c:forEach>
+                                </select>
+                            </div>
+                            <div class="form-group">
+                                <label for="toothMobility">Mobility</label>
+                                <select name="toothMobility" id="toothMobility" class="form-control">
+                                    <option value="">Select</option>
+                                    <c:forEach items="${toothMobilities}" var="mobility">
+                                        <option value="${mobility}">${mobility}</option>
+                                    </c:forEach>
+                                </select>
+                            </div>
                         </div>
-                        <div class="form-group">
-                            <label for="toothCondition">Condition</label>
-                            <select name="toothCondition" id="toothCondition">
-                                <option value="">Select</option>
-                                <c:forEach items="${toothConditions}" var="condition">
-                                    <option value="${condition}">${condition}</option>
-                                </c:forEach>
-                            </select>
-                        </div>
-                        <div class="form-group">
-                            <label for="existingRestoration">Restoration</label>
-                            <select name="existingRestoration" id="existingRestoration">
-                                <option value="">Select</option>
-                                <c:forEach items="${existingRestorations}" var="restoration">
-                                    <option value="${restoration}">${restoration}</option>
-                                </c:forEach>
-                            </select>
+
+                        <div class="form-section">
+                            <h3>Periodontal Assessment</h3>
+                            <div class="form-group">
+                                <label for="pocketDepth">Pocket Depth</label>
+                                <select name="pocketDepth" id="pocketDepth" class="form-control">
+                                    <option value="">Select</option>
+                                    <c:forEach items="${pocketDepths}" var="depth">
+                                        <option value="${depth}">${depth}</option>
+                                    </c:forEach>
+                                </select>
+                            </div>
+                            <div class="form-group">
+                                <label for="bleedingOnProbing">Bleeding on Probing</label>
+                                <select name="bleedingOnProbing" id="bleedingOnProbing" class="form-control">
+                                    <option value="">Select</option>
+                                    <c:forEach items="${bleedingOnProbings}" var="bleeding">
+                                        <option value="${bleeding}">${bleeding}</option>
+                                    </c:forEach>
+                                </select>
+                            </div>
+                            <div class="form-group">
+                                <label for="plaqueScore">Plaque Score</label>
+                                <select name="plaqueScore" id="plaqueScore" class="form-control">
+                                    <option value="">Select</option>
+                                    <c:forEach items="${plaqueScores}" var="score">
+                                        <option value="${score}">${score}</option>
+                                    </c:forEach>
+                                </select>
+                            </div>
                         </div>
                     </div>
 
-                    <!-- Periodontal Assessment Section -->
-                    <div class="form-section">
-                        <h3>Periodontal Assessment</h3>
-                        <div class="form-group">
-                            <label for="pocketDepth">Pocket Depth</label>
-                            <select name="pocketDepth" id="pocketDepth">
-                                <option value="">Select</option>
-                                <c:forEach items="${pocketDepths}" var="depth">
-                                    <option value="${depth}">${depth}</option>
-                                </c:forEach>
-                            </select>
-                        </div>
-                        <div class="form-group">
-                            <label for="bleedingOnProbing">Bleeding on Probing</label>
-                            <select name="bleedingOnProbing" id="bleedingOnProbing">
-                                <option value="">Select</option>
-                                <c:forEach items="${bleedingOnProbings}" var="bleeding">
-                                    <option value="${bleeding}">${bleeding}</option>
-                                </c:forEach>
-                            </select>
-                        </div>
-                        <div class="form-group">
-                            <label for="plaqueScore">Plaque Score</label>
-                            <select name="plaqueScore" id="plaqueScore">
-                                <option value="">Select</option>
-                                <c:forEach items="${plaqueScores}" var="score">
-                                    <option value="${score}">${score}</option>
-                                </c:forEach>
-                            </select>
-                        </div>
-                        <div class="form-group">
-                            <label for="gingivalRecession">Gingival Recession</label>
-                            <select name="gingivalRecession" id="gingivalRecession">
-                                <option value="">Select</option>
-                                <c:forEach items="${gingivalRecessions}" var="recession">
-                                    <option value="${recession}">${recession}</option>
-                                </c:forEach>
-                            </select>
+                    <!-- Right Column -->
+                    <div class="form-column">
+                        <div class="form-section">
+                            <h3>Additional Assessment</h3>
+                            <div class="form-group">
+                                <label for="gingivalRecession">Gingival Recession</label>
+                                <select name="gingivalRecession" id="gingivalRecession" class="form-control">
+                                    <option value="">Select</option>
+                                    <c:forEach items="${gingivalRecessions}" var="recession">
+                                        <option value="${recession}">${recession}</option>
+                                    </c:forEach>
+                                </select>
+                            </div>
+                            <div class="form-group">
+                                <label for="toothVitality">Tooth Vitality</label>
+                                <select name="toothVitality" id="toothVitality" class="form-control">
+                                    <option value="">Select</option>
+                                    <c:forEach items="${toothVitalities}" var="vitality">
+                                        <option value="${vitality}">${vitality}</option>
+                                    </c:forEach>
+                                </select>
+                            </div>
+                            <div class="form-group">
+                                <label for="furcationInvolvement">Furcation Involvement</label>
+                                <select name="furcationInvolvement" id="furcationInvolvement" class="form-control">
+                                    <option value="">Select</option>
+                                    <c:forEach items="${furcationInvolvements}" var="furcation">
+                                        <option value="${furcation}">${furcation}</option>
+                                    </c:forEach>
+                                </select>
+                            </div>
+                            <div class="form-group">
+                                <label for="periapicalCondition">Periapical Condition</label>
+                                <select name="periapicalCondition" id="periapicalCondition" class="form-control">
+                                    <option value="">Select</option>
+                                    <c:forEach items="${periapicalConditions}" var="condition">
+                                        <option value="${condition}">${condition}</option>
+                                    </c:forEach>
+                                </select>
+                            </div>
+                            <div class="form-group">
+                                <label for="toothSensitivity">Tooth Sensitivity</label>
+                                <select name="toothSensitivity" id="toothSensitivity" class="form-control">
+                                    <option value="">Select</option>
+                                    <c:forEach items="${toothSensitivities}" var="sensitivity">
+                                        <option value="${sensitivity}">${sensitivity}</option>
+                                    </c:forEach>
+                                </select>
+                            </div>
+                            <div class="form-group">
+                                <label for="existingRestoration">Existing Restoration</label>
+                                <select name="existingRestoration" id="existingRestoration" class="form-control">
+                                    <option value="">Select</option>
+                                    <c:forEach items="${existingRestorations}" var="restoration">
+                                        <option value="${restoration}">${restoration}</option>
+                                    </c:forEach>
+                                </select>
+                            </div>
                         </div>
                     </div>
+                </div>
 
-                    <!-- Clinical Assessment Section -->
-                    <div class="form-section">
-                        <h3>Clinical Assessment</h3>
-                        <div class="form-group">
-                            <label for="toothMobility">Mobility</label>
-                            <select name="toothMobility" id="toothMobility">
-                                <option value="">Select</option>
-                                <c:forEach items="${toothMobilities}" var="mobility">
-                                    <option value="${mobility}">${mobility}</option>
-                                </c:forEach>
-                            </select>
-                        </div>
-                        <div class="form-group">
-                            <label for="toothVitality">Vitality</label>
-                            <select name="toothVitality" id="toothVitality">
-                                <option value="">Select</option>
-                                <c:forEach items="${toothVitalities}" var="vitality">
-                                    <option value="${vitality}">${vitality}</option>
-                                </c:forEach>
-                            </select>
-                        </div>
-                        <div class="form-group">
-                            <label for="toothSensitivity">Sensitivity</label>
-                            <select name="toothSensitivity" id="toothSensitivity">
-                                <option value="">Select</option>
-                                <c:forEach items="${toothSensitivities}" var="sensitivity">
-                                    <option value="${sensitivity}">${sensitivity}</option>
-                                </c:forEach>
-                            </select>
-                        </div>
-                        <div class="form-group">
-                            <label for="furcationInvolvement">Furcation</label>
-                            <select name="furcationInvolvement" id="furcationInvolvement">
-                                <option value="">Select</option>
-                                <c:forEach items="${furcationInvolvements}" var="furcation">
-                                    <option value="${furcation}">${furcation}</option>
-                                </c:forEach>
-                            </select>
-                        </div>
+                <!-- Full Width Sections -->
+                <div class="form-section notes-section">
+                    <h3>Treatment Advised</h3>
+                    <div class="form-group">
+                        <label for="advised">Treatment/Procedure Advised</label>
+                        <textarea name="advised" id="advised" rows="3" class="form-control" 
+                                  placeholder="Enter the treatment or procedure advised..."></textarea>
                     </div>
+                </div>
 
-                    <!-- Notes Section -->
-                    <div class="form-section notes-section">
-                        <h3>Clinical Notes</h3>
-                        <div class="form-group">
-                            <label for="examinationNotes"></label><textarea name="examinationNotes" id="examinationNotes" rows="3"
-                                                                            placeholder="Enter any additional notes here..."></textarea>
-                        </div>
+                <div class="form-section notes-section">
+                    <h3>Clinical Notes</h3>
+                    <div class="form-group">
+                        <label for="examinationNotes">Notes</label>
+                        <textarea name="examinationNotes" id="examinationNotes" rows="4" class="form-control"></textarea>
                     </div>
+                </div>
 
-                    <!-- Form Actions -->
-                    <div class="form-actions">
-                        <button type="button" class="btn-secondary" onclick="closeModal()">Cancel</button>
-                        <button type="submit" class="btn-primary">Save Examination</button>
-                    </div>
+                <div class="form-actions">
+                    <button type="submit" class="btn btn-primary">Save Examination</button>
+                    <button type="button" class="btn btn-secondary" onclick="closeModal()">Cancel</button>
                 </div>
             </form>
         </div>
     </div>
-    
+    </c:if>
 </div>
-<script>
-
-    // --- DOM Ready Event Listener (Optional but good practice) ---
-    // Ensures the DOM is fully loaded before attaching event listeners
-    document.addEventListener('DOMContentLoaded', function() {
-        // Hide modal on page load
-        const toothModal = document.getElementById('toothModal');
-        if (toothModal) {
-            toothModal.style.display = 'none';
-        }
-
-        // Update tooth conditions in the dental chart based on examination history
-        updateDentalChart();
-
-        // Modal variable - use the same variable for all modal operations
-        const modal = document.getElementById('toothModal');
-        const form = document.getElementById('toothExaminationForm');
-        const selectedToothSpan = document.getElementById('selectedToothNumber');
-        const toothNumberInput = document.getElementById('toothNumberInput'); // Hidden input for tooth number
-        const patientIdInput = form.querySelector('input[name="patientId"]'); // Hidden input for patient ID
-        const csrfToken = document.querySelector("meta[name='_csrf']").content;
-
-        if (!modal || !form || !selectedToothSpan || !toothNumberInput || !patientIdInput || !csrfToken) {
-            console.error("CRITICAL ERROR: Could not find essential page elements (modal, form, inputs, CSRF token). Script cannot function.");
-            alert("Page setup error. Please contact support.");
-            return; // Stop script execution if essential elements are missing
-        }
-
-        // --- Global Helper Functions ---
-
-        function showNotification(message, isError = false) {
-            // Replace with a more sophisticated notification system if desired
-            console.log(`Notification (${isError ? 'Error' : 'Success'}): ${message}`);
-            alert(message);
-        }
-
-        // --- Update Dental Chart with Examination Data ---
-        function updateDentalChart() {
-            // Get all examinations from the table
-            const examinationTable = document.getElementById('examinationHistoryTable');
-            if (!examinationTable) return; // Table doesn't exist or no examinations
-            
-            // Map to store the latest examination condition for each tooth
-            const toothConditions = new Map();
-            
-            // Process all examination rows
-            const rows = Array.from(examinationTable.querySelectorAll('tbody tr'));
-            rows.forEach(row => {
-                const toothCell = row.querySelector('td[data-tooth]');
-                const conditionCell = row.querySelector('td:nth-child(4)'); // Column with tooth condition
-                
-                if (toothCell && conditionCell) {
-                    const toothNumber = toothCell.textContent.trim();
-                    const condition = conditionCell.textContent.trim();
-                    
-                    // Only store if we don't already have this tooth, to keep the most recent (first in table)
-                    if (!toothConditions.has(toothNumber)) {
-                        toothConditions.set(toothNumber, condition);
-                    }
-                }
-            });
-            
-            // Update tooth appearance in the chart
-            toothConditions.forEach((condition, tooth) => {
-                // Find the corresponding tooth in the chart
-                const toothElement = document.querySelector(`.tooth[onclick="openToothDetails(${tooth})"]`);
-                if (toothElement) {
-                    // Remove all condition classes first
-                    toothElement.classList.remove('condition-healthy', 'condition-caries', 'condition-restored', 'condition-missing');
-                    
-                    // Add appropriate class based on condition
-                    if (condition === 'HEALTHY') {
-                        toothElement.classList.add('condition-healthy');
-                    } else if (condition === 'CARIES') {
-                        toothElement.classList.add('condition-caries');
-                    } else if (condition === 'RESTORED') {
-                        toothElement.classList.add('condition-restored');
-                    } else if (condition === 'MISSING') {
-                        toothElement.classList.add('condition-missing');
-                    }
-                    
-                    // Handle the SVG image itself for more direct visual control
-                    const img = toothElement.querySelector('img');
-                    if (img) {
-                        // Apply visual style to the container based on condition
-                        const container = img.closest('.tooth-graphic');
-                        if (container) {
-                            container.style.position = 'relative';
-                            
-                            if (condition === 'HEALTHY') {
-                                img.style.filter = 'drop-shadow(0 0 2px #3498db)';
-                            } else if (condition === 'CARIES') {
-                                img.style.filter = 'drop-shadow(0 0 2px #e74c3c) brightness(1.1)';
-                            } else if (condition === 'RESTORED') {
-                                img.style.filter = 'drop-shadow(0 0 2px #f39c12) sepia(0.2)';
-                            } else if (condition === 'MISSING') {
-                                img.style.opacity = '0.5';
-                                img.style.filter = 'grayscale(1)';
-                            }
-                        }
-                    }
-                }
-            });
-        }
-
-        // --- Modal Handling ---
-
-        window.openToothDetails = async function(toothNumber) { // Make it globally accessible from onclick
-            console.log(`--- Opening modal for tooth: ${toothNumber} ---`);
-
-            // 1. Validate Inputs
-            const currentPatientId = patientIdInput.value;
-
-            if (currentPatientId === null || currentPatientId === '') {
-                console.error("Modal Open Error: Patient ID is missing from the hidden input.");
-                showNotification("Cannot open details: Patient ID not found.", true);
-                return;
-            }
-            if (toothNumber === null || toothNumber === '' || typeof toothNumber === 'undefined') {
-                console.error("Modal Open Error: Invalid toothNumber provided:", toothNumber);
-                showNotification("Cannot open details: Invalid tooth number.", true);
-                return;
-            }
-
-            // 2. Update Modal UI & Hidden Input
-            selectedToothSpan.textContent = toothNumber;
-            toothNumberInput.value = toothNumber; // Set the hidden input for the form
-
-            // 3. Reset form fields (preserving hidden inputs) before fetching new data
-            resetFormFields();
-
-            // 4. Fetch Existing Data
-            const fetchUrl = `${pageContext.request.contextPath}/patients/tooth-examination/${currentPatientId}/${toothNumber}`;
-            console.log(`Fetching existing data from: ${fetchUrl}`);
-
-            try {
-                const response = await fetch(fetchUrl);
-
-                if (response.status === 404) {
-                    console.log("No existing examination data found for this tooth (404).");
-                    // Form is already reset, nothing more to do here.
-                } else if (!response.ok) {
-                    // Handle other HTTP errors (e.g., 500)
-                    throw new Error(`HTTP error fetching data: ${response.status} ${response.statusText}`);
-                } else {
-                    // Success: Parse JSON and populate
-                    const data = await response.json();
-                    console.log("Existing data received:", data);
-                    if (data) {
-                        populateForm(data);
-                    } else {
-                        console.log("Received successful response but no data object.");
-                    }
-                }
-            } catch (error) {
-                console.error('Error loading examination data:', error);
-                showNotification(`Error loading existing data: ${error.message}`, true);
-                // Form should already be reset from step 3.
-            }
-
-            // 5. Display Modal
-            modal.style.display = 'block';
-        }
-
-        window.closeModal = function() { // Make it globally accessible
-            modal.style.display = 'none';
-            // resetFormFields(); // Optionally reset fields again on close, or just rely on reset during open
-            console.log("--- Modal closed ---");
-        }
-
-        // Attach closeModal to the close button
-        const closeButton = modal.querySelector('.close');
-        if (closeButton) {
-            closeButton.addEventListener('click', closeModal);
-        } else {
-            console.warn("Could not find the modal close button.");
-        }
-
-        // --- Form Handling ---
-
-        function resetFormFields() {
-            console.log("Resetting form fields (excluding hidden inputs)...");
-            const elementsToReset = form.querySelectorAll('select, textarea, input:not([type="hidden"])');
-
-            elementsToReset.forEach(element => {
-                const tagName = element.tagName.toLowerCase();
-                if (tagName === 'select') {
-                    element.selectedIndex = 0; // Reset select boxes to the first option ("Select")
-                } else if (tagName === 'textarea') {
-                    element.value = ''; // Clear textareas
-                } else if (element.type !== 'button' && element.type !== 'submit' && element.type !== 'reset') {
-                     element.value = ''; // Clear other input types (text, number, etc.)
-                }
-                // Add handling for checkboxes/radios if needed: element.checked = false;
-            });
-            // Note: We explicitly DO NOT reset the hidden patientId or toothNumber inputs here.
-        }
-
-        function populateForm(data) {
-            console.log("Populating form with data:", data);
-            // Helper function to safely set value
-            const setValue = (id, value) => {
-                const element = document.getElementById(id);
-                if (element) {
-                    element.value = value || ''; // Use empty string if value is null/undefined
-                } else {
-                    console.warn(`populateForm: Element with ID '${id}' not found.`);
-                }
-            };
-
-            // Populate all form fields, ensuring IDs match your form elements
-            setValue('toothSurface', data.toothSurface);
-            setValue('toothCondition', data.toothCondition);
-            setValue('existingRestoration', data.existingRestoration);
-            setValue('pocketDepth', data.pocketDepth);
-            setValue('bleedingOnProbing', data.bleedingOnProbing);
-            setValue('plaqueScore', data.plaqueScore);
-            setValue('gingivalRecession', data.gingivalRecession);
-            setValue('toothMobility', data.toothMobility);
-            setValue('toothVitality', data.toothVitality);
-            setValue('toothSensitivity', data.toothSensitivity);
-            setValue('furcationInvolvement', data.furcationInvolvement);
-            // Ensure 'periapicalCondition' input exists if you need it
-            // setValue('periapicalCondition', data.periapicalCondition);
-            setValue('examinationNotes', data.examinationNotes);
-        }
-
-        // Form Submission Logic
-        form.addEventListener('submit', async function(event) {
-            event.preventDefault(); // Prevent default form submission
-            console.log("--- Form submission initiated ---");
-
-            // 1. Retrieve Essential IDs directly from hidden inputs
-            const currentPatientId = patientIdInput.value;
-            const currentToothNumber = toothNumberInput.value; // Value set by openToothDetails
-
-            console.log(`Submitting for Patient ID: '${currentPatientId}', Tooth Number: '${currentToothNumber}'`);
-
-            // 2. Validate Essential IDs
-            if (!currentPatientId || !currentToothNumber) {
-                 console.error("Form Submit Error: Patient ID or Tooth Number is missing from hidden inputs.");
-                 showNotification("Cannot save: Missing critical patient or tooth identifier.", true);
-                 return; // Stop submission
-            }
-
-            // 3. Build JSON Payload
-            const jsonData = {
-                patientId: currentPatientId,
-                // Backend expects integer? Ensure conversion if needed. Assuming string is fine based on previous attempts.
-                toothNumber: "TOOTH_"+currentToothNumber
-                // Note: Backend might expect "TOOTH_18" - adjust if needed: toothNumber: `TOOTH_${currentToothNumber}`
-            };
-
-            // Gather data from other form fields
-            const formElements = form.querySelectorAll('select, textarea, input:not([type="hidden"])');
-            formElements.forEach(element => {
-                const key = element.name;
-                const value = element.value;
-                // Include only non-empty fields, and exclude the CSRF token field if present by name
-                if (key && key !== '_csrf' && value !== '') {
-                    console.log(`  Adding field to JSON: '${key}': '${value}'`);
-                    jsonData[key] = value;
-                } else if (key && key !== '_csrf') {
-                     console.log(`  Skipping empty field: '${key}'`);
-                }
-            });
-
-            console.log('Final JSON payload being sent:', JSON.stringify(jsonData, null, 2));
-
-            // 4. Send Data via Fetch
-            const saveUrl = `${pageContext.request.contextPath}/patients/tooth-examination/save`;
-            try {
-                const response = await fetch(saveUrl, {
-                    method: 'POST',
-                    headers: {
-                        'Content-Type': 'application/json',
-                        'X-CSRF-TOKEN': csrfToken // Send CSRF token in header
-                    },
-                    body: JSON.stringify(jsonData)
-                });
-
-                if (!response.ok) {
-                     // Attempt to get error details from response body if possible
-                     let errorBody = await response.text(); // Read as text first
-                     let errorMessage = `HTTP error ${response.status}: ${response.statusText}`;
-                     try {
-                         const errorJson = JSON.parse(errorBody); // Try parsing as JSON
-                         errorMessage += ` - Server says: ${errorJson.message || errorBody}`;
-                     } catch (e) {
-                         errorMessage += ` - Server response: ${errorBody}`; // Use raw text if not JSON
-                     }
-                     throw new Error(errorMessage);
-                }
-
-                // Success
-                const result = await response.json();
-                console.log("Server response from save:", result);
-
-                if (result.success) {
-                    showNotification('Examination saved successfully');
-                    closeModal();
-                    // TODO: Optionally refresh part of the page (e.g., update the tooth's visual state)
-                } else {
-                    showNotification(`Error saving examination: ${result.message || 'Unknown server error'}`, true);
-                }
-
-            } catch (error) {
-                console.error('Error submitting form:', error);
-                showNotification(`Error saving examination: ${error.message}`, true);
-            }
-        });
-
-    }); // End of DOMContentLoaded listener
-
-
-    // Function to sort the examination history table based on dropdown selection
-    function sortTable(sortOption) {
-        const table = document.getElementById('examinationHistoryTable');
-        const tbody = table.querySelector('tbody');
-        const rows = Array.from(tbody.querySelectorAll('tr'));
-
-        // Sort the rows based on the selected option
-        rows.sort((a, b) => {
-            let aValue, bValue;
-
-            if (sortOption === 'toothNumberAsc' || sortOption === 'toothNumberDesc') {
-                aValue = a.querySelector('td[data-tooth]').getAttribute('data-tooth');
-                bValue = b.querySelector('td[data-tooth]').getAttribute('data-tooth');
-
-                // Extract numeric portion from tooth number (e.g., "TOOTH_18" -> 18)
-                const aNum = parseInt(aValue.replace(/\D/g, '')) || 0;
-                const bNum = parseInt(bValue.replace(/\D/g, '')) || 0;
-
-                return sortOption === 'toothNumberAsc' ? aNum - bNum : bNum - aNum;
-            } else if (sortOption === 'dateAsc' || sortOption === 'dateDesc') {
-                // Use data-date attribute which contains the original ISO date for reliable sorting
-                aValue = a.querySelector('td[data-date]').getAttribute('data-date');
-                bValue = b.querySelector('td[data-date]').getAttribute('data-date');
-
-                // Convert dates for comparison
-                const aDate = new Date(aValue);
-                const bDate = new Date(bValue);
-
-                return sortOption === 'dateDesc' ? bDate - aDate : aDate - bDate;
-            }
-
-            return 0;
-        });
-
-        // Remove all existing rows
-        rows.forEach(row => tbody.removeChild(row));
-
-        // Add the sorted rows back to the table and update index numbers
-        rows.forEach((row, index) => {
-            // Update the index column
-            row.querySelector('td.index-col').textContent = index + 1;
-            tbody.appendChild(row);
-        });
-    }
-
-    // Set default sort option and sort the table when the page loads
-    document.addEventListener('DOMContentLoaded', function() {
-        // Set default sort to tooth number ascending
-        document.getElementById('sortDropdown').value = 'toothNumberAsc';
-        sortTable('toothNumberAsc');
-        
-        // Count and update unassigned examinations in the filter dropdown
-        updateUnassignedCount();
-    });
-
-    // Function to count unassigned examinations and update the dropdown option
-    function updateUnassignedCount() {
-        const table = document.getElementById('examinationHistoryTable');
-        if (!table) return; // Table might not exist if no examinations
-        
-        const rows = Array.from(table.querySelectorAll('tbody tr'));
-        const unassignedCount = rows.filter(row => {
-            const doctorCell = row.querySelector('td[data-doctor]');
-            const doctorId = doctorCell ? doctorCell.getAttribute('data-doctor') : '';
-            return doctorId === '';
-        }).length;
-        
-        // Update the unassigned option text with count
-        const unassignedOption = document.querySelector('#doctorDropdown option[value="unassigned"]');
-        if (unassignedOption) {
-            unassignedOption.textContent = `Unassigned Examinations (${unassignedCount})`;
-        }
-    }
-
-    // Function to filter examination history by doctor
-    function filterByDoctor(doctorId) {
-        const table = document.getElementById('examinationHistoryTable');
-        const tbody = table.querySelector('tbody');
-        const rows = Array.from(tbody.querySelectorAll('tr'));
-
-        rows.forEach(row => {
-            if (doctorId === 'all') {
-                row.style.display = ''; // Show all rows
-            } else if (doctorId === 'unassigned') {
-                // Show only unassigned examinations (empty data-doctor attribute)
-                const doctorCell = row.querySelector('td[data-doctor]');
-                const rowDoctorId = doctorCell ? doctorCell.getAttribute('data-doctor') : '';
-                row.style.display = (rowDoctorId === '') ? '' : 'none';
-            } else {
-                // Show examinations for specific doctor
-                const doctorCell = row.querySelector('td[data-doctor]');
-                const rowDoctorId = doctorCell ? doctorCell.getAttribute('data-doctor') : '';
-                row.style.display = (rowDoctorId === doctorId) ? '' : 'none';
-            }
-        });
-
-        // Update the row indexes for visible rows
-        updateIndexNumbers();
-
-        // Update total count in table info
-        updateRecordCount();
-    }
-
-    // Function to update index numbers for visible rows
-    function updateIndexNumbers() {
-        const tbody = document.getElementById('examinationHistoryTable').querySelector('tbody');
-        const visibleRows = Array.from(tbody.querySelectorAll('tr')).filter(row => row.style.display !== 'none');
-
-        visibleRows.forEach((row, index) => {
-            row.querySelector('td.index-col').textContent = index + 1;
-        });
-    }
-
-    // Function to update the record count in table info
-    function updateRecordCount() {
-        const tbody = document.getElementById('examinationHistoryTable').querySelector('tbody');
-        const visibleRows = Array.from(tbody.querySelectorAll('tr')).filter(row => row.style.display !== 'none');
-
-        document.querySelector('.table-info small').textContent = `Showing ${visibleRows.length} of ${tbody.querySelectorAll('tr').length} records`;
-    }
-
-
-    // Function to filter examination history by clinic
-    function filterByClinic(clinicUsername) {
-        const table = document.getElementById('examinationHistoryTable');
-        const tbody = table.querySelector('tbody');
-        const rows = Array.from(tbody.querySelectorAll('tr'));
-
-        rows.forEach(row => {
-            if (clinicUsername === 'all') {
-                row.style.display = ''; // Show all rows
-            } else {
-                // Find the clinic cell (new 7th column we added - index 6)
-                const clinicCell = row.querySelector('td:nth-child(7)');
-                const clinicCode = clinicCell ? clinicCell.textContent.trim() : '';
-                row.style.display = (clinicCode === clinicUsername) ? '' : 'none';
-            }
-        });
-
-        // Update the row indexes for visible rows
-        updateIndexNumbers();
-
-        // Update total count in table info
-        updateRecordCount();
-    }
-
-        // Add this function to your existing JavaScript to assign doctor
-        function assignDoctor(doctorId, examinationId) {
-        if (!doctorId) return; // Don't proceed if no doctor is selected
-        
-        const csrfToken = document.querySelector("meta[name='_csrf']").content;
-        
-        // Determine if we're removing a doctor
-        const isRemove = doctorId === 'remove';
-        
-        // Create payload - if removing, set doctorId to null in the backend
-        const payload = {
-            examinationId: examinationId,
-            doctorId: isRemove ? null : doctorId
-        };
-
-        // Send request to server
-        fetch('${pageContext.request.contextPath}/patients/tooth-examination/assign-doctor', {
-            method: 'POST',
-            headers: {
-                'Content-Type': 'application/json',
-                'X-CSRF-TOKEN': csrfToken
-            },
-            body: JSON.stringify(payload)
-        })
-        .then(response => {
-            if (!response.ok) {
-                throw new Error('Failed to assign doctor');
-            }
-            return response.json();
-        })
-        .then(data => {
-            if (data.success) {
-                // Show success indicator
-                const select = document.querySelector(`select[data-exam-id="${examinationId}"]`);
-                
-                // Update the data-doctor attribute for filtering
-                const doctorCell = select.closest('td[data-doctor]');
-                if (doctorCell) {
-                    if (isRemove) {
-                        doctorCell.setAttribute('data-doctor', '');
-                        select.classList.remove('doctor-assigned'); // Remove assigned class for removed doctors
-                    } else {
-                        doctorCell.setAttribute('data-doctor', doctorId);
-                        select.classList.add('doctor-assigned'); // Add assigned class for assigned doctors
-                    }
-                }
-                
-                // Update unassigned count without refresh
-                updateUnassignedCount();
-                
-                // Check if we need to update visibility based on current filter
-                const currentFilter = document.getElementById('doctorDropdown').value;
-                const row = select.closest('tr');
-                
-                if (isRemove) {
-                    // If we removed a doctor and filter is set to "unassigned", make this row visible
-                    if (currentFilter === 'unassigned') {
-                        row.style.display = '';
-                        updateIndexNumbers(); // Update numbering
-                        updateRecordCount();  // Update count
-                    } 
-                    // If we removed a doctor but filter is set to a specific doctor, hide this row
-                    else if (currentFilter !== 'all') {
-                        row.style.display = 'none';
-                        updateIndexNumbers(); // Update numbering
-                        updateRecordCount();  // Update count
-                    }
-                } else {
-                    // If we assigned a doctor and filter is set to "unassigned", hide this row
-                    if (currentFilter === 'unassigned') {
-                        row.style.display = 'none';
-                        updateIndexNumbers(); // Update numbering
-                        updateRecordCount();  // Update count
-                    }
-                    // If we assigned a doctor and filter matches this doctor, show this row
-                    else if (currentFilter === doctorId) {
-                        row.style.display = '';
-                        updateIndexNumbers(); // Update numbering
-                        updateRecordCount();  // Update count
-                    }
-                    // If we assigned a doctor but filter is for a different doctor, hide this row
-                    else if (currentFilter !== 'all') {
-                        row.style.display = 'none';
-                        updateIndexNumbers(); // Update numbering
-                        updateRecordCount();  // Update count
-                    }
-                }
-                
-                // Show notification
-                showNotification(isRemove ? 'Doctor removed successfully' : 'Doctor assigned successfully');
-                
-                // We'll only refresh if the user is viewing "All Examinations"
-                // Otherwise, we've already updated the UI appropriately
-                if (currentFilter === 'all') {
-                    // Refresh the page after a short delay to show the notification
-                    setTimeout(() => {
-                        window.location.reload();
-                    }, 1000);
-                }
-            } else {
-                throw new Error(data.message || 'Failed to update doctor assignment');
-            }
-        })
-        .catch(error => {
-            console.error('Error updating doctor assignment:', error);
-            showNotification(`Error: ${error.message}`, true);
-        });
-    }
-
-    // Function to open examination details page
-    function openExaminationDetails(examinationId) {
-        // Add debug logging
-        console.log("openExaminationDetails called with ID:", examinationId);
-        console.log("Value type:", typeof examinationId);
-        
-        // For empty string or 'undefined' string
-        if (examinationId === '') {
-            console.error("Empty string ID detected");
-            showNotification("Cannot open examination details: Missing ID", true);
-            return;
-        }
-        
-        // For null/undefined or the string 'undefined'
-        if (!examinationId || examinationId === 'undefined' || examinationId === '') {
-            console.error("Invalid examination ID:", examinationId);
-            showNotification("Cannot open examination details: Invalid ID", true);
-            return;
-        }
-        
-        // Ensure ID is part of URL by directly concatenating it
-        var finalUrl = "${pageContext.request.contextPath}/patients/examination/" + examinationId;
-        console.log("Proceeding with valid ID, redirecting to:", finalUrl);
-
-        // Redirect to the examination details page with concatenated URL
-        window.location.href = finalUrl;
-    }
-    
-    // Update CSS for clickable rows
-    document.addEventListener('DOMContentLoaded', function() {
-        // Add this CSS dynamically
-        const style = document.createElement('style');
-        style.textContent = `
-            .examination-row {
-                cursor: pointer;
-                transition: background-color 0.2s;
-            }
-            .examination-row:hover {
-                background-color: #f0f7ff !important;
-            }
-            .examination-row td:not(:last-child):not([data-date]) {
-                pointer-events: auto;
-            }
-            .examination-row td:last-child {
-                pointer-events: none;
-            }
-            .examination-row td:last-child * {
-                pointer-events: auto;
-            }
-            .examination-row td[data-date] {
-                pointer-events: none;
-            }
-            .examination-row td[data-date] * {
-                pointer-events: auto;
-            }
-        `;
-        document.head.appendChild(style);
-
-        // Add click handler to rows, excluding date picker cells
-        document.querySelectorAll('.examination-row').forEach(row => {
-            row.addEventListener('click', function(e) {
-                // Check if the click was on a date picker or its children
-                if (e.target.closest('.flatpickr-calendar') || 
-                    e.target.closest('input.treatment-date-picker')) {
-                    return; // Don't proceed with row click if clicking date picker
-                }
-                
-                // Get the examination ID from the row
-                const examinationId = this.getAttribute('data-exam-id');
-                if (examinationId) {
-                    openExaminationDetails(examinationId);
-                }
-            });
-        });
-    });
-
-    document.addEventListener('DOMContentLoaded', function() {
-        // Initialize flatpickr for all treatment date pickers
-        const datePickers = document.querySelectorAll('.treatment-date-picker');
-        
-        datePickers.forEach(input => {
-            const rawDate = input.dataset.rawDate;
-            const examinationId = input.dataset.examId;
-            
-            // Initialize flatpickr
-            const fp = flatpickr(input, {
-                enableTime: true,
-                dateFormat: "Y-m-d H:i",
-                time_24hr: true,
-                defaultDate: rawDate || new Date(),
-                minuteIncrement: 5,
-                allowInput: false,
-                clickOpens: true,
-                closeOnSelect: false,
-                static: true,
-                position: "auto",
-                appendTo: document.body
-            });
-
-            // Create and style the button container
-            const buttonContainer = document.createElement('div');
-            buttonContainer.className = 'flatpickr-buttons';
-
-            // Create and style the "Now" button
-            const nowButton = document.createElement('button');
-            nowButton.className = 'flatpickr-now-button';
-            nowButton.textContent = 'Set Current Time';
-            nowButton.addEventListener('click', function(e) {
-                e.preventDefault();
-                const now = new Date();
-                fp.setDate(now);
-            });
-
-            // Create and style the "Save" button
-            const saveButton = document.createElement('button');
-            saveButton.className = 'flatpickr-confirm';
-            saveButton.textContent = 'Save Time';
-            saveButton.addEventListener('click', function(e) {
-                e.preventDefault();
-                const selectedDate = fp.selectedDates[0];
-                if (selectedDate) {
-                    updateTreatmentDate(selectedDate, examinationId);
-                    fp.close();
-                }
-            });
-
-            // Add the buttons to the container
-            buttonContainer.appendChild(nowButton);
-            buttonContainer.appendChild(saveButton);
-
-            // Add the container to the calendar
-            const calendarContainer = fp.calendarContainer;
-            calendarContainer.appendChild(buttonContainer);
-        });
-    });
-
-    // Function to update treatment date
-    function updateTreatmentDate(date, examinationId) {
-        if (!date) return;
-        
-        const csrfToken = document.querySelector("meta[name='_csrf']").content;
-        
-        // Format the date in 24-hour format
-        const formattedDate = flatpickr.formatDate(date, "Y-m-d H:i");
-        console.log('Sending date to backend:', formattedDate);
-        
-        fetch('${pageContext.request.contextPath}/patients/tooth-examination/update-treatment-date', {
-            method: 'POST',
-            headers: {
-                'Content-Type': 'application/json',
-                'X-CSRF-TOKEN': csrfToken
-            },
-            body: JSON.stringify({
-                examinationId: examinationId,
-                treatmentStartDate: formattedDate
-            })
-        })
-        .then(response => {
-            if (!response.ok) {
-                throw new Error('Failed to update treatment date');
-            }
-            return response.json();
-        })
-        .then(data => {
-            if (data.success) {
-                showNotification('Treatment start date updated successfully');
-                // Update the input field with the formatted date
-                const input = document.querySelector(`input[data-exam-id="${examinationId}"]`);
-                if (input) {
-                    // Format the date for display
-                    const displayDate = flatpickr.formatDate(date, "Y-m-d H:i");
-                    input.value = displayDate;
-                }
-            } else {
-                throw new Error(data.message || 'Failed to update treatment date');
-            }
-        })
-        .catch(error => {
-            console.error('Error updating treatment date:', error);
-            showNotification(`Error: ${error.message}`, true);
-        });
-    }
-
-    // Function to open the examination modal
-    function openExaminationModal(toothNumber) {
-        const modal = document.getElementById('examinationDetailsModal');
-        const form = modal.querySelector('form');
-        
-        // Clear all form fields
-        const inputs = form.querySelectorAll('input, select, textarea');
-        inputs.forEach(input => {
-            if (input.type !== 'hidden') {
-                input.value = '';
-            }
-        });
-        
-        // Set the tooth number
-        form.querySelector('input[name="toothNumber"]').value = toothNumber;
-        
-        // Show the modal
-        modal.style.display = 'block';
-    }
-
-    // Add click handler for tooth elements
-    document.querySelectorAll('.tooth').forEach(tooth => {
-        tooth.addEventListener('click', function() {
-            const toothNumber = this.getAttribute('data-tooth-number');
-            openExaminationModal(toothNumber);
-        });
-    });
-
-</script>
 </body>
 </html>

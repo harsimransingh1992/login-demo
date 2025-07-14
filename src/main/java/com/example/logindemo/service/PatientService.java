@@ -4,9 +4,12 @@ import com.example.logindemo.dto.PatientDTO;
 import com.example.logindemo.dto.ToothClinicalExaminationDTO;
 import com.example.logindemo.model.Patient;
 import com.example.logindemo.model.User;
+import org.springframework.data.domain.Page;
+import org.springframework.data.domain.Pageable;
 import org.springframework.web.multipart.MultipartFile;
 
 import java.util.List;
+import java.util.Optional;
 
 public interface PatientService {
     void checkInPatient(Long id, String currentClinicId);
@@ -15,6 +18,7 @@ public interface PatientService {
     void registerPatient(PatientDTO patient);
 
     List<PatientDTO> getAllPatients();
+    Page<PatientDTO> getAllPatientsPaginated(Pageable pageable);
     List<PatientDTO> getCheckedInPatients();
     User attachCurrentClinicModel(String clinicId);
 
@@ -39,7 +43,7 @@ public interface PatientService {
      * Update an existing patient
      * @param patient the patient data to update
      */
-    void updatePatient(PatientDTO patient);
+    void updatePatient(PatientDTO patientDTO);
     
     /**
      * Check if a patient with the same first name and phone number already exists
@@ -56,4 +60,24 @@ public interface PatientService {
      * @return the path where the file was stored
      */
     String handleProfilePictureUpload(MultipartFile file, String patientId);
+    
+    /**
+     * Find a patient by their registration code
+     * @param registrationCode the SDC registration code
+     * @return the patient DTO if found
+     * @throws RuntimeException if patient not found
+     */
+    PatientDTO findByRegistrationCode(String registrationCode);
+
+    Optional<Patient> getPatientById(Long id);
+    Patient savePatient(Patient patient);
+    
+    /**
+     * Search patients with pagination
+     * @param searchType the type of search (name, phone, registration, examination)
+     * @param query the search query
+     * @param pageable pagination parameters
+     * @return paginated results
+     */
+    Page<PatientDTO> searchPatientsPaginated(String searchType, String query, Pageable pageable);
 }

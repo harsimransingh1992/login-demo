@@ -1,0 +1,508 @@
+{
+	"info": {
+		"_postman_id": "peridesk-mobile-api-collection",
+		"name": "PeriDesk Mobile API",
+		"description": "Complete collection for PeriDesk Mobile API endpoints with security headers and authentication",
+		"schema": "https://schema.getpostman.com/json/collection/v2.1.0/collection.json",
+		"_exporter_id": "peridesk-mobile-api"
+	},
+	"item": [
+		{
+			"name": "Debug & Test Endpoints",
+			"item": [
+				{
+					"name": "Debug Configuration",
+					"request": {
+						"method": "GET",
+						"header": [],
+						"url": {
+							"raw": "{{baseUrl}}/api/mobile/debug",
+							"host": [
+								"{{baseUrl}}"
+							],
+							"path": [
+								"api",
+								"mobile",
+								"debug"
+							]
+						},
+						"description": "Check if API configuration is loaded correctly. No authentication required."
+					},
+					"response": []
+				},
+				{
+					"name": "Test Endpoint",
+					"request": {
+						"method": "GET",
+						"header": [],
+						"url": {
+							"raw": "{{baseUrl}}/api/mobile/test",
+							"host": [
+								"{{baseUrl}}"
+							],
+							"path": [
+								"api",
+								"mobile",
+								"test"
+							]
+						},
+						"description": "Simple test endpoint to verify the mobile API is accessible. No authentication required."
+					},
+					"response": []
+				},
+				{
+					"name": "Health Check",
+					"request": {
+						"method": "GET",
+						"header": [],
+						"url": {
+							"raw": "{{baseUrl}}/api/mobile/health",
+							"host": [
+								"{{baseUrl}}"
+							],
+							"path": [
+								"api",
+								"mobile",
+								"health"
+							]
+						},
+						"description": "Check if the mobile API service is running and healthy. No authentication required."
+					},
+					"response": []
+				},
+				{
+					"name": "Login Test (No Security)",
+					"request": {
+						"method": "POST",
+						"header": [
+							{
+								"key": "Content-Type",
+								"value": "application/json"
+							}
+						],
+						"body": {
+							"mode": "raw",
+							"raw": "{\n  \"username\": \"{{username}}\",\n  \"password\": \"{{password}}\"\n}"
+						},
+						"url": {
+							"raw": "{{baseUrl}}/api/mobile/login-test",
+							"host": [
+								"{{baseUrl}}"
+							],
+							"path": [
+								"api",
+								"mobile",
+								"login-test"
+							]
+						},
+						"description": "Test login without security headers (for debugging). No authentication required."
+					},
+					"response": []
+				},
+				{
+					"name": "Test Signature Generation",
+					"event": [
+						{
+							"listen": "prerequest",
+							"script": {
+								"exec": [
+									"// Test signature generation with known values",
+									"const testPayload = 'harsimran.singhDexter@123';",
+									"const testTimestamp = '2025-07-01T11:40:06.000Z';",
+									"const testApiSecret = pm.environment.get('apiSecret');",
+									"",
+									"const dataToSign = testPayload + testTimestamp + testApiSecret;",
+									"const signature = CryptoJS.HmacSHA256(dataToSign, testApiSecret).toString();",
+									"",
+									"console.log('=== Signature Test ===');",
+									"console.log('Test Payload:', testPayload);",
+									"console.log('Test Timestamp:', testTimestamp);",
+									"console.log('Test API Secret:', testApiSecret);",
+									"console.log('Data to Sign:', dataToSign);",
+									"console.log('Generated Signature:', signature);",
+									"console.log('=== End Signature Test ===');",
+									"",
+									"// Set the test values for the request",
+									"pm.request.body.raw = JSON.stringify({",
+									"    payload: testPayload,",
+									"    timestamp: testTimestamp",
+									"});"
+								],
+								"type": "text/javascript"
+							}
+						}
+					],
+					"request": {
+						"method": "POST",
+						"header": [
+							{
+								"key": "Content-Type",
+								"value": "application/json"
+							}
+						],
+						"body": {
+							"mode": "raw",
+							"raw": "{\n  \"payload\": \"harsimran.singhDexter@123\",\n  \"timestamp\": \"2025-07-01T11:40:06.000Z\"\n}"
+						},
+						"url": {
+							"raw": "{{baseUrl}}/api/mobile/debug-signature",
+							"host": [
+								"{{baseUrl}}"
+							],
+							"path": [
+								"api",
+								"mobile",
+								"debug-signature"
+							]
+						},
+						"description": "Test signature generation with known values to verify the algorithm."
+					},
+					"response": []
+				}
+			],
+			"description": "Endpoints for debugging and testing the API without authentication"
+		},
+		{
+			"name": "Authentication",
+			"item": [
+				{
+					"name": "Login",
+					"event": [
+						{
+							"listen": "prerequest",
+							"script": {
+								"exec": [
+									"// Generate timestamp in ISO format with timezone",
+									"const timestamp = new Date().toISOString();",
+									"pm.environment.set('timestamp', timestamp);",
+									"",
+									"// Get request body for signature generation",
+									"const requestBody = pm.request.body.raw;",
+									"",
+									"// Generate HMAC-SHA256 signature",
+									"// Format: HMAC-SHA256(payload + timestamp + apiSecret)",
+									"const dataToSign = requestBody + timestamp + pm.environment.get('apiSecret');",
+									"const signature = CryptoJS.HmacSHA256(dataToSign, pm.environment.get('apiSecret')).toString();",
+									"pm.environment.set('signature', signature);",
+									"",
+									"// Debug logging",
+									"console.log('Request Body:', requestBody);",
+									"console.log('Timestamp:', timestamp);",
+									"console.log('API Secret:', pm.environment.get('apiSecret'));",
+									"console.log('Data to Sign:', dataToSign);",
+									"console.log('Generated Signature:', signature);",
+									"",
+									"// Set headers",
+									"pm.request.headers.add({",
+									"    key: 'X-API-Key',",
+									"    value: pm.environment.get('apiKey')",
+									"});",
+									"pm.request.headers.add({",
+									"    key: 'X-Timestamp',",
+									"    value: timestamp",
+									"});",
+									"pm.request.headers.add({",
+									"    key: 'X-Signature',",
+									"    value: signature",
+									"});"
+								],
+								"type": "text/javascript"
+							}
+						}
+					],
+					"request": {
+						"method": "POST",
+						"header": [
+							{
+								"key": "Content-Type",
+								"value": "application/json"
+							}
+						],
+						"body": {
+							"mode": "raw",
+							"raw": "{\n  \"username\": \"{{username}}\",\n  \"password\": \"{{password}}\"\n}"
+						},
+						"url": {
+							"raw": "{{baseUrl}}/api/mobile/login",
+							"host": [
+								"{{baseUrl}}"
+							],
+							"path": [
+								"api",
+								"mobile",
+								"login"
+							]
+						},
+						"description": "Mobile app login with security headers. Requires API key, timestamp, and HMAC signature."
+					},
+					"response": []
+				}
+			],
+			"description": "Authentication endpoints with security headers"
+		},
+		{
+			"name": "Examination Management",
+			"item": [
+				{
+					"name": "Get Examination Details",
+					"event": [
+						{
+							"listen": "prerequest",
+							"script": {
+								"exec": [
+									"// Generate timestamp in ISO format with timezone",
+									"const timestamp = new Date().toISOString();",
+									"pm.environment.set('timestamp', timestamp);",
+									"",
+									"// Get request body for signature generation",
+									"const requestBody = pm.request.body.raw;",
+									"",
+									"// Generate HMAC-SHA256 signature",
+									"// Format: HMAC-SHA256(payload + timestamp + apiSecret)",
+									"const dataToSign = requestBody + timestamp + pm.environment.get('apiSecret');",
+									"const signature = CryptoJS.HmacSHA256(dataToSign, pm.environment.get('apiSecret')).toString();",
+									"pm.environment.set('signature', signature);",
+									"",
+									"// Debug logging",
+									"console.log('Request Body:', requestBody);",
+									"console.log('Timestamp:', timestamp);",
+									"console.log('API Secret:', pm.environment.get('apiSecret'));",
+									"console.log('Data to Sign:', dataToSign);",
+									"console.log('Generated Signature:', signature);",
+									"",
+									"// Set headers",
+									"pm.request.headers.add({",
+									"    key: 'X-API-Key',",
+									"    value: pm.environment.get('apiKey')",
+									"});",
+									"pm.request.headers.add({",
+									"    key: 'X-Timestamp',",
+									"    value: timestamp",
+									"});",
+									"pm.request.headers.add({",
+									"    key: 'X-Signature',",
+									"    value: signature",
+									"});"
+								],
+								"type": "text/javascript"
+							}
+						}
+					],
+					"request": {
+						"method": "POST",
+						"header": [
+							{
+								"key": "Content-Type",
+								"value": "application/json"
+							}
+						],
+						"body": {
+							"mode": "raw",
+							"raw": "{\n  \"examinationId\": {{examinationId}},\n  \"username\": \"{{username}}\"\n}"
+						},
+						"url": {
+							"raw": "{{baseUrl}}/api/mobile/examination",
+							"host": [
+								"{{baseUrl}}"
+							],
+							"path": [
+								"api",
+								"mobile",
+								"examination"
+							]
+						},
+						"description": "Fetch examination details by ID after login verification. Requires security headers."
+					},
+					"response": []
+				}
+			],
+			"description": "Examination management endpoints"
+		},
+		{
+			"name": "File Upload",
+			"item": [
+				{
+					"name": "Upload Images",
+					"event": [
+						{
+							"listen": "prerequest",
+							"script": {
+								"exec": [
+									"// Generate timestamp in ISO format with timezone",
+									"const timestamp = new Date().toISOString();",
+									"pm.environment.set('timestamp', timestamp);",
+									"",
+									"// Create payload for signature (examinationId + username)",
+									"const examinationId = pm.request.body.formdata.get('examinationId');",
+									"const username = pm.request.body.formdata.get('username');",
+									"const payload = examinationId + username;",
+									"",
+									"// Generate HMAC-SHA256 signature",
+									"// Format: HMAC-SHA256(payload + timestamp + apiSecret)",
+									"const dataToSign = payload + timestamp + pm.environment.get('apiSecret');",
+									"const signature = CryptoJS.HmacSHA256(dataToSign, pm.environment.get('apiSecret')).toString();",
+									"pm.environment.set('signature', signature);",
+									"",
+									"// Debug logging",
+									"console.log('Request Body:', payload);",
+									"console.log('Timestamp:', timestamp);",
+									"console.log('API Secret:', pm.environment.get('apiSecret'));",
+									"console.log('Data to Sign:', dataToSign);",
+									"console.log('Generated Signature:', signature);",
+									"",
+									"// Set headers",
+									"pm.request.headers.add({",
+									"    key: 'X-API-Key',",
+									"    value: pm.environment.get('apiKey')",
+									"});",
+									"pm.request.headers.add({",
+									"    key: 'X-Timestamp',",
+									"    value: timestamp",
+									"});",
+									"pm.request.headers.add({",
+									"    key: 'X-Signature',",
+									"    value: signature",
+									"});"
+								],
+								"type": "text/javascript"
+							}
+						}
+					],
+					"request": {
+						"method": "POST",
+						"header": [],
+						"body": {
+							"mode": "formdata",
+							"formdata": [
+								{
+									"key": "examinationId",
+									"value": "{{examinationId}}",
+									"type": "text"
+								},
+								{
+									"key": "username",
+									"value": "{{username}}",
+									"type": "text"
+								},
+								{
+									"key": "upperDentureImage",
+									"type": "file",
+									"src": []
+								},
+								{
+									"key": "lowerDentureImage",
+									"type": "file",
+									"src": []
+								},
+								{
+									"key": "xrayImage",
+									"type": "file",
+									"src": []
+								}
+							]
+						},
+						"url": {
+							"raw": "{{baseUrl}}/api/mobile/upload-images",
+							"host": [
+								"{{baseUrl}}"
+							],
+							"path": [
+								"api",
+								"mobile",
+								"upload-images"
+							]
+						},
+						"description": "Upload images (denture pictures and X-ray) for an examination. Requires security headers."
+					},
+					"response": []
+				}
+			],
+			"description": "File upload endpoints"
+		}
+	],
+	"event": [
+		{
+			"listen": "prerequest",
+			"script": {
+				"type": "text/javascript",
+				"exec": [
+					"// Global pre-request script for common setup",
+					"// This runs before every request in the collection",
+					"",
+					"// Set default headers if not already set",
+					"if (!pm.request.headers.has('Content-Type')) {",
+					"    pm.request.headers.add({",
+					"        key: 'Content-Type',",
+					"        value: 'application/json'",
+					"    });",
+					"}",
+					"",
+					"// Log request details for debugging",
+					"console.log('Request URL:', pm.request.url.toString());",
+					"console.log('Request Method:', pm.request.method);",
+					"console.log('Request Headers:', pm.request.headers.toObject());"
+				]
+			}
+		},
+		{
+			"listen": "test",
+			"script": {
+				"type": "text/javascript",
+				"exec": [
+					"// Global test script for common response handling",
+					"",
+					"// Log response details",
+					"console.log('Response Status:', pm.response.status);",
+					"console.log('Response Headers:', pm.response.headers.toObject());",
+					"",
+					"// Basic response validation",
+					"pm.test('Status code is valid', function () {",
+					"    pm.expect(pm.response.code).to.be.oneOf([200, 201, 400, 401, 403, 404, 429, 500]);",
+					"});",
+					"",
+					"// Check if response is JSON",
+					"if (pm.response.headers.get('Content-Type') && pm.response.headers.get('Content-Type').includes('application/json')) {",
+					"    pm.test('Response is JSON', function () {",
+					"        pm.response.to.have.jsonBody();",
+					"    });",
+					"    ",
+					"    // Parse response body",
+					"    const responseBody = pm.response.json();",
+					"    ",
+					"    // Log response body for debugging",
+					"    console.log('Response Body:', JSON.stringify(responseBody, null, 2));",
+					"    ",
+					"    // Common response structure validation",
+					"    if (responseBody.hasOwnProperty('success')) {",
+					"        pm.test('Response has success field', function () {",
+					"            pm.expect(responseBody).to.have.property('success');",
+					"        });",
+					"    }",
+					"    ",
+					"    if (responseBody.hasOwnProperty('timestamp')) {",
+					"        pm.test('Response has timestamp field', function () {",
+					"            pm.expect(responseBody).to.have.property('timestamp');",
+					"        });",
+					"    }",
+					"}",
+					"",
+					"// Handle specific status codes",
+					"if (pm.response.code === 401) {",
+					"    console.log('Unauthorized - Check API key and signature');",
+					"} else if (pm.response.code === 429) {",
+					"    console.log('Rate limited - Wait before retrying');",
+					"} else if (pm.response.code === 403) {",
+					"    console.log('Forbidden - Check user permissions');",
+					"}"
+				]
+			}
+		}
+	],
+	"variable": [
+		{
+			"key": "baseUrl",
+			"value": "http://localhost:8080",
+			"type": "string"
+		}
+	]
+} 

@@ -30,6 +30,12 @@ public class FileStorageServiceImpl implements FileStorageService {
             // Create subdirectories
             Files.createDirectories(Paths.get(uploadDir, "profiles"));
             log.info("Created profiles directory: {}", Paths.get(uploadDir, "profiles"));
+            
+            Files.createDirectories(Paths.get(uploadDir, "denture-pictures"));
+            log.info("Created denture-pictures directory: {}", Paths.get(uploadDir, "denture-pictures"));
+            
+            Files.createDirectories(Paths.get(uploadDir, "xray-pictures"));
+            log.info("Created xray-pictures directory: {}", Paths.get(uploadDir, "xray-pictures"));
         } catch (IOException e) {
             log.error("Could not create upload directories", e);
             throw new RuntimeException("Could not create upload directories", e);
