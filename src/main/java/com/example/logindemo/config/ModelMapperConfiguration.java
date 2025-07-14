@@ -1,6 +1,7 @@
 package com.example.logindemo.config;
 
 import org.modelmapper.ModelMapper;
+import org.modelmapper.convention.MatchingStrategies;
 import org.springframework.context.annotation.Bean;
 import org.springframework.context.annotation.Configuration;
 
@@ -10,8 +11,18 @@ public class ModelMapperConfiguration {
     public ModelMapper modelMapper() {
         ModelMapper modelMapper = new ModelMapper();
         
-        // Use default configurations that will automatically map 
-        // properties with the same name, like examinationClinic
+        // Configure ModelMapper
+        modelMapper.getConfiguration()
+            .setMatchingStrategy(MatchingStrategies.STRICT)
+            .setAmbiguityIgnored(true)
+            .setSkipNullEnabled(true);
+        
+        // Configure circular reference handling
+        modelMapper.getConfiguration()
+            .setPropertyCondition(context -> {
+                // Skip mapping if the source and destination are the same object
+                return context.getSource() != context.getDestination();
+            });
         
         return modelMapper;
     }

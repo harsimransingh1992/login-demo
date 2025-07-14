@@ -695,3 +695,429 @@ body {
 #examinationHistoryTable td:last-child {
     width: 150px;
 }
+
+/* Modal with Full Width Support */
+.tooth-examination-modal {
+    display: none;
+    position: fixed;
+    z-index: 1000;
+    left: 0;
+    top: 0;
+    width: 100%;
+    height: 100%;
+    background-color: rgba(0,0,0,0.4);
+    overflow-y: auto;
+    overflow-x: hidden; /* Allow horizontal breakout */
+}
+
+.tooth-examination-modal .modal-content {
+    max-width: 1400px;
+    max-height: 85vh;
+    margin: 3% auto;
+    padding: 20px;
+    overflow-y: auto;
+    overflow-x: visible; /* Allow content to break out */
+    position: relative;
+}
+
+/* Special Chief Complaints Styling - Full Width Breakout */
+.tooth-examination-modal .chief-complaints-section {
+    position: relative;
+    left: 50%;
+    right: 50%;
+    margin-left: -50vw;
+    margin-right: -50vw;
+    width: 100vw;
+    background: linear-gradient(135deg, #e3f2fd, #f0f8ff);
+    border-top: 2px solid #2196f3;
+    border-bottom: 2px solid #2196f3;
+    padding: 25px 50px;
+    margin-bottom: 25px;
+    box-shadow: 0 4px 20px rgba(33, 150, 243, 0.15);
+    position: relative;
+    overflow: hidden;
+    z-index: 10; /* Ensure it appears above other content */
+}
+
+.tooth-examination-modal .chief-complaints-section::before {
+    content: '';
+    position: absolute;
+    top: 0;
+    left: 0;
+    right: 0;
+    height: 6px;
+    background: linear-gradient(90deg, #2196f3, #64b5f6, #2196f6, #2196f3);
+    background-size: 200% 100%;
+    animation: shimmer 2s ease-in-out infinite;
+}
+
+@keyframes shimmer {
+    0% { background-position: -200% 0; }
+    100% { background-position: 200% 0; }
+}
+
+.tooth-examination-modal .chief-complaints-section h3 {
+    color: #1976d2;
+    font-size: 1.3rem;
+    font-weight: 700;
+    margin-bottom: 15px;
+    border-bottom: 3px solid #bbdefb;
+    padding-bottom: 10px;
+    text-align: center;
+}
+
+.tooth-examination-modal .chief-complaints-section .form-group {
+    margin-bottom: 0;
+    max-width: 1200px;
+    margin: 0 auto;
+}
+
+.tooth-examination-modal .chief-complaints-section label {
+    font-size: 1rem;
+    font-weight: 600;
+    color: #1565c0;
+    margin-bottom: 10px;
+    display: block;
+    text-align: center;
+}
+
+.tooth-examination-modal .chief-complaints-section textarea {
+    min-height: 150px;
+    padding: 20px 25px;
+    border: 3px solid #bbdefb;
+    border-radius: 12px;
+    font-size: 1rem;
+    line-height: 1.6;
+    background: white;
+    box-shadow: inset 0 4px 8px rgba(0,0,0,0.05);
+    transition: all 0.3s ease;
+    width: 100%;
+    resize: vertical;
+}
+
+.tooth-examination-modal .chief-complaints-section textarea:focus {
+    border-color: #2196f3;
+    box-shadow: 0 0 0 4px rgba(33, 150, 243, 0.15), inset 0 4px 8px rgba(0,0,0,0.05);
+    outline: none;
+    transform: translateY(-2px);
+}
+
+.tooth-examination-modal .form-section {
+    background: #f8f9fa;
+    padding: 10px;
+    border-radius: 4px;
+    margin-bottom: 8px;
+    border: 1px solid #e9ecef;
+}
+
+.tooth-examination-modal .form-section h3 {
+    margin: 0 0 8px 0;
+    font-size: 0.9rem;
+    color: #2c3e50;
+    font-weight: 600;
+    border-bottom: 1px solid #dee2e6;
+    padding-bottom: 4px;
+}
+
+.tooth-examination-modal .form-group {
+    margin-bottom: 6px;
+}
+
+.tooth-examination-modal .form-group label {
+    display: block;
+    margin-bottom: 2px;
+    font-weight: 500;
+    color: #495057;
+    font-size: 0.85rem;
+}
+
+.tooth-examination-modal .form-group select,
+.tooth-examination-modal .form-group textarea {
+    width: 100%;
+    padding: 6px 8px;
+    border: 1px solid #ced4da;
+    border-radius: 3px;
+    font-family: 'Poppins', sans-serif;
+    font-size: 0.85rem;
+}
+
+.tooth-examination-modal .form-group select {
+    padding: 4px 6px;
+    margin-bottom: 4px;
+}
+
+.tooth-examination-modal .form-group textarea {
+    resize: vertical;
+    min-height: 80px;
+    padding: 8px 10px;
+}
+
+.tooth-examination-modal .form-section.notes-section {
+    margin-bottom: 12px;
+    background: #f0f8ff;
+    border: 1px solid #b3d9ff;
+    padding: 15px;
+}
+
+.tooth-examination-modal .form-grid {
+    display: grid;
+    grid-template-columns: 1fr 1fr;
+    gap: 15px;
+    margin: 10px 0;
+}
+
+.tooth-examination-modal .form-column {
+    display: flex;
+    flex-direction: column;
+    gap: 6px;
+}
+
+.tooth-examination-modal .notes-section {
+    grid-column: 1 / -1;
+    margin-top: 10px;
+}
+
+.tooth-examination-modal .form-actions {
+    display: flex;
+    gap: 10px;
+    margin-top: 15px;
+    justify-content: flex-end;
+    padding-top: 10px;
+    border-top: 1px solid #dee2e6;
+}
+
+.tooth-examination-modal .btn {
+    padding: 8px 16px;
+    border: none;
+    border-radius: 4px;
+    cursor: pointer;
+    font-family: 'Poppins', sans-serif;
+    font-weight: 500;
+    font-size: 0.85rem;
+}
+
+/* Responsive design for smaller screens */
+@media (max-width: 768px) {
+    .tooth-examination-modal .form-grid {
+        grid-template-columns: 1fr;
+        gap: 10px;
+    }
+    
+    .tooth-examination-modal .modal-content {
+        margin: 2% auto;
+        padding: 10px;
+        max-height: 90vh;
+    }
+    
+    .tooth-examination-modal .form-section {
+        padding: 8px;
+    }
+    
+    .tooth-examination-modal .chief-complaints-section {
+        padding: 20px 20px;
+        margin-left: -20px;
+        margin-right: -20px;
+        width: calc(100% + 40px);
+    }
+    
+    .tooth-examination-modal .chief-complaints-section textarea {
+        min-height: 120px;
+        padding: 15px 20px;
+    }
+}
+
+/* Examination Details Modal with Full Width Support */
+.examination-details-compact {
+    overflow-x: visible; /* Allow horizontal breakout */
+}
+
+.examination-details-compact .form-container {
+    overflow-x: visible; /* Allow content to break out */
+    position: relative;
+}
+
+/* Special Chief Complaints Styling for Examination Details - Full Width Breakout */
+.examination-details-compact .chief-complaints-section {
+    position: relative;
+    left: 50%;
+    right: 50%;
+    margin-left: -50vw;
+    margin-right: -50vw;
+    width: 100vw;
+    background: linear-gradient(135deg, #e3f2fd, #f0f8ff);
+    border-top: 2px solid #2196f3;
+    border-bottom: 2px solid #2196f3;
+    padding: 25px 50px;
+    margin-bottom: 25px;
+    box-shadow: 0 4px 20px rgba(33, 150, 243, 0.15);
+    position: relative;
+    overflow: hidden;
+    z-index: 10; /* Ensure it appears above other content */
+}
+
+.examination-details-compact .chief-complaints-section::before {
+    content: '';
+    position: absolute;
+    top: 0;
+    left: 0;
+    right: 0;
+    height: 6px;
+    background: linear-gradient(90deg, #2196f3, #64b5f6, #2196f6, #2196f3);
+    background-size: 200% 100%;
+    animation: shimmer 2s ease-in-out infinite;
+}
+
+.examination-details-compact .chief-complaints-section h3 {
+    color: #1976d2;
+    font-size: 1.3rem;
+    font-weight: 700;
+    margin-bottom: 15px;
+    border-bottom: 3px solid #bbdefb;
+    padding-bottom: 10px;
+    text-align: center;
+}
+
+.examination-details-compact .chief-complaints-section .form-group {
+    margin-bottom: 0;
+    max-width: 1200px;
+    margin: 0 auto;
+}
+
+.examination-details-compact .chief-complaints-section label {
+    font-size: 1rem;
+    font-weight: 600;
+    color: #1565c0;
+    margin-bottom: 10px;
+    display: block;
+    text-align: center;
+}
+
+.examination-details-compact .chief-complaints-section textarea {
+    min-height: 150px;
+    padding: 20px 25px;
+    border: 3px solid #bbdefb;
+    border-radius: 12px;
+    font-size: 1rem;
+    line-height: 1.6;
+    background: white;
+    box-shadow: inset 0 4px 8px rgba(0,0,0,0.05);
+    transition: all 0.3s ease;
+    width: 100%;
+    resize: vertical;
+}
+
+.examination-details-compact .chief-complaints-section textarea:focus {
+    border-color: #2196f3;
+    box-shadow: 0 0 0 4px rgba(33, 150, 243, 0.15), inset 0 4px 8px rgba(0,0,0,0.05);
+    outline: none;
+    transform: translateY(-2px);
+}
+
+/* Regular Examination Details Styles */
+.examination-details-compact .form-section {
+    background: #f8f9fa;
+    padding: 10px;
+    border-radius: 4px;
+    margin-bottom: 8px;
+    border: 1px solid #e9ecef;
+}
+
+.examination-details-compact .form-section h3 {
+    margin: 0 0 8px 0;
+    font-size: 0.9rem;
+    color: #2c3e50;
+    font-weight: 600;
+    border-bottom: 1px solid #dee2e6;
+    padding-bottom: 4px;
+}
+
+.examination-details-compact .form-group {
+    margin-bottom: 6px;
+}
+
+.examination-details-compact .form-group label {
+    display: block;
+    margin-bottom: 2px;
+    font-weight: 500;
+    color: #495057;
+    font-size: 0.85rem;
+}
+
+.examination-details-compact .form-group select,
+.examination-details-compact .form-group textarea {
+    width: 100%;
+    padding: 6px 8px;
+    border: 1px solid #ced4da;
+    border-radius: 3px;
+    font-family: 'Poppins', sans-serif;
+    font-size: 0.85rem;
+}
+
+.examination-details-compact .form-group select {
+    padding: 4px 6px;
+    margin-bottom: 4px;
+}
+
+.examination-details-compact .form-group textarea {
+    resize: vertical;
+    min-height: 80px;
+    padding: 8px 10px;
+}
+
+.examination-details-compact .form-section.notes-section {
+    margin-bottom: 12px;
+    background: #f0f8ff;
+    border: 1px solid #b3d9ff;
+    padding: 15px;
+}
+
+.examination-details-compact .form-grid {
+    display: grid;
+    grid-template-columns: 1fr 1fr;
+    gap: 15px;
+    margin: 10px 0;
+}
+
+.examination-details-compact .form-column {
+    display: flex;
+    flex-direction: column;
+    gap: 6px;
+}
+
+.examination-details-compact .notes-section {
+    grid-column: 1 / -1;
+    margin-top: 10px;
+}
+
+.examination-details-compact .form-actions {
+    display: flex;
+    gap: 10px;
+    margin-top: 15px;
+    justify-content: flex-end;
+    padding-top: 10px;
+    border-top: 1px solid #dee2e6;
+}
+
+/* Responsive design for smaller screens */
+@media (max-width: 768px) {
+    .examination-details-compact .form-grid {
+        grid-template-columns: 1fr;
+        gap: 10px;
+    }
+    
+    .examination-details-compact .form-section {
+        padding: 8px;
+    }
+    
+    .examination-details-compact .chief-complaints-section {
+        padding: 20px 20px;
+        margin-left: -20px;
+        margin-right: -20px;
+        width: calc(100% + 40px);
+    }
+    
+    .examination-details-compact .chief-complaints-section textarea {
+        min-height: 120px;
+        padding: 15px 20px;
+    }
+}

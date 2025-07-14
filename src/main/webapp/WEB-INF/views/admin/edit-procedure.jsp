@@ -175,6 +175,12 @@
                     <form:errors path="price" cssClass="text-danger" />
                 </div>
                 
+                <div class="form-group">
+                    <label for="changeReason">Reason for Price Change</label>
+                    <input type="text" name="changeReason" class="form-control" placeholder="Enter reason for price change (optional)" />
+                    <small class="form-text text-muted">This will be recorded in the price history.</small>
+                </div>
+                
                 <div class="form-group text-right">
                     <a href="${pageContext.request.contextPath}/admin/prices" class="btn btn-secondary">
                         <i class="fas fa-times mr-1"></i> Cancel

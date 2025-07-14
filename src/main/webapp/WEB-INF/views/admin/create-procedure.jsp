@@ -173,6 +173,20 @@
                     <form:errors path="price" cssClass="text-danger" />
                 </div>
                 
+                <div class="form-group">
+                    <label for="effectiveFrom">Effective From</label>
+                    <input type="datetime-local" name="effectiveFrom" id="effectiveFrom" class="form-control" 
+                           min="${pageContext.request.getParameter('effectiveFrom')}" required="required" />
+                    <small class="form-text text-muted">When this price becomes effective (cannot be in the past)</small>
+                </div>
+                
+                <div class="form-group">
+                    <label for="changeReason">Reason for Price</label>
+                    <input type="text" name="changeReason" class="form-control" 
+                           placeholder="Enter reason for this price (e.g., Initial price, Market adjustment)" required="required" />
+                    <small class="form-text text-muted">This will be recorded in the price history.</small>
+                </div>
+                
                 <div class="form-group text-right">
                     <a href="${pageContext.request.contextPath}/admin/prices" class="btn btn-secondary">
                         <i class="fas fa-times mr-1"></i> Cancel
@@ -194,5 +208,43 @@
     </div>
     
     <script src="https://code.jquery.com/jquery-3.5.1.min.js"></script>
+    <script>
+        // Set minimum datetime to current time
+        document.addEventListener('DOMContentLoaded', function() {
+            const now = new Date();
+            now.setMinutes(now.getMinutes() - now.getTimezoneOffset()); // Adjust for timezone
+            const minDateTime = now.toISOString().slice(0, 16); // Format: YYYY-MM-DDTHH:mm
+            
+            const effectiveFromInput = document.getElementById('effectiveFrom');
+            effectiveFromInput.min = minDateTime;
+            effectiveFromInput.value = minDateTime;
+            
+            // Validate form before submission
+            document.querySelector('form').addEventListener('submit', function(e) {
+                const effectiveFrom = new Date(effectiveFromInput.value);
+                const now = new Date();
+                
+                if (effectiveFrom < now) {
+                    e.preventDefault();
+                    alert('Effective date cannot be in the past');
+                    return false;
+                }
+                
+                const price = document.querySelector('input[name="price"]').value;
+                if (price <= 0) {
+                    e.preventDefault();
+                    alert('Price must be greater than zero');
+                    return false;
+                }
+                
+                const reason = document.querySelector('input[name="changeReason"]').value;
+                if (!reason.trim()) {
+                    e.preventDefault();
+                    alert('Please provide a reason for the price');
+                    return false;
+                }
+            });
+        });
+    </script>
 </body>
 </html> 

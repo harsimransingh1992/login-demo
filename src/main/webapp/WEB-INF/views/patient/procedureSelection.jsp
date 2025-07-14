@@ -2,6 +2,7 @@
 <%@ taglib prefix="c" uri="http://java.sun.com/jsp/jstl/core"%>
 <%@ taglib prefix="fmt" uri="http://java.sun.com/jsp/jstl/fmt"%>
 <%@ taglib prefix="fn" uri="http://java.sun.com/jsp/jstl/functions"%>
+<%@ taglib prefix="sec" uri="http://www.springframework.org/security/tags"%>
 
 <!DOCTYPE html>
 <html>
@@ -13,6 +14,11 @@
     <link href="https://fonts.googleapis.com/css2?family=Poppins:wght@300;400;500;600;700&display=swap" rel="stylesheet">
     <link rel="stylesheet" href="https://cdnjs.cloudflare.com/ajax/libs/font-awesome/6.4.0/css/all.min.css">
     <script src="https://code.jquery.com/jquery-3.6.4.min.js"></script>
+    <script src="${pageContext.request.contextPath}/js/imageCompression.js"></script>
+    
+    <!-- Include common menu styles -->
+    <jsp:include page="/WEB-INF/views/common/menuStyles.jsp" />
+    
     <style>
         body {
             font-family: 'Poppins', sans-serif;
@@ -27,90 +33,6 @@
             display: flex;
             min-height: 100vh;
             flex-direction: row;
-        }
-        
-        .sidebar-menu {
-            width: 280px;
-            background: linear-gradient(180deg, #ffffff, #f8f9fa);
-            padding: 30px;
-            box-shadow: 0 0 25px rgba(0, 0, 0, 0.05);
-            display: flex;
-            flex-direction: column;
-            position: relative;
-            z-index: 10;
-            transition: all 0.3s ease;
-        }
-        
-        .logo {
-            display: flex;
-            align-items: center;
-            gap: 15px;
-            margin-bottom: 35px;
-        }
-        
-        .logo img {
-            width: 40px;
-            height: 40px;
-            filter: drop-shadow(0 4px 6px rgba(0, 0, 0, 0.1));
-        }
-        
-        .logo h1 {
-            font-size: 1.5rem;
-            color: #2c3e50;
-            margin: 0;
-            font-weight: 600;
-            letter-spacing: 0.5px;
-        }
-        
-        .action-card {
-            background: white;
-            padding: 16px 20px;
-            border-radius: 10px;
-            box-shadow: 0 4px 10px rgba(0, 0, 0, 0.03);
-            transition: all 0.3s;
-            text-decoration: none;
-            border: 1px solid #f0f0f0;
-            margin-bottom: 15px;
-            display: flex;
-            align-items: center;
-            gap: 12px;
-        }
-        
-        .action-card i {
-            font-size: 1.2rem;
-            color: #3498db;
-            width: 30px;
-        }
-        
-        .action-card:hover {
-            transform: translateX(5px);
-            background: linear-gradient(135deg, #3498db, #2980b9);
-            color: white;
-            border-color: transparent;
-            box-shadow: 0 6px 15px rgba(52, 152, 219, 0.2);
-        }
-        
-        .action-card:hover h3,
-        .action-card:hover p,
-        .action-card:hover i {
-            color: white;
-        }
-        
-        .action-card h3 {
-            margin: 0;
-            color: #2c3e50;
-            font-size: 1rem;
-            font-weight: 600;
-        }
-        
-        .action-card p {
-            margin: 4px 0 0 0;
-            color: #7f8c8d;
-            font-size: 0.8rem;
-        }
-        
-        .card-text {
-            flex: 1;
         }
         
         .main-content {
@@ -274,14 +196,30 @@
         
         .selected-procedures-info {
             display: flex;
-            align-items: center;
-            justify-content: space-between;
+            flex-direction: column;
+            align-items: stretch;
             margin-top: 10px;
-            padding: 8px 12px;
+            padding: 16px;
             background-color: #f8f9fa;
-            border-radius: 6px;
+            border-radius: 8px;
             font-weight: 500;
             font-size: 0.9rem;
+            box-shadow: 0 2px 4px rgba(0,0,0,0.05);
+            border: 1px solid #eee;
+        }
+        
+        .selection-status {
+            display: flex;
+            justify-content: space-between;
+            align-items: center;
+            margin-bottom: 12px;
+        }
+        
+        .action-buttons {
+            display: flex;
+            align-items: center;
+            gap: 10px;
+            flex-wrap: wrap;
         }
         
         #selected-count {
@@ -293,16 +231,245 @@
             color: #3498db;
             font-weight: 600;
             background-color: white;
-            padding: 3px 8px;
+            padding: 5px 12px;
             border-radius: 20px;
-            font-size: 0.85rem;
+            font-size: 0.9rem;
             box-shadow: 0 1px 3px rgba(0,0,0,0.1);
         }
         
-        .submit-area {
+        .selected-procedure-info {
+            background-color: #e8f5e9;
+            padding: 8px 12px;
+            border-radius: 4px;
+            margin-right: auto;
+            font-weight: 500;
+            color: #1b5e20;
+            font-size: 0.9rem;
+            display: flex;
+            align-items: center;
+            gap: 5px;
+            display: none;
+            box-shadow: 0 1px 3px rgba(0,0,0,0.05);
+        }
+        
+        /* Button styling */
+        #view-selected-procedures {
+            background: #6c7ae0;
+            color: white;
+            transition: all 0.3s ease;
+            position: relative;
+            white-space: nowrap;
+            padding: 10px 16px;
+        }
+        
+        #view-selected-procedures:hover {
+            background: #5a65c5;
+            transform: translateY(-2px);
+            box-shadow: 0 4px 8px rgba(108, 122, 224, 0.3);
+        }
+        
+        #submit-procedures {
+            background: linear-gradient(135deg, #4caf50, #2e7d32);
+            color: white;
+            transition: all 0.3s ease;
+            padding: 10px 20px;
+            font-weight: 500;
+        }
+        
+        #submit-procedures:hover:not([disabled]) {
+            background: linear-gradient(135deg, #43a047, #2e7d32);
+            transform: translateY(-2px);
+            box-shadow: 0 4px 8px rgba(76, 175, 80, 0.3);
+        }
+        
+        #submit-procedures:disabled {
+            background: #cccccc;
+            color: #777777;
+            cursor: not-allowed;
+        }
+        
+        /* Denture Upload Section Styles */
+        .denture-upload-section {
+            background: white;
+            border-radius: 12px;
+            box-shadow: 0 5px 15px rgba(0, 0, 0, 0.03);
+            padding: 25px;
+            margin-bottom: 25px;
+            border: 2px solid #e8f5e9;
+        }
+        
+        .denture-upload-section h3 {
+            color: #2c3e50;
+            font-size: 1.3rem;
+            margin-bottom: 10px;
+            display: flex;
+            align-items: center;
+            gap: 10px;
+        }
+        
+        .denture-upload-section h3 i {
+            color: #3498db;
+        }
+        
+        .upload-description {
+            color: #7f8c8d;
+            font-size: 0.9rem;
+            margin-bottom: 20px;
+            line-height: 1.5;
+        }
+        
+        .denture-upload-container {
+            display: grid;
+            grid-template-columns: 1fr 1fr;
+            gap: 25px;
+            margin-bottom: 20px;
+        }
+        
+        .denture-upload-item {
+            display: flex;
+            flex-direction: column;
+            gap: 10px;
+        }
+        
+        .upload-label {
             display: flex;
             align-items: center;
             gap: 8px;
+            font-weight: 500;
+            color: #2c3e50;
+            font-size: 0.95rem;
+        }
+        
+        .upload-label i {
+            color: #3498db;
+        }
+        
+        .required-indicator {
+            color: #e74c3c;
+            font-weight: bold;
+        }
+        
+        .denture-file-input {
+            display: none;
+        }
+        
+        .denture-preview {
+            border: 2px dashed #bdc3c7;
+            border-radius: 8px;
+            padding: 20px;
+            text-align: center;
+            background: #f8f9fa;
+            cursor: pointer;
+            transition: all 0.3s ease;
+            min-height: 120px;
+            display: flex;
+            flex-direction: column;
+            align-items: center;
+            justify-content: center;
+            gap: 8px;
+        }
+        
+        .denture-preview:hover {
+            border-color: #3498db;
+            background: #f0f7ff;
+        }
+        
+        .denture-preview i {
+            font-size: 2rem;
+            color: #bdc3c7;
+        }
+        
+        .denture-preview span {
+            color: #7f8c8d;
+            font-size: 0.9rem;
+        }
+        
+        .denture-preview img {
+            max-width: 100%;
+            max-height: 100px;
+            border-radius: 4px;
+            object-fit: cover;
+        }
+        
+        .upload-status {
+            font-size: 0.85rem;
+            padding: 5px 0;
+        }
+        
+        .upload-status.success {
+            color: #27ae60;
+        }
+        
+        .upload-status.error {
+            color: #e74c3c;
+        }
+        
+        .upload-status.loading {
+            color: #f39c12;
+        }
+        
+        .upload-validation {
+            background: #fff3cd;
+            border: 1px solid #ffeaa7;
+            border-radius: 6px;
+            padding: 12px;
+            display: flex;
+            align-items: center;
+            gap: 8px;
+            font-size: 0.9rem;
+            color: #856404;
+        }
+        
+        .upload-validation.success {
+            background: #d4edda;
+            border-color: #c3e6cb;
+            color: #155724;
+        }
+        
+        .upload-validation.error {
+            background: #f8d7da;
+            border-color: #f5c6cb;
+            color: #721c24;
+        }
+        
+        .upload-validation i {
+            font-size: 1rem;
+        }
+        
+        @media (max-width: 768px) {
+            .denture-upload-container {
+                grid-template-columns: 1fr;
+                gap: 20px;
+            }
+        }
+        
+        @media (max-width: 768px) {
+            .action-buttons {
+                flex-direction: column;
+                align-items: stretch;
+            }
+            
+            .selected-procedure-info {
+                margin-right: 0;
+                margin-bottom: 10px;
+                width: 100%;
+            }
+            
+            #view-selected-procedures,
+            #submit-procedures {
+                width: 100%;
+                margin-bottom: 8px;
+            }
+            
+            .selection-status {
+                flex-direction: column;
+                align-items: flex-start;
+            gap: 8px;
+            }
+            
+            .total-amount {
+                align-self: flex-end;
+            }
         }
         
         .duplicate-procedures-error {
@@ -336,13 +503,6 @@
         }
         
         /* Tooltip for View All Saved Procedures button */
-        #view-selected-procedures {
-            background: #3498db; /* Make the button more prominent */
-            position: relative;
-            min-width: 240px; /* Ensure minimum width to fit text */
-            white-space: nowrap; /* Prevent text wrapping */
-        }
-        
         #view-selected-procedures:hover::after {
             content: "Shows both selected and already saved procedures";
             position: absolute;
@@ -533,10 +693,16 @@
             }
             
             .departments-tabs {
-                flex-wrap: nowrap;
-                overflow-x: auto;
+                display: grid;
+                grid-template-rows: repeat(2, 1fr);
+                grid-auto-flow: column;
+                grid-auto-columns: 1fr;
+                gap: 4px;
+                margin-bottom: 0;
+                position: relative;
+                z-index: 10;
                 padding-bottom: 5px;
-                -webkit-overflow-scrolling: touch;
+                max-width: 100%;
             }
             
             .department-tab {
@@ -574,29 +740,31 @@
             }
             
             /* Adjust button display for small screens */
-            .submit-area {
-                flex-wrap: wrap;
-                gap: 8px;
-                justify-content: flex-end;
+            .action-buttons {
+                flex-direction: column;
+                align-items: stretch;
             }
             
-            .btn-narrow {
-                width: auto;
-                min-width: 130px;
-                margin-top: 5px;
+            .selected-procedure-info {
+                margin-right: 0;
+                margin-bottom: 10px;
+                width: 100%;
             }
             
-            #view-selected-procedures {
-                order: 2;
-            }
-            
+            #view-selected-procedures,
             #submit-procedures {
-                order: 3;
+                width: 100%;
+                margin-bottom: 8px;
+            }
+            
+            .selection-status {
+                flex-direction: column;
+                align-items: flex-start;
+                gap: 8px;
             }
             
             .total-amount {
-                order: 1;
-                margin-right: auto;
+                align-self: flex-end;
             }
         }
         
@@ -608,11 +776,11 @@
             border-right: none;
             border-bottom: 1px solid #eee;
             border-top: none;
-            display: grid;
+            display: grid !important; /* Force grid display */
             grid-template-columns: minmax(100px, 1.5fr) minmax(60px, auto) minmax(80px, auto);
             align-items: center;
             gap: 6px;
-            padding: 6px 10px;
+            padding: 12px 15px;
             box-shadow: none;
             position: relative;
             width: 100%;
@@ -632,37 +800,54 @@
         
         .department-content .procedure-card h3 {
             margin: 0;
-            font-size: 0.9rem;
+            font-size: 0.95rem;
             color: #2c3e50;
             overflow: hidden;
             text-overflow: ellipsis;
             padding-right: 5px;
-            white-space: nowrap;
         }
         
         .department-content .procedure-card .procedure-price {
             margin: 0;
-            font-size: 0.9rem;
+            font-size: 1rem;
             font-weight: 600;
             text-align: right;
             white-space: nowrap;
             padding-right: 5px;
+            color: #3498db;
         }
         
         .department-content .procedure-card .procedure-actions {
             margin: 0;
+            text-align: right;
         }
         
         .department-content .procedure-card .btn {
-            padding: 3px 8px;
-            font-size: 0.8rem;
+            padding: 5px 10px;
+            font-size: 0.85rem;
             white-space: nowrap;
-            min-width: 70px;
+            min-width: 80px;
         }
         
         .department-content .procedure-card.selected {
             background-color: #edf7fd;
             border-left: 3px solid #3498db;
+            transform: translateY(-2px);
+            box-shadow: 0 4px 8px rgba(52, 152, 219, 0.15);
+            position: relative;
+        }
+        
+        .department-content .procedure-card.selected::after {
+            content: "Selected";
+            position: absolute;
+            top: 8px;
+            right: 8px;
+            background-color: #3498db;
+            color: white;
+            font-size: 0.75rem;
+            padding: 2px 8px;
+            border-radius: 12px;
+            font-weight: 500;
         }
         
         .department-content .procedure-card.selected .select-procedure {
@@ -678,14 +863,15 @@
         
         .departments-tabs {
             display: flex;
-            flex-wrap: nowrap;
-            gap: 2px;
+            flex-wrap: wrap;
+            gap: 4px;
             margin-bottom: 0;
             position: relative;
             z-index: 10;
-            overflow-x: auto;
-            padding-bottom: 2px;
-            scrollbar-width: thin; /* For Firefox */
+            overflow-x: visible;
+            padding-bottom: 5px;
+            scrollbar-width: thin;
+            max-width: 100%; /* Ensure it doesn't overflow parent */
         }
         
         .department-tab {
@@ -700,26 +886,34 @@
             border-bottom: none;
             display: flex;
             align-items: center;
-            gap: 6px;
+            gap: 8px;
             position: relative;
             margin-bottom: -1px;
-            flex-shrink: 0; /* Prevent tabs from shrinking */
-            white-space: nowrap; /* Keep text on one line */
-            font-size: 0.9rem;
+            /* flex-shrink: 0;  REMOVED */
+            /* white-space: nowrap; REMOVED */
+            font-size: 0.93rem;
+            box-shadow: 0 -2px 5px rgba(0, 0, 0, 0.03);
+            min-width: 110px;
+            flex: 1 1 110px;
+            word-break: break-word;
         }
         
         .department-tab.active {
             background: white;
             color: #3498db;
             border-bottom: 1px solid white;
+            box-shadow: 0 -3px 5px rgba(0, 0, 0, 0.05);
+            transform: translateY(-2px);
+            z-index: 11;
         }
         
         .department-tab:hover:not(.active) {
             background: #e6f0fa;
+            transform: translateY(-1px);
         }
         
         .department-tab i {
-            font-size: 1rem;
+            font-size: 1.1rem;
         }
         
         .department-badge {
@@ -760,10 +954,17 @@
             overflow-y: auto;
             overflow-x: hidden;
             height: 100%; /* Fill the container */
+            padding: 0;
         }
         
         .department-content.active {
-            display: block;
+            display: block !important;
+            animation: fadeIn 0.3s ease-in-out;
+        }
+        
+        @keyframes fadeIn {
+            from { opacity: 0.7; }
+            to { opacity: 1; }
         }
         
         /* Show a message when no tab is active */
@@ -782,6 +983,18 @@
         
         .departments-content.no-active-tab::after {
             display: block;
+        }
+        
+        /* No procedures message styling */
+        .no-procedures {
+            text-align: center;
+            padding: 30px;
+            color: #7f8c8d;
+            font-size: 1.1rem;
+            margin: 30px auto;
+            background-color: #f8f9fa;
+            border-radius: 8px;
+            width: 80%;
         }
         
         /* Department badge styling */
@@ -1064,11 +1277,22 @@
             padding: 4px 8px;
             cursor: pointer;
             font-size: 0.8rem;
-            transition: background-color 0.2s;
+            transition: all 0.2s ease;
+            display: inline-flex;
+            align-items: center;
+            gap: 4px;
+            box-shadow: 0 1px 3px rgba(0, 0, 0, 0.1);
         }
         
         .remove-procedure-btn:hover {
             background-color: #c0392b;
+            transform: translateY(-1px);
+            box-shadow: 0 2px 5px rgba(0, 0, 0, 0.2);
+        }
+        
+        .remove-procedure-btn:active {
+            transform: translateY(0);
+            box-shadow: 0 1px 2px rgba(0, 0, 0, 0.1);
         }
         
         /* Section titles in modal */
@@ -1121,49 +1345,26 @@
             margin-right: auto;
             display: none;
         }
+        
+        .selected-procedure-info {
+            background-color: #e8f5e9;
+            padding: 8px 12px;
+            border-radius: 4px;
+            margin-right: auto;
+            font-weight: 500;
+            color: #1b5e20;
+            font-size: 0.9rem;
+            display: flex;
+            align-items: center;
+            gap: 5px;
+            display: none;
+            box-shadow: 0 1px 3px rgba(0,0,0,0.05);
+        }
     </style>
 </head>
 <body>
     <div class="welcome-container">
-        <div class="sidebar-menu">
-            <div class="logo">
-                <img src="${pageContext.request.contextPath}/images/tooth-repair.svg" alt="PeriDesk Logo">
-                <h1>PeriDesk</h1>
-            </div>
-            <a href="${pageContext.request.contextPath}/welcome" class="action-card">
-                <i class="fas fa-clipboard-list"></i>
-                <div class="card-text">
-                    <h3>Waiting Lobby</h3>
-                    <p>View waiting patients</p>
-                </div>
-            </a>
-            <a href="${pageContext.request.contextPath}/patients/register" class="action-card">
-                <i class="fas fa-user-plus"></i>
-                <div class="card-text">
-                    <h3>Register Patient</h3>
-                    <p>Add new patient</p>
-                </div>
-            </a>
-            <a href="${pageContext.request.contextPath}/patients/list" class="action-card">
-                <i class="fas fa-users"></i>
-                <div class="card-text">
-                    <h3>View Patients</h3>
-                    <p>Manage records</p>
-                </div>
-            </a>
-            <a href="${pageContext.request.contextPath}/patients/appointments" class="action-card">
-                <i class="fas fa-calendar-alt"></i>
-                <div class="card-text">
-                    <h3>Appointments</h3>
-                    <p>Today's schedule</p>
-                </div>
-            </a>
-            <div class="footer">
-                <p class="copyright">© 2024 PeriDesk. All rights reserved.</p>
-                <p>Powered by <span class="powered-by">Navtech</span><span class="navtech">Labs</span></p>
-            </div>
-        </div>
-        
+        <jsp:include page="/WEB-INF/views/common/menu.jsp" />
         <div class="main-content">
             <div class="welcome-header">
                 <h1 class="welcome-message">Select Procedure</h1>
@@ -1285,31 +1486,70 @@
                             <p>${examination.examinationNotes}</p>
                         </div>
                     </c:if>
-                </div>
-                
-                <div class="procedure-header">
-                    <h2>Available Procedures</h2>
-                    <c:if test="${not empty userCityTier}">
-                        <div class="city-tier-info">
-                            <i class="fas fa-map-marker-alt"></i> Showing prices for <strong>${cityTierDisplayName}</strong>
+                    
+                    <!-- DENTURE PICTURE UPLOAD SECTION - START -->
+                    <div class="denture-upload-section">
+                        <h3><i class="fas fa-camera"></i> Denture Pictures Upload</h3>
+                        <p class="upload-description">Please upload pictures of the upper and lower dentures. Both pictures are mandatory to proceed with procedure selection.</p>
+                        
+                        <div class="denture-upload-container">
+                            <div class="denture-upload-item">
+                                <label for="upper-denture-upload" class="upload-label">
+                                    <i class="fas fa-upload"></i> Upper Denture Picture
+                                    <span class="required-indicator">*</span>
+                                </label>
+                                <input type="file" id="upper-denture-upload" name="upperDenturePicture" accept="image/*" class="denture-file-input" required>
+                                <div id="upper-denture-preview" class="denture-preview">
+                                    <i class="fas fa-image"></i>
+                                    <span>No image selected</span>
+                                </div>
+                                <div class="upload-status" id="upper-denture-status"></div>
+                            </div>
+                            
+                            <div class="denture-upload-item">
+                                <label for="lower-denture-upload" class="upload-label">
+                                    <i class="fas fa-upload"></i> Lower Denture Picture
+                                    <span class="required-indicator">*</span>
+                                </label>
+                                <input type="file" id="lower-denture-upload" name="lowerDenturePicture" accept="image/*" class="denture-file-input" required>
+                                <div id="lower-denture-preview" class="denture-preview">
+                                    <i class="fas fa-image"></i>
+                                    <span>No image selected</span>
+                                </div>
+                                <div class="upload-status" id="lower-denture-status"></div>
+                            </div>
                         </div>
-                    </c:if>
+                        
+                        <div class="upload-validation" id="denture-validation">
+                            <i class="fas fa-info-circle"></i>
+                            <span>Both upper and lower denture pictures are required to proceed.</span>
+                        </div>
+                    </div>
+                    <!-- DENTURE PICTURE UPLOAD SECTION - END -->
+                    
+                    <!-- PROCEDURE SELECTION ACTIONS AREA - START -->
                     <div class="selected-procedures-info">
-                        <span><span id="selected-count">0</span> procedures selected</span>
-                        <div class="submit-area">
+                        <div class="selection-status">
+                            <span><i class="fas fa-clipboard-check"></i> <span id="selected-count">0</span> procedure selected</span>
                             <span id="total-amount" class="total-amount">₹0</span>
-                            <button id="view-selected-procedures" class="btn btn-secondary btn-narrow">
-                                <i class="fas fa-eye"></i>&nbsp;View All Saved Procedures
+                        </div>
+                        <div class="action-buttons">
+                            <div id="selected-procedure-info" class="selected-procedure-info">
+                                <i class="fas fa-check-circle"></i> Selected: <span id="selected-procedure-name">None</span>
+                            </div>
+                            <button id="view-selected-procedures" class="btn btn-secondary">
+                                <i class="fas fa-eye"></i> View Selection
                             </button>
-                            <button id="submit-procedures" class="btn btn-primary btn-narrow" disabled>
+                            <button id="submit-procedures" class="btn btn-primary" disabled>
                                 <i class="fas fa-check"></i> Submit
                             </button>
                         </div>
                     </div>
+                    <!-- PROCEDURE SELECTION ACTIONS AREA - END -->
                     
                     <!-- Error message for duplicate procedures -->
                     <div id="duplicate-procedures-error" class="duplicate-procedures-error">
-                        <strong><i class="fas fa-exclamation-triangle"></i> Cannot add duplicate procedures</strong>
+                        <strong><i class="fas fa-exclamation-triangle"></i> This procedure is already assigned</strong>
                         <ul id="duplicate-procedures-list"></ul>
                     </div>
                 </div>
@@ -1322,34 +1562,18 @@
                     </c:if>
                     
                     <c:if test="${not empty procedures}">
-                        <%-- First collect unique departments --%>
-                        <c:set var="departments" value="" />
-                        <c:forEach var="procedure" items="${procedures}">
-                            <c:set var="deptName" value="Other" />
-                            <c:if test="${procedure.dentalDepartment != null && procedure.dentalDepartment.displayName != null}">
-                                <c:set var="deptName" value="${procedure.dentalDepartment.displayName}" />
-                            </c:if>
-                            <c:if test="${!fn:contains(departments, '|'.concat(deptName).concat('|'))}">
-                                <c:set var="departments" value="${departments}|${deptName}|" />
-                            </c:if>
-                        </c:forEach>
-                        
                         <div class="departments-tabs-container">
                             <%-- Horizontal Department Tabs --%>
                             <div class="departments-tabs">
-                                <c:forEach var="deptStr" items="${fn:split(departments, '||')}" varStatus="deptStatus">
-                                    <c:if test="${not empty deptStr}">
-                                        <c:set var="deptName" value="${fn:replace(deptStr, '|', '')}" />
-                                        <c:set var="safeDeptName" value="${fn:replace(deptName, ' ', '_')}" />
+                                <%-- Show tabs for all available departments from the enum --%>
+                                <c:forEach var="department" items="${dentalDepartments}" varStatus="deptStatus">
+                                    <c:set var="deptName" value="${department.displayName}" />
+                                    <c:set var="safeDeptName" value="${fn:toLowerCase(fn:replace(deptName, ' ', '_'))}" />
                                         
                                         <%-- Count procedures in department --%>
                                         <c:set var="deptCount" value="0" />
                                         <c:forEach var="procedure" items="${procedures}">
-                                            <c:set var="procDeptName" value="Other" />
-                                            <c:if test="${procedure.dentalDepartment != null && procedure.dentalDepartment.displayName != null}">
-                                                <c:set var="procDeptName" value="${procedure.dentalDepartment.displayName}" />
-                                            </c:if>
-                                            <c:if test="${procDeptName eq deptName}">
+                                        <c:if test="${procedure.dentalDepartment == department}">
                                                 <c:set var="deptCount" value="${deptCount + 1}" />
                                             </c:if>
                                         </c:forEach>
@@ -1408,24 +1632,20 @@
                                             ${deptName}
                                             <span class="department-badge ${badgeClass}">${deptCount}</span>
                                         </div>
-                                    </c:if>
                                 </c:forEach>
                             </div>
                             
                             <%-- Department Contents --%>
                             <div class="departments-content">
-                                <c:forEach var="deptStr" items="${fn:split(departments, '||')}" varStatus="deptStatus">
-                                    <c:if test="${not empty deptStr}">
-                                        <c:set var="deptName" value="${fn:replace(deptStr, '|', '')}" />
-                                        <c:set var="safeDeptName" value="${fn:replace(deptName, ' ', '_')}" />
+                                <c:forEach var="department" items="${dentalDepartments}" varStatus="deptStatus">
+                                    <c:set var="deptName" value="${department.displayName}" />
+                                    <c:set var="safeDeptName" value="${fn:toLowerCase(fn:replace(deptName, ' ', '_'))}" />
                                         
                                         <div class="department-content${deptStatus.count == 1 ? ' active' : ''}" data-dept="${safeDeptName}">
+                                        <c:set var="hasProcedures" value="false" />
                                             <c:forEach var="procedure" items="${procedures}">
-                                                <c:set var="procDeptName" value="Other" />
-                                                <c:if test="${procedure.dentalDepartment != null && procedure.dentalDepartment.displayName != null}">
-                                                    <c:set var="procDeptName" value="${procedure.dentalDepartment.displayName}" />
-                                                </c:if>
-                                                <c:if test="${procDeptName eq deptName}">
+                                            <c:if test="${procedure.dentalDepartment == department}">
+                                                <c:set var="hasProcedures" value="true" />
                                                     <div class="procedure-card" data-id="${procedure.id}">
                                                         <h3>${not empty procedure.procedureName ? procedure.procedureName : 'Unnamed Procedure'}</h3>
                                                         <div class="procedure-price">₹${procedure.price != null ? procedure.price : '0'}</div>
@@ -1440,8 +1660,12 @@
                                                     </div>
                                                 </c:if>
                                             </c:forEach>
+                                        <c:if test="${hasProcedures == 'false'}">
+                                            <div class="no-procedures">
+                                                <i class="fas fa-info-circle"></i> No procedures available in the ${deptName} department.
                                         </div>
                                     </c:if>
+                                    </div>
                                 </c:forEach>
                             </div>
                         </div>
@@ -1539,13 +1763,193 @@
             const selectedCountElement = document.getElementById('selected-count');
             const submitButton = document.getElementById('submit-procedures');
             const totalAmountElement = document.getElementById('total-amount');
-            const viewSelectedButton = document.getElementById('view-selected-procedures');
             const selectedProceduresModal = document.getElementById('selected-procedures-modal');
             const selectedProceduresTable = document.getElementById('selected-procedures-table');
             const selectedProceduresTableBody = document.getElementById('selected-procedures-table-body');
             const selectedProceduresTotal = document.getElementById('selected-procedures-total');
             const noProceduresMessage = document.getElementById('no-procedures-message');
             const closeModalButtons = document.querySelectorAll('.close-modal, .close-button');
+            const viewSelectedButton = document.getElementById('view-selected-procedures');
+            
+            // Track selected procedures
+            let selectedProcedure = null; // Single procedure object to store the selected procedure
+            
+            // Denture upload variables
+            let upperDentureFile = null;
+            let lowerDentureFile = null;
+            let dentureUploadsComplete = false;
+            
+            // Denture upload elements
+            const upperDentureInput = document.getElementById('upper-denture-upload');
+            const lowerDentureInput = document.getElementById('lower-denture-upload');
+            const upperDenturePreview = document.getElementById('upper-denture-preview');
+            const lowerDenturePreview = document.getElementById('lower-denture-preview');
+            const upperDentureStatus = document.getElementById('upper-denture-status');
+            const lowerDentureStatus = document.getElementById('lower-denture-status');
+            const dentureValidation = document.getElementById('denture-validation');
+            
+            // Initialize denture upload functionality
+            function initializeDentureUploads() {
+                // Upper denture upload
+                upperDenturePreview.addEventListener('click', () => upperDentureInput.click());
+                upperDentureInput.addEventListener('change', handleUpperDentureUpload);
+                
+                // Lower denture upload
+                lowerDenturePreview.addEventListener('click', () => lowerDentureInput.click());
+                lowerDentureInput.addEventListener('change', handleLowerDentureUpload);
+                
+                // Update validation on page load
+                updateDentureValidation();
+            }
+            
+            // Handle upper denture upload
+            async function handleUpperDentureUpload(event) {
+                const file = event.target.files[0];
+                if (!file) return;
+                
+                if (!file.type.startsWith('image/')) {
+                    showDentureStatus('upper', 'error', 'Please select an image file');
+                    return;
+                }
+                
+                try {
+                    showDentureStatus('upper', 'loading', 'Compressing image...');
+                    ImageCompression.showLoading(upperDenturePreview, 'Compressing image...');
+                    
+                    // Compress the image
+                    const compressedFile = await ImageCompression.compressImage(file, {
+                        maxSizeKB: 150,
+                        maxDimension: 800,
+                        quality: 0.9
+                    });
+                    
+                    // Update the file input
+                    ImageCompression.updateFileInput(upperDentureInput, compressedFile);
+                    
+                    // Create preview
+                    ImageCompression.createPreview(compressedFile, upperDenturePreview, {
+                        defaultIcon: '<i class="fas fa-image"></i>',
+                        defaultText: 'No image selected'
+                    });
+                    
+                    // Store the file
+                    upperDentureFile = compressedFile;
+                    
+                    showDentureStatus('upper', 'success', 'Image uploaded successfully');
+                    updateDentureValidation();
+                    
+                } catch (error) {
+                    console.error('Error compressing upper denture image:', error);
+                    showDentureStatus('upper', 'error', 'Error processing image');
+                    ImageCompression.createPreview(null, upperDenturePreview, {
+                        defaultIcon: '<i class="fas fa-image"></i>',
+                        defaultText: 'No image selected'
+                    });
+                }
+            }
+            
+            // Handle lower denture upload
+            async function handleLowerDentureUpload(event) {
+                const file = event.target.files[0];
+                if (!file) return;
+                
+                if (!file.type.startsWith('image/')) {
+                    showDentureStatus('lower', 'error', 'Please select an image file');
+                    return;
+                }
+                
+                try {
+                    showDentureStatus('lower', 'loading', 'Compressing image...');
+                    ImageCompression.showLoading(lowerDenturePreview, 'Compressing image...');
+                    
+                    // Compress the image
+                    const compressedFile = await ImageCompression.compressImage(file, {
+                        maxSizeKB: 150,
+                        maxDimension: 800,
+                        quality: 0.9
+                    });
+                    
+                    // Update the file input
+                    ImageCompression.updateFileInput(lowerDentureInput, compressedFile);
+                    
+                    // Create preview
+                    ImageCompression.createPreview(compressedFile, lowerDenturePreview, {
+                        defaultIcon: '<i class="fas fa-image"></i>',
+                        defaultText: 'No image selected'
+                    });
+                    
+                    // Store the file
+                    lowerDentureFile = compressedFile;
+                    
+                    showDentureStatus('lower', 'success', 'Image uploaded successfully');
+                    updateDentureValidation();
+                    
+                } catch (error) {
+                    console.error('Error compressing lower denture image:', error);
+                    showDentureStatus('lower', 'error', 'Error processing image');
+                    ImageCompression.createPreview(null, lowerDenturePreview, {
+                        defaultIcon: '<i class="fas fa-image"></i>',
+                        defaultText: 'No image selected'
+                    });
+                }
+            }
+            
+            // Show denture upload status
+            function showDentureStatus(type, status, message) {
+                const statusElement = type === 'upper' ? upperDentureStatus : lowerDentureStatus;
+                statusElement.textContent = message;
+                statusElement.className = `upload-status ${status}`;
+            }
+            
+            // Update denture validation
+            function updateDentureValidation() {
+                const hasUpper = upperDentureFile !== null;
+                const hasLower = lowerDentureFile !== null;
+                dentureUploadsComplete = hasUpper && hasLower;
+                
+                if (dentureUploadsComplete) {
+                    dentureValidation.className = 'upload-validation success';
+                    dentureValidation.innerHTML = '<i class="fas fa-check-circle"></i><span>Both denture pictures uploaded successfully. You can now select procedures.</span>';
+                } else {
+                    const missing = [];
+                    if (!hasUpper) missing.push('upper denture');
+                    if (!hasLower) missing.push('lower denture');
+                    
+                    dentureValidation.className = 'upload-validation error';
+                    dentureValidation.innerHTML = `<i class="fas fa-exclamation-triangle"></i><span>Please upload ${missing.join(' and ')} picture${missing.length > 1 ? 's' : ''} to proceed.</span>`;
+                }
+                
+                // Update submit button state
+                updateSubmitButtonState();
+            }
+            
+            // Update submit button state based on denture uploads and procedure selection
+            function updateSubmitButtonState() {
+                const hasProcedure = selectedProcedure !== null;
+                const canSubmit = dentureUploadsComplete && hasProcedure;
+                
+                if (submitButton) {
+                    submitButton.disabled = !canSubmit;
+                    if (!canSubmit) {
+                        submitButton.title = !dentureUploadsComplete ? 'Please upload both denture pictures first' : 'Please select a procedure first';
+                    } else {
+                        submitButton.title = 'Submit procedure';
+                    }
+                }
+            }
+            
+            // Initialize denture uploads
+            initializeDentureUploads();
+            
+            // Add event listener for view selected procedures button
+            if (viewSelectedButton) {
+                viewSelectedButton.addEventListener('click', function() {
+                    // Update modal content before showing
+                    updateSelectedProceduresModal();
+                    // Show the modal
+                    selectedProceduresModal.style.display = 'block';
+                });
+            }
             
             // Check if examination ID is available
             const examinationIdInput = document.getElementById('current-examination-id');
@@ -1560,140 +1964,64 @@
             console.log('Examination details available on page:');
             console.log('  - Examination ID from hidden field:', examinationId);
             
-            // Track selected procedures
-            const selectedProcedures = new Map(); // Using Map to store procedure details
-            
-            // Debug: Check if view selected button exists
-            console.log('View selected button found:', viewSelectedButton !== null);
-            console.log('Modal element found:', selectedProceduresModal !== null);
-            
-            // Utility function to show modal
-            function showModal(modal) {
-                if (!modal) {
-                    console.error('Modal element not found');
-                    return;
-                }
-                
-                // First ensure the element is visible in the DOM
-                modal.style.display = 'block';
-                
-                // Force a reflow to ensure the display change is applied
-                void modal.offsetWidth;
-                
-                // Apply additional styling if needed
-                modal.style.opacity = '1';
-                modal.style.visibility = 'visible';
-                
-                console.log('Modal shown:', modal.id, 'Display:', modal.style.display);
-            }
-            
-            // Close modal when clicking outside
-            window.addEventListener('click', function(event) {
-                if (event.target === selectedProceduresModal) {
-                    selectedProceduresModal.style.display = 'none';
-                }
+            // Ensure all procedure cards are displayed with grid style
+            document.querySelectorAll('.procedure-card').forEach(card => {
+                card.style.display = 'grid';
+                console.log('Initialized procedure card:', card.querySelector('h3').textContent);
             });
             
-            // Close modal with close buttons
-            closeModalButtons.forEach(button => {
-                button.addEventListener('click', function() {
-                    selectedProceduresModal.style.display = 'none';
-                });
-            });
-            
-            // Define tab manager
-            const tabManager = {
-                init: function() {
-                    // Cache DOM elements
-                    this.tabs = document.querySelectorAll('.department-tab');
-                    this.contents = document.querySelectorAll('.department-content');
-                    
-                    // Add click listeners to all tabs
-                    this.tabs.forEach(tab => {
-                        tab.addEventListener('click', (e) => {
-                            e.preventDefault();
-                            e.stopPropagation();
-                            
-                            // Get the department name
-                            const deptName = tab.getAttribute('data-dept');
-                            
-                            // First deactivate all tabs and content
-                            this.tabs.forEach(t => t.classList.remove('active'));
-                            this.contents.forEach(c => c.classList.remove('active'));
-                            
-                            // Then activate this tab
-                            tab.classList.add('active');
-                            
-                            // Find and activate matching content
-                            const contentToActivate = document.querySelector('.department-content[data-dept="' + deptName + '"]');
-                            if (contentToActivate) {
-                                contentToActivate.classList.add('active');
-                            }
-                        });
-                    });
-                    
-                    // Activate first tab if none is active
-                    const activeTab = document.querySelector('.department-tab.active');
-                    if (!activeTab && this.tabs.length > 0) {
-                        this.tabs[0].click();
-                    }
-                }
-            };
-            
-            // Initialize tab manager
-            tabManager.init();
-            
-            // Function to show notification
-            function showNotification(message, isError = false) {
-                notification.textContent = message;
-                notification.className = 'notification ' + (isError ? 'error' : 'success');
-                notification.style.display = 'block';
-                
-                // Hide after 5 seconds
-                setTimeout(() => {
-                    notification.style.display = 'none';
-                }, 5000);
-            }
-            
-            // Calculate total amount of selected procedures
-            function calculateTotalAmount() {
-                let total = 0;
-                selectedProcedures.forEach(details => {
-                    total += parseFloat(details.price);
-                });
-                return total;
-            }
-            
-            // Update UI based on selection state
+            // Function to update UI based on selection state
             function updateSelectionUI() {
-                const count = selectedProcedures.size;
-                selectedCountElement.textContent = count;
-                submitButton.disabled = count === 0;
-                
-                // We set the button as enabled initially - it will be disabled in the fetchSavedProcedures
-                // function if no saved procedures are available
-                if (count > 0) {
-                    // If we have selected procedures, enable the view button and remove the no-procedures attribute
-                    viewSelectedButton.disabled = false;
-                    viewSelectedButton.removeAttribute('data-no-procedures');
+                if (!selectedProcedure) {
+                    // Update count
+                    if (selectedCountElement) {
+                        selectedCountElement.textContent = "0";
+                    }
+                    
+                    // Update total amount
+                    if (totalAmountElement) {
+                        totalAmountElement.textContent = '₹0';
+                    }
+                    
+                    // Update the selected procedure info if available
+                    const selectedProcedureInfo = document.getElementById('selected-procedure-info');
+                    const selectedProcedureName = document.getElementById('selected-procedure-name');
+                    
+                    if (selectedProcedureInfo && selectedProcedureName) {
+                        selectedProcedureName.textContent = 'None';
+                        selectedProcedureInfo.style.display = 'none';
+                    }
                 } else {
-                    // Check if we have any existing procedures
-                    const existingIdsInput = document.getElementById('existingProcedureIds');
-                    if (existingIdsInput && existingIdsInput.value) {
-                        const existingIds = existingIdsInput.value.split(',').filter(id => id.trim() !== '').map(id => id.trim());
-                        if (existingIds && existingIds.length === 0) {
-                            // If no selected procedures and no existing procedures, disable the button
-                            viewSelectedButton.disabled = true;
-                            viewSelectedButton.setAttribute('data-no-procedures', 'true');
-                        }
+                    // We have a selection
+                    // Update count
+                    if (selectedCountElement) {
+                        selectedCountElement.textContent = "1";
+                    }
+                    
+                    // Update total amount
+                    if (totalAmountElement) {
+                        const total = parseFloat(selectedProcedure.price);
+                        totalAmountElement.textContent = '₹' + total.toFixed(2);
+                    }
+                    
+                    // Update the selected procedure info if available
+                    const selectedProcedureInfo = document.getElementById('selected-procedure-info');
+                    const selectedProcedureName = document.getElementById('selected-procedure-name');
+                    
+                    if (selectedProcedureInfo && selectedProcedureName) {
+                        selectedProcedureName.textContent = selectedProcedure.name;
+                        selectedProcedureInfo.style.display = 'flex';
+                    }
+                    
+                    // Scroll to the submit button to ensure user sees it
+                    const submitArea = document.querySelector('.action-buttons');
+                    if (submitArea) {
+                        submitArea.scrollIntoView({ behavior: 'smooth', block: 'center' });
                     }
                 }
                 
-                console.log('UI updated: selectedProcedures count =', count);
-                console.log('viewSelectedButton disabled =', viewSelectedButton.disabled);
-                
-                // Update total amount
-                totalAmountElement.textContent = '₹' + calculateTotalAmount().toFixed(2);
+                // Update submit button state based on both procedure selection and denture uploads
+                updateSubmitButtonState();
             }
             
             // Function to update the selected procedures modal content
@@ -1701,8 +2029,8 @@
                 // Clear the table body
                 selectedProceduresTableBody.innerHTML = '';
                 
-                // Check if there are any selected procedures
-                if (selectedProcedures.size === 0) {
+                // Check if there is a selected procedure
+                if (!selectedProcedure) {
                     // Hide table and show message
                     selectedProceduresTable.style.display = 'none';
                     noProceduresMessage.style.display = 'block';
@@ -1711,18 +2039,17 @@
                     selectedProceduresTable.style.display = 'table';
                     noProceduresMessage.style.display = 'none';
                     
-                    // Add each selected procedure to the table
-                    selectedProcedures.forEach((details, id) => {
+                    // Add the selected procedure to the table
                         const row = document.createElement('tr');
                         
                         // Procedure name cell
                         const nameCell = document.createElement('td');
-                        nameCell.textContent = details.name;
+                    nameCell.textContent = selectedProcedure.name;
                         row.appendChild(nameCell);
                         
                         // Price cell
                         const priceCell = document.createElement('td');
-                        priceCell.textContent = '₹' + parseFloat(details.price).toFixed(2);
+                    priceCell.textContent = '₹' + parseFloat(selectedProcedure.price).toFixed(2);
                         priceCell.className = 'price-cell';
                         row.appendChild(priceCell);
                         
@@ -1731,264 +2058,31 @@
                         const removeButton = document.createElement('button');
                         removeButton.className = 'remove-procedure-btn';
                         removeButton.innerHTML = '<i class="fas fa-times"></i> Remove';
-                        removeButton.onclick = function() {
-                            removeProcedure(id);
-                            updateSelectedProceduresModal();
+                    removeButton.onclick = function(e) {
+                        // Prevent any parent elements from receiving the click
+                        e.preventDefault();
+                        e.stopPropagation();
+                        
+                        console.log('Remove button clicked in modal');
+                        removeProcedure();
+                        
+                        // No need to call updateSelectedProceduresModal here since removeProcedure 
+                        // will now handle closing the modal when appropriate
                         };
                         actionCell.appendChild(removeButton);
                         row.appendChild(actionCell);
                         
                         selectedProceduresTableBody.appendChild(row);
-                    });
                     
                     // Update the total
-                    selectedProceduresTotal.textContent = '₹' + calculateTotalAmount().toFixed(2);
-                }
-            }
-            
-            // Function to fetch and display already saved procedures
-            async function fetchSavedProcedures() {
-                // Get the examination ID from the hidden input field
-                const examinationIdInput = document.getElementById('current-examination-id');
-                const examinationId = examinationIdInput ? examinationIdInput.value : '';
-                
-                console.log('Examination ID from hidden field:', examinationId);
-                
-                // Validate examination ID
-                if (!examinationId || examinationId.trim() === '') {
-                    console.error('Invalid examination ID:', examinationId);
-                    const errorMessage = document.getElementById('error-message');
-                    errorMessage.textContent = 'Error: Invalid or missing examination ID';
-                    errorMessage.style.display = 'block';
-                    
-                    // Disable the view button if we can't fetch procedures
-                    viewSelectedButton.disabled = true;
-                    
-                    return; // Don't proceed with the API call
-                }
-                
-                const savedProceduresTableBody = document.getElementById('saved-procedures-table-body');
-                const savedProceduresTable = document.getElementById('saved-procedures-table');
-                const noSavedProceduresMessage = document.getElementById('no-saved-procedures-message');
-                const savedProceduresTotal = document.getElementById('saved-procedures-total');
-                const loadingSpinner = document.getElementById('loading-spinner');
-                const errorMessage = document.getElementById('error-message');
-                
-                console.log('Starting fetchSavedProcedures for examination ID:', examinationId);
-                console.log('DOM elements found:', {
-                    savedProceduresTableBody: savedProceduresTableBody !== null,
-                    savedProceduresTable: savedProceduresTable !== null,
-                    noSavedProceduresMessage: noSavedProceduresMessage !== null,
-                    savedProceduresTotal: savedProceduresTotal !== null,
-                    loadingSpinner: loadingSpinner !== null,
-                    errorMessage: errorMessage !== null
-                });
-                
-                // Clear previous error message
-                errorMessage.style.display = 'none';
-                errorMessage.textContent = '';
-                
-                // Show loading spinner
-                loadingSpinner.style.display = 'flex';
-                
-                try {
-                    // Fetch saved procedures from the server using absolute URL construction
-                    // Get each part separately for debugging
-                    const origin = window.location.origin;
-                    const contextPath = '${pageContext.request.contextPath}';
-                    const apiPath = '/patients/examination/' + examinationId + '/procedures-json';
-                    
-                    // Construct the final URL
-                    let apiUrl = origin + contextPath + apiPath;
-                    
-                    // Debug URL construction
-                    console.log('URL parts:', {
-                        origin: origin,
-                        contextPath: contextPath,
-                        apiPath: apiPath,
-                        finalUrl: apiUrl
-                    });
-                    
-                    // Check for malformed URL (handle the procedures-json at root case)
-                    if (apiUrl.includes('//procedures-json') || apiUrl.endsWith('//procedures-json/')) {
-                        console.warn('Detected malformed URL, using fallback construction');
-                        // Construct URL from the current page URL as fallback
-                        const currentUrl = window.location.href;
-                        // Remove any fragment or query string
-                        const basePath = currentUrl.split(/[?#]/)[0];
-                        // Go up one level from current URL by removing the last path segment
-                        const parentPath = basePath.substring(0, basePath.lastIndexOf('/'));
-                        // Construct the API URL
-                        apiUrl = parentPath + '/' + examinationId + '/procedures-json';
-                        console.log('Fallback URL:', apiUrl);
-                    }
-                    
-                    console.log('Fetching data from:', apiUrl);
-                    const response = await fetch(apiUrl);
-                    const result = await response.json();
-                    
-                    console.log('API response:', result);
-                    
-                    // Hide loading spinner
-                    loadingSpinner.style.display = 'none';
-                    
-                    if (result.success) {
-                        // Clear the table body
-                        savedProceduresTableBody.innerHTML = '';
-                        
-                        const procedures = result.procedures;
-                        console.log('Procedures from API:', procedures);
-                        
-                        // Check if there are any saved procedures
-                        if (!procedures || procedures.length === 0) {
-                            console.log('No procedures found');
-                            // Hide table and show message
-                            savedProceduresTable.style.display = 'none';
-                            noSavedProceduresMessage.style.display = 'block';
-                            
-                            // Check if there are also no selected procedures
-                            if (selectedProcedures.size === 0) {
-                                // If no saved procedures and no selected procedures, disable the view button
-                                viewSelectedButton.disabled = true;
-                                
-                                // Set a data attribute to indicate no saved procedures
-                                viewSelectedButton.setAttribute('data-no-procedures', 'true');
-                            }
-                        } else {
-                            console.log('Found', procedures.length, 'procedures');
-                            // Show table and hide message
-                            savedProceduresTable.style.display = 'table';
-                            noSavedProceduresMessage.style.display = 'none';
-                            
-                            // Enable the view button since we have saved procedures
-                            viewSelectedButton.disabled = false;
-                            
-                            // Remove the data attribute
-                            viewSelectedButton.removeAttribute('data-no-procedures');
-                            
-                            // Add each saved procedure to the table
-                            procedures.forEach((procedure, index) => {
-                                console.log(`Building row for procedure ${index}:`, procedure);
-                                const row = document.createElement('tr');
-                                
-                                // Procedure name cell
-                                const nameCell = document.createElement('td');
-                                nameCell.textContent = procedure.procedureName || 'Unnamed Procedure';
-                                row.appendChild(nameCell);
-                                
-                                // Price cell
-                                const priceCell = document.createElement('td');
-                                priceCell.textContent = '₹' + (procedure.price ? parseFloat(procedure.price).toFixed(2) : '0.00');
-                                priceCell.className = 'price-cell';
-                                row.appendChild(priceCell);
-                                
-                                // Department cell - improved handling for different JSON structures
-                                const deptCell = document.createElement('td');
-                                // Let's handle all possible formats the department might be returned in
-                                let departmentName = 'Not specified';
-                                
-                                if (procedure.dentalDepartment) {
-                                    const dept = procedure.dentalDepartment;
-                                    console.log('Dental department object:', dept);
-                                    
-                                    // Check if it's an enum object with displayName
-                                    if (typeof dept === 'object' && dept.displayName) {
-                                        departmentName = dept.displayName;
-                                    }
-                                    // Check if it's an enum with name field
-                                    else if (typeof dept === 'object' && dept.name) {
-                                        departmentName = dept.name.replace(/_/g, ' ').toLowerCase()
-                                            .replace(/\b\w/g, l => l.toUpperCase());
-                                    }
-                                    // Check if it's just the enum name as a string
-                                    else if (typeof dept === 'string') {
-                                        departmentName = dept.replace(/_/g, ' ').toLowerCase()
-                                            .replace(/\b\w/g, l => l.toUpperCase());
-                                    }
-                                    // For serialized enum without property access
-                                    else if (typeof dept === 'object') {
-                                        // Try to extract a sensible name from whatever properties are available
-                                        const keys = Object.keys(dept);
-                                        if (keys.length > 0) {
-                                            // Look for common field names
-                                            for (const key of ['displayName', 'name', 'value', 'type']) {
-                                                if (dept[key] && typeof dept[key] === 'string') {
-                                                    departmentName = dept[key];
-                                                    break;
-                                                }
-                                            }
-                                            // If none found, use the first string property
-                                            if (departmentName === 'Not specified') {
-                                                for (const key of keys) {
-                                                    if (typeof dept[key] === 'string') {
-                                                        departmentName = dept[key];
-                                                        break;
-                                                    }
-                                                }
-                                            }
-                                        }
-                                    }
-                                }
-                                
-                                deptCell.textContent = departmentName;
-                                row.appendChild(deptCell);
-                                
-                                // Add action cell with remove button
-                                const actionCell = document.createElement('td');
-                                const removeButton = document.createElement('button');
-                                removeButton.className = 'remove-procedure-btn';
-                                removeButton.innerHTML = '<i class="fas fa-trash-alt"></i> Remove';
-                                removeButton.onclick = function(e) {
-                                    e.preventDefault();
-                                    e.stopPropagation();
-                                    removeSavedProcedure(procedure.id, procedure.procedureName || 'Unnamed Procedure');
-                                };
-                                actionCell.appendChild(removeButton);
-                                row.appendChild(actionCell);
-                                
-                                savedProceduresTableBody.appendChild(row);
-                                console.log('Row added to table');
-                            });
-                            
-                            // Update the total
-                            const totalAmount = parseFloat(result.totalAmount).toFixed(2);
-                            savedProceduresTotal.textContent = '₹' + totalAmount;
-                            console.log('Updated total amount:', totalAmount);
-                        }
-                    } else {
-                        console.error('API returned error:', result.message);
-                        // Show error message
-                        errorMessage.textContent = result.message || 'Failed to load saved procedures';
-                        errorMessage.style.display = 'block';
-                        
-                        // Display a notification in the main UI
-                        showNotification('Error loading saved procedures: ' + (result.message || 'Unknown error'), true);
-                        
-                        // Hide table and show message
-                        savedProceduresTable.style.display = 'none';
-                        noSavedProceduresMessage.style.display = 'block';
-                    }
-                } catch (error) {
-                    console.error('Exception in fetchSavedProcedures:', error);
-                    
-                    // Hide loading spinner
-                    loadingSpinner.style.display = 'none';
-                    
-                    // Show error message
-                    errorMessage.textContent = 'Error loading saved procedures: ' + error.message;
-                    errorMessage.style.display = 'block';
-                    
-                    // Hide table and show message
-                    savedProceduresTable.style.display = 'none';
-                    noSavedProceduresMessage.style.display = 'block';
+                    selectedProceduresTotal.textContent = '₹' + parseFloat(selectedProcedure.price).toFixed(2);
                 }
             }
             
             // Remove a procedure from selection
-            function removeProcedure(procedureId) {
-                if (selectedProcedures.has(procedureId)) {
-                    const procedureName = selectedProcedures.get(procedureId).name;
-                    selectedProcedures.delete(procedureId);
+            function removeProcedure() {
+                if (selectedProcedure) {
+                    const procedureId = selectedProcedure.id;
                     
                     // Update the button and card in the procedures list
                     const button = document.querySelector('.select-procedure[data-id="' + procedureId + '"]');
@@ -1998,159 +2092,23 @@
                         button.innerHTML = '<i class="fas fa-plus-circle"></i> Select';
                     }
                     
+                    selectedProcedure = null;
+                    
+                    // Update the UI to reflect the change
                     updateSelectionUI();
+                    
+                    // If we're in the modal, we should close it since we no longer have a selected procedure
+                    if (selectedProceduresModal && selectedProceduresModal.style.display === 'block') {
+                        // Show a notification instead of immediately closing to give feedback
+                        showNotification('Procedure removed from selection', false);
+                        
+                        // Close the modal after a brief delay
+                        setTimeout(() => {
+                            selectedProceduresModal.style.display = 'none';
+                        }, 1000);
+                    }
                 }
             }
-            
-            // Function to remove a saved procedure from the examination
-            async function removeSavedProcedure(procedureId, procedureName) {
-                try {
-                    if (!confirm(`Are you sure you want to remove the procedure "${procedureName}"?`)) {
-                        return;
-                    }
-                    
-                    const loadingSpinner = document.getElementById('loading-spinner');
-                    const errorMessage = document.getElementById('error-message');
-                    
-                    // Show loading spinner
-                    loadingSpinner.style.display = 'flex';
-                    
-                    // Get each part separately for debugging
-                    const origin = window.location.origin;
-                    const contextPath = '${pageContext.request.contextPath}';
-                    const apiPath = '/patients/examination/' + examinationId + '/procedure/' + procedureId + '/remove';
-                    
-                    // Construct the final URL
-                    const apiUrl = origin + contextPath + apiPath;
-                    
-                    console.log('Removing procedure with URL:', apiUrl);
-                    
-                    // Make the DELETE request
-                    const response = await fetch(apiUrl, {
-                        method: 'POST',
-                        headers: {
-                            'Content-Type': 'application/json',
-                            'X-CSRF-TOKEN': csrfToken
-                        }
-                    });
-                    
-                    const result = await response.json();
-                    
-                    // Hide loading spinner
-                    loadingSpinner.style.display = 'none';
-                    
-                    if (result.success) {
-                        // Show success notification
-                        showNotification(`Procedure "${procedureName}" has been successfully removed.`);
-                        
-                        // Refresh the saved procedures list
-                        fetchSavedProcedures();
-                        
-                        // Refresh the page or just the procedure cards
-                        location.reload(); // Simple approach: reload the page
-                    } else {
-                        // Show error message
-                        errorMessage.textContent = result.message || 'Failed to remove procedure';
-                        errorMessage.style.display = 'block';
-                    }
-                } catch (error) {
-                    console.error('Error removing saved procedure:', error);
-                    
-                    // Hide loading spinner
-                    const loadingSpinner = document.getElementById('loading-spinner');
-                    loadingSpinner.style.display = 'none';
-                    
-                    // Show error message
-                    const errorMessage = document.getElementById('error-message');
-                    errorMessage.textContent = 'Error removing procedure: ' + error.message;
-                    errorMessage.style.display = 'block';
-                }
-            }
-            
-            // Mark procedures that are already associated with this examination
-            function markExistingProcedures() {
-                // Get the list of existing procedure IDs from the hidden input
-                const existingIdsInput = document.getElementById('existingProcedureIds');
-                let hasExistingProcedures = false;
-                
-                if (existingIdsInput && existingIdsInput.value) {
-                    const existingIds = existingIdsInput.value.split(',').filter(id => id.trim() !== '').map(id => id.trim());
-                    
-                    if (existingIds && existingIds.length > 0) {
-                        // We have existing procedures, so enable the view button
-                        hasExistingProcedures = true;
-                        
-                        // Get the error message elements
-                        const duplicateError = document.getElementById('duplicate-procedures-error');
-                        const duplicateList = document.getElementById('duplicate-procedures-list');
-                        
-                        // Clear previous errors
-                        duplicateList.innerHTML = '';
-                        
-                        // Flag to track if we found any procedures
-                        let foundProcedures = false;
-                        
-                        existingIds.forEach(procedureId => {
-                            const card = document.querySelector(`.procedure-card[data-id="${procedureId}"]`);
-                            if (card) {
-                                foundProcedures = true;
-                                card.classList.add('duplicate-error');
-                                
-                                // Get the procedure name from the card
-                                const procedureName = card.querySelector('h3').textContent;
-                                
-                                // Add to error list
-                                const listItem = document.createElement('li');
-                                listItem.textContent = procedureName;
-                                duplicateList.appendChild(listItem);
-                                
-                                // Disable the select button
-                                const selectButton = card.querySelector('.select-procedure');
-                                if (selectButton) {
-                                    selectButton.disabled = true;
-                                    selectButton.innerHTML = '<i class="fas fa-check-circle"></i> Added';
-                                    selectButton.classList.add('already-added');
-                                }
-                            }
-                        });
-                        
-                        // Show the error message if we found any procedures
-                        if (foundProcedures) {
-                            duplicateError.querySelector('strong').innerHTML = '<i class="fas fa-info-circle"></i> These procedures are already associated';
-                            duplicateError.style.display = 'block';
-                        }
-                    }
-                }
-                
-                // If no existing procedures and no selected procedures, disable the view button
-                if (!hasExistingProcedures && selectedProcedures.size === 0) {
-                    viewSelectedButton.disabled = true;
-                }
-            }
-            
-            // Handle procedure selection via the entire card
-            const procedureCards = document.querySelectorAll('.procedure-card');
-            
-            procedureCards.forEach(card => {
-                card.addEventListener('click', function(e) {
-                    // Don't handle clicks on buttons or links inside the card
-                    if (e.target.closest('.btn') || e.target.closest('a')) {
-                        return;
-                    }
-                    
-                    // Don't handle clicks if this is a duplicate procedure
-                    if (this.classList.contains('duplicate-error')) {
-                        return;
-                    }
-                    
-                    // Find the select button within this card
-                    const selectButton = this.querySelector('.select-procedure');
-                    if (selectButton && !selectButton.disabled) {
-                        // Trigger a click on the select button
-                        selectButton.click();
-                    }
-                });
-            });
             
             // Handle procedure selection via the button
             const selectButtons = document.querySelectorAll('.select-procedure');
@@ -2158,29 +2116,35 @@
             selectButtons.forEach(button => {
                 button.addEventListener('click', function(e) {
                     // Stop the event from bubbling up to the card to prevent double handling
-                    e.stopPropagation();
-                    
-                    // Don't handle clicks if the button is disabled
-                    if (this.disabled) {
-                        return;
-                    }
+                                    e.stopPropagation();
                     
                     const procedureId = this.dataset.id;
                     const procedureName = this.dataset.name;
                     const procedurePrice = this.dataset.price;
                     const card = this.closest('.procedure-card');
                     
-                    if (selectedProcedures.has(procedureId)) {
-                        // Deselect procedure
-                        selectedProcedures.delete(procedureId);
+                    // If this procedure is already selected, deselect it
+                    if (selectedProcedure && selectedProcedure.id === procedureId) {
+                        selectedProcedure = null;
                         card.classList.remove('selected');
                         this.innerHTML = '<i class="fas fa-plus-circle"></i> Select';
                     } else {
-                        // Select procedure
-                        selectedProcedures.set(procedureId, {
+                        // If another procedure is already selected, deselect it first
+                        if (selectedProcedure) {
+                            const previousButton = document.querySelector('.select-procedure[data-id="' + selectedProcedure.id + '"]');
+                            if (previousButton) {
+                                const previousCard = previousButton.closest('.procedure-card');
+                                previousCard.classList.remove('selected');
+                                previousButton.innerHTML = '<i class="fas fa-plus-circle"></i> Select';
+                            }
+                        }
+                        
+                        // Select the new procedure
+                        selectedProcedure = {
+                            id: procedureId,
                             name: procedureName,
                             price: procedurePrice
-                        });
+                        };
                         card.classList.add('selected');
                         this.innerHTML = '<i class="fas fa-check-circle"></i> Selected';
                         
@@ -2195,107 +2159,64 @@
                 });
             });
             
-            // Open modal when view selected button is clicked
-            viewSelectedButton.addEventListener('click', function() {
-                try {
-                    console.log('View selected button clicked');
-                    
-                    if (!selectedProceduresModal) {
-                        console.error('Modal element is null or undefined');
-                        return;
-                    }
-                    
-                    // Check if there are any selected procedures or any saved procedures
-                    const hasSelectedProcedures = selectedProcedures.size > 0;
-                    const hasNoProceduresAttr = viewSelectedButton.hasAttribute('data-no-procedures');
-                    
-                    if (!hasSelectedProcedures && hasNoProceduresAttr) {
-                        // Show notification error
-                        showNotification('No procedures available to view. Please select procedures or add procedures to the examination.', true);
-                        return; // Don't open the modal
-                    }
-                    
-                    // Update the content of currently selected procedures
-                    updateSelectedProceduresModal();
-                    
-                    // Fetch saved procedures from the server
-                    fetchSavedProcedures();
-                    
-                    // Use the utility function to show the modal
-                    showModal(selectedProceduresModal);
-                } catch (error) {
-                    console.error('Error opening modal:', error);
-                    alert('There was an error opening the procedures modal. Please try again or refresh the page.');
-                }
-            });
-            
-            // Initialize UI
-            updateSelectionUI();
-            
-            // Check if there are existing procedures
-            const existingIdsInput = document.getElementById('existingProcedureIds');
-            if (existingIdsInput && existingIdsInput.value) {
-                const existingIds = existingIdsInput.value.split(',').filter(id => id.trim() !== '').map(id => id.trim());
-                if (existingIds && existingIds.length > 0) {
-                    // We have existing procedures
-                    viewSelectedButton.removeAttribute('data-no-procedures');
-                } else {
-                    // No existing procedures
-                    viewSelectedButton.setAttribute('data-no-procedures', 'true');
-                }
-            } else {
-                // No existing procedures input found
-                viewSelectedButton.setAttribute('data-no-procedures', 'true');
-            }
-            
-            // Mark existing procedures
-            markExistingProcedures();
-            
-            // Handle submission of multiple procedures
+            // Handle submission of the procedure
             submitButton.addEventListener('click', async function() {
-                if (selectedProcedures.size === 0) {
-                    showNotification('Please select at least one procedure', true);
+                if (!selectedProcedure) {
+                    showNotification('Please select a procedure', true);
+                    return;
+                }
+                
+                // Validate denture pictures are uploaded
+                if (!dentureUploadsComplete) {
+                    showNotification('Please upload both upper and lower denture pictures before proceeding', true);
                     return;
                 }
                 
                 const examinationId = '${examination.id}';
-                const procedureIds = Array.from(selectedProcedures.keys());
+                const procedureId = selectedProcedure.id;
                 
                 try {
-                    // Here you would make an API call to submit all selected procedures
-                    showNotification(selectedProcedures.size + ' procedures selected for submission');
+                    // Show loading state
+                    submitButton.disabled = true;
+                    submitButton.innerHTML = '<i class="fas fa-spinner fa-spin"></i> Uploading...';
                     
-                    // Example of how you might submit all procedures at once
-                    const response = await fetch('${pageContext.request.contextPath}/patients/examination/start-procedures', {
+                    // Create FormData to send files
+                    const formData = new FormData();
+                    formData.append('examinationId', examinationId);
+                    formData.append('procedureId', procedureId);
+                    formData.append('upperDenturePicture', upperDentureFile);
+                    formData.append('lowerDenturePicture', lowerDentureFile);
+                    
+                    // Submit the selected procedure with denture pictures
+                    showNotification('Uploading denture pictures and submitting procedure...');
+                    
+                    const response = await fetch('${pageContext.request.contextPath}/patients/examination/start-procedure', {
                         method: 'POST',
                         headers: {
-                            'Content-Type': 'application/json',
                             'X-CSRF-TOKEN': csrfToken
                         },
-                        body: JSON.stringify({
-                            examinationId: examinationId,
-                            procedureIds: procedureIds,
-                            totalAmount: calculateTotalAmount().toFixed(2)
-                        })
+                        body: formData
                     });
                     
                     // Parse the response
                     const result = await response.json();
                     
                     if (result.success) {
-                        showNotification('Successfully started ' + result.procedureCount + ' procedures');
+                        showNotification('Successfully uploaded denture pictures and assigned procedure');
                         
-                        // Redirect after a short delay
+                        // Redirect after a short delay to the procedure lifecycle page
                         setTimeout(() => {
                             if (result.redirect) {
-                                window.location.href = '${pageContext.request.contextPath}' + result.redirect;
+                                // Redirect to the examination lifecycle page
+                                window.location.href = '${pageContext.request.contextPath}/patients/examination/' + examinationId + '/lifecycle';
                             } else {
-                                window.location.href = '${pageContext.request.contextPath}/patients/examination/${examination.id}';
+                                // Fallback to examination lifecycle page
+                                window.location.href = '${pageContext.request.contextPath}/patients/examination/' + examinationId + '/lifecycle';
                             }
                         }, 1500);
                     } else {
-                        // Check if there are duplicate procedures
-                        if (result.duplicateProcedures && result.duplicateProcedures.details) {
+                        // Check if there is a duplicate procedure
+                        if (result.duplicateProcedure) {
                             // Show error message near the submit button
                             const duplicateError = document.getElementById('duplicate-procedures-error');
                             const duplicateList = document.getElementById('duplicate-procedures-list');
@@ -2303,49 +2224,285 @@
                             // Clear previous errors
                             duplicateList.innerHTML = '';
                             
-                            // Add each duplicate procedure to the list
-                            result.duplicateProcedures.details.forEach(duplicate => {
-                                const duplicateId = duplicate.id;
-                                const duplicateName = duplicate.name;
-                                
-                                // Add to error list
-                                const listItem = document.createElement('li');
-                                listItem.textContent = duplicateName;
-                                duplicateList.appendChild(listItem);
-                                
-                                // Highlight the card but don't add warning icon
-                                const duplicateCard = document.querySelector(`.procedure-card[data-id="${duplicateId}"]`);
-                                if (duplicateCard) {
-                                    duplicateCard.classList.add('duplicate-error');
-                                    
-                                    // Remove the duplicate from selection
-                                    removeProcedure(duplicateId);
-                                }
-                            });
+                            // Add the duplicate procedure to the list
+                            const listItem = document.createElement('li');
+                            listItem.textContent = result.duplicateProcedure.name || selectedProcedure.name;
+                            duplicateList.appendChild(listItem);
                             
                             // Show the error message
                             duplicateError.style.display = 'block';
                             
                             // Scroll to the error message
                             duplicateError.scrollIntoView({ behavior: 'smooth', block: 'center' });
-                            
-                            // Don't show the top notification since we're showing the specific error near the submit button
                         } else {
-                            // Only show the top notification if we're not showing duplicate errors
+                            // Show the top notification for other errors
                             showNotification('Error: ' + (result.message || 'Unknown error occurred'), true);
                         }
                     }
                     
                 } catch (error) {
-                    console.error('Error submitting procedures:', error);
-                    
-                    // Only show the notification if the duplicate error isn't already visible
-                    const duplicateError = document.getElementById('duplicate-procedures-error');
-                    if (!duplicateError || duplicateError.style.display !== 'block') {
-                        showNotification('Error: ' + error.message, true);
-                    }
+                    console.error('Error submitting procedure:', error);
+                    showNotification('Error: ' + error.message, true);
                 }
             });
+            
+            // Function to show notification
+            function showNotification(message, isError = false) {
+                notification.textContent = message;
+                notification.className = 'notification ' + (isError ? 'error' : 'success');
+                notification.style.display = 'block';
+                
+                // Hide after 5 seconds
+                setTimeout(() => {
+                    notification.style.display = 'none';
+                }, 5000);
+            }
+            
+            // Function to fetch and display already saved procedures
+            async function fetchSavedProcedures() {
+                console.log('fetchSavedProcedures called');
+                
+                // For simplicity, we're now using a single procedure approach
+                // just show the selected procedure in the modal
+                console.log('Currently selected procedure:', selectedProcedure);
+                updateSelectedProceduresModal();
+                
+                // Hide saved procedures section as we're now only working with a single procedure
+                const savedProceduresSection = document.getElementById('saved-procedures-section');
+                if (savedProceduresSection) {
+                    console.log('Hiding saved procedures section');
+                    savedProceduresSection.style.display = 'none';
+                } else {
+                    console.log('Warning: savedProceduresSection element not found');
+                }
+                
+                // Show a message that only one procedure can be selected now
+                const procedureMessage = document.getElementById('no-saved-procedures-message');
+                if (procedureMessage) {
+                    console.log('Updating saved procedures message');
+                    procedureMessage.textContent = 'The system now supports only one procedure per examination.';
+                } else {
+                    console.log('Warning: procedureMessage element not found');
+                }
+            }
+            
+            // Handle procedure selection via the entire card
+            const procedureCards = document.querySelectorAll('.procedure-card');
+            
+            procedureCards.forEach(card => {
+                card.addEventListener('click', function(e) {
+                    // Don't handle clicks on buttons or links inside the card
+                    if (e.target.closest('.btn') || e.target.closest('a')) {
+                        return;
+                    }
+                    
+                    // Find the select button within this card
+                    const selectButton = this.querySelector('.select-procedure');
+                    if (selectButton) {
+                        // Trigger a click on the select button
+                        selectButton.click();
+                    }
+                });
+            });
+        // Close modal when clicking close button or outside the modal
+        closeModalButtons.forEach(button => {
+            button.addEventListener('click', function() {
+                selectedProceduresModal.style.display = 'none';
+                });
+            });
+            
+        window.addEventListener('click', function(e) {
+            if (e.target === selectedProceduresModal) {
+                selectedProceduresModal.style.display = 'none';
+            }
+        });
+        
+        // Show modal function
+        function showModal(modal) {
+            modal.style.display = 'block';
+        }
+        
+        // Initialize UI
+                    updateSelectionUI();
+        
+        // Initialize saved procedures display
+        fetchSavedProcedures();
+        
+        // Handle clicks on remove buttons inside the modal using event delegation
+        document.addEventListener('click', function(e) {
+            if (e.target && (e.target.classList.contains('remove-procedure-btn') || e.target.closest('.remove-procedure-btn'))) {
+                e.preventDefault();
+                e.stopPropagation();
+                
+                // Get the procedure ID from the button's data attribute or find it from the row
+                const removeBtnElement = e.target.classList.contains('remove-procedure-btn') ? 
+                    e.target : e.target.closest('.remove-procedure-btn');
+                
+                console.log('Remove button clicked');
+                
+                // Call removeProcedure function
+                removeProcedure();
+                
+                // Update the modal to reflect changes
+                    updateSelectedProceduresModal();
+            }
+        });
+        
+        // Initialize department tabs
+        const departmentTabs = document.querySelectorAll('.department-tab');
+        const departmentContents = document.querySelectorAll('.department-content');
+        const departmentsContent = document.querySelector('.departments-content');
+        
+        // Debug: Log all department tabs and their data-dept attributes
+        console.log('All department tabs:');
+        departmentTabs.forEach(tab => {
+            console.log(`Tab: data-dept="${tab.dataset.dept}", text="${tab.textContent.trim()}"`);
+        });
+        
+        // Debug: Log all department content elements and their data-dept attributes
+        console.log('All department content elements:');
+        departmentContents.forEach(content => {
+            console.log(`Content: data-dept="${content.dataset.dept}"`);
+        });
+        
+        // Function to switch tabs
+        function switchTab(tabElement) {
+            const dept = tabElement.dataset.dept;
+            console.log('Switching to department tab:', dept);
+            
+            // Remove active class from all tabs
+            departmentTabs.forEach(t => t.classList.remove('active'));
+            
+            // Add active class to current tab
+            tabElement.classList.add('active');
+            
+            // Hide all department contents
+            departmentContents.forEach(content => {
+                content.classList.remove('active');
+                content.style.display = 'none'; // Explicitly hide
+            });
+            
+            // Show the content for the current department - try case-insensitive matching if exact match fails
+            let content = document.querySelector(`.department-content[data-dept="${dept}"]`);
+            if (!content) {
+                // Try case-insensitive match
+                departmentContents.forEach(el => {
+                    if (el.dataset.dept && el.dataset.dept.toLowerCase() === dept.toLowerCase()) {
+                        content = el;
+                    }
+                });
+            }
+            
+            console.log('Found department content element:', content);
+            
+            if (content) {
+                content.classList.add('active');
+                content.style.display = 'block'; // Explicitly show
+                departmentsContent.classList.remove('no-active-tab');
+                
+                // Remove any existing "no procedures" messages
+                const existingMessages = content.querySelectorAll('.no-procedures');
+                existingMessages.forEach(msg => msg.remove());
+                
+                // Debug: Log all department-content elements and their data-dept attributes
+                console.log('All department content elements:');
+                document.querySelectorAll('.department-content').forEach(el => {
+                    console.log(`  Element: data-dept="${el.dataset.dept}", visible: ${el.classList.contains('active')}`);
+                });
+                
+                // Make sure all procedure cards in this department are visible
+                const procedureCards = content.querySelectorAll('.procedure-card');
+                console.log('Found procedure cards in this department:', procedureCards.length);
+                
+                procedureCards.forEach(card => {
+                    console.log('Making card visible:', card.dataset.id);
+                    card.style.display = 'grid';
+                });
+                
+                // If no cards are found, show a message
+                if (procedureCards.length === 0) {
+                    console.log('No procedure cards found, adding message');
+                    const noCardMessage = document.createElement('div');
+                    noCardMessage.className = 'no-procedures';
+                    noCardMessage.innerHTML = '<i class="fas fa-info-circle"></i> No procedures available in this department.';
+                    content.appendChild(noCardMessage);
+                }
+                
+                // If a procedure was previously selected, ensure its card shows as selected
+                if (selectedProcedure) {
+                    const selectedCard = content.querySelector(`.procedure-card[data-id="${selectedProcedure.id}"]`);
+                    if (selectedCard) {
+                        selectedCard.classList.add('selected');
+                        const selectButton = selectedCard.querySelector('.select-procedure');
+                        if (selectButton) {
+                            selectButton.innerHTML = '<i class="fas fa-check-circle"></i> Selected';
+                        }
+                    }
+                }
+                    } else {
+                console.error('Content element not found for department:', dept);
+                departmentsContent.classList.add('no-active-tab');
+                
+                // If no content found, fallback to showing the first department tab
+                if (departmentContents.length > 0) {
+                    console.log('Falling back to first department content');
+                    const firstContent = departmentContents[0];
+                    firstContent.classList.add('active');
+                    firstContent.style.display = 'block';
+                    departmentsContent.classList.remove('no-active-tab');
+                }
+            }
+        }
+        
+        // Add click event listeners to tabs
+        departmentTabs.forEach(tab => {
+            tab.addEventListener('click', function(e) {
+                e.preventDefault();
+                switchTab(this);
+            });
+        });
+        
+        // Function to initialize tabs
+        function initializeTabs() {
+            console.log('Initializing tabs on page load');
+            
+            // First try using the active class that might be set in JSP
+            const activeTab = document.querySelector('.department-tab.active');
+            const activeContent = document.querySelector('.department-content.active');
+            
+            if (activeTab && activeContent) {
+                console.log('Found active tab and content from JSP');
+                switchTab(activeTab);
+                return;
+            }
+            
+            // Otherwise use the first tab
+            if (departmentTabs.length > 0) {
+                console.log('Using first available tab');
+                switchTab(departmentTabs[0]);
+            } else if (departmentContents.length > 0) {
+                // If no tabs but we have content, show the first content
+                console.log('No tabs found, showing first content');
+                departmentContents.forEach(content => {
+                    content.classList.remove('active');
+                    content.style.display = 'none';
+                });
+                
+                departmentContents[0].classList.add('active');
+                departmentContents[0].style.display = 'block';
+                        } else {
+                console.error('No tabs or content found at all');
+            }
+            
+            // Force check of all procedure cards in active content
+            document.querySelectorAll('.department-content.active .procedure-card').forEach(card => {
+                console.log('Procedure card in active tab:', card.querySelector('h3').textContent);
+                card.style.display = 'grid';
+            });
+        }
+        
+        // Call initialization after a short delay
+        setTimeout(initializeTabs, 500);
         });
     </script>
 </body>

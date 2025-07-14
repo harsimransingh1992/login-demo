@@ -1,6 +1,7 @@
 <%@ page language="java" contentType="text/html; charset=UTF-8" pageEncoding="UTF-8"%>
 <%@ taglib prefix="c" uri="http://java.sun.com/jsp/jstl/core"%>
 <%@ taglib prefix="fmt" uri="http://java.sun.com/jsp/jstl/fmt"%>
+<%@ taglib prefix="sec" uri="http://www.springframework.org/security/tags"%>
 <!DOCTYPE html>
 <html>
 <head>
@@ -11,61 +12,13 @@
     <link rel="stylesheet" href="https://cdnjs.cloudflare.com/ajax/libs/font-awesome/6.4.0/css/all.min.css">
     <link href='https://cdn.jsdelivr.net/npm/fullcalendar@5.11.3/main.min.css' rel='stylesheet' />
     <link href="${pageContext.request.contextPath}/css/patient/appointments.css" rel="stylesheet" />
+    
+    <!-- Include common menu styles -->
+    <jsp:include page="/WEB-INF/views/common/menuStyles.jsp" />
 </head>
 <body>
     <div class="welcome-container">
-        <div class="sidebar-menu">
-            <div class="logo">
-                <img src="${pageContext.request.contextPath}/images/tooth-repair.svg" alt="PeriDesk Logo">
-                <h1>PeriDesk</h1>
-            </div>
-            <a href="${pageContext.request.contextPath}/welcome" class="action-card">
-                <i class="fas fa-clipboard-list"></i>
-                <div class="card-text">
-                    <h3>Waiting Lobby</h3>
-                    <p>View waiting patients</p>
-                </div>
-            </a>
-            <a href="${pageContext.request.contextPath}/patients/register" class="action-card">
-                <i class="fas fa-user-plus"></i>
-                <div class="card-text">
-                    <h3>Register Patient</h3>
-                    <p>Add new patient</p>
-                </div>
-            </a>
-            <a href="${pageContext.request.contextPath}/patients/list" class="action-card">
-                <i class="fas fa-users"></i>
-                <div class="card-text">
-                    <h3>View Patients</h3>
-                    <p>Manage records</p>
-                </div>
-            </a>
-            <a href="${pageContext.request.contextPath}/patients/appointments" class="action-card">
-                <i class="fas fa-calendar-alt"></i>
-                <div class="card-text">
-                    <h3>Appointments</h3>
-                    <p>Today's schedule</p>
-                </div>
-            </a>
-            <a href="${pageContext.request.contextPath}/doctors" class="action-card">
-                <i class="fas fa-user-md"></i>
-                <div class="card-text">
-                    <h3>Doctors</h3>
-                    <p>Manage doctors</p>
-                </div>
-            </a>
-            <a href="${pageContext.request.contextPath}/settings" class="action-card">
-                <i class="fas fa-cog"></i>
-                <div class="card-text">
-                    <h3>Settings</h3>
-                    <p>System configuration</p>
-                </div>
-            </a>
-            <div class="footer">
-                <p class="copyright">© 2024 PeriDesk. All rights reserved.</p>
-                <p>Powered by <span class="powered-by">Navtech</span><span class="navtech">Labs</span></p>
-            </div>
-        </div>
+        <jsp:include page="/WEB-INF/views/common/menu.jsp" />
         
         <div class="main-content">
             <div class="welcome-header">
@@ -94,7 +47,12 @@
                             <c:forEach items="${appointments}" var="appointment">
                                 <li style="margin-bottom: 15px; padding: 10px; border: 1px solid #ddd; border-radius: 5px;">
                                     <strong>Patient:</strong> ${appointment.patient.firstName} ${appointment.patient.lastName}<br>
-                                    <strong>Doctor:</strong> ${appointment.assignedDoctor.doctorName}<br>
+                                    <strong>Doctor:</strong> 
+                                    <c:forEach items="${doctorDetails}" var="doctor">
+                                        <c:if test="${doctor.id == appointment.assignedDoctorId}">
+                                            ${doctor.firstName} ${doctor.lastName}
+                                        </c:if>
+                                    </c:forEach><br>
                                     <strong>Time:</strong> ${appointment.treatmentStartingDate}<br>
                                     <a href="${pageContext.request.contextPath}/patients/examination/${appointment.id}" 
                                        class="btn btn-primary" style="margin-top: 5px; display: inline-block;">
@@ -117,7 +75,7 @@
                  data-first-name="${appointment.patient.firstName}"
                  data-last-name="${appointment.patient.lastName}"
                  data-start-date="${appointment.treatmentStartingDate}"
-                 data-doctor-name="${appointment.assignedDoctor.doctorName}"
+                 data-doctor-name="<c:forEach items='${doctorDetails}' var='doctor'><c:if test='${doctor.id == appointment.assignedDoctorId}'>${doctor.firstName} ${doctor.lastName}</c:if></c:forEach>"
                  data-phone="${appointment.patient.phoneNumber}">
             </div>
         </c:forEach>

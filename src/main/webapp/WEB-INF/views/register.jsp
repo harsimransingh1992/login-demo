@@ -1,9 +1,10 @@
 <%@ page language="java" contentType="text/html; charset=UTF-8" pageEncoding="UTF-8"%>
 <%@ taglib prefix="c" uri="http://java.sun.com/jsp/jstl/core"%>
+<%@ taglib prefix="form" uri="http://www.springframework.org/tags/form"%>
 <!DOCTYPE html>
 <html>
 <head>
-    <title>PeriDesk - Registration</title>
+    <title>PeriDesk - User Registration</title>
     <link href="https://fonts.googleapis.com/css2?family=Poppins:wght@300;400;500;600;700&display=swap" rel="stylesheet">
     <link rel="stylesheet" href="https://cdnjs.cloudflare.com/ajax/libs/font-awesome/6.4.0/css/all.min.css">
     <link rel="stylesheet" href="${pageContext.request.contextPath}/css/style.css">
@@ -181,7 +182,7 @@
             margin-left: 4px;
         }
         
-        .form-group input {
+        .form-group input, .form-group select {
             width: 100%;
             padding: 12px 15px;
             border: 1px solid #e0e0e0;
@@ -193,7 +194,7 @@
             box-sizing: border-box;
         }
         
-        .form-group input:focus {
+        .form-group input:focus, .form-group select:focus {
             border-color: #3498db;
             box-shadow: 0 0 0 3px rgba(52, 152, 219, 0.15);
             outline: none;
@@ -339,6 +340,15 @@
             margin-top: 5px;
             color: #999;
         }
+        
+        .form-row {
+            display: flex;
+            gap: 20px;
+        }
+        
+        .form-row .form-group {
+            flex: 1;
+        }
     </style>
     <script>
         function togglePassword(inputId) {
@@ -415,6 +425,7 @@
         window.onload = function() {
             const passwordInput = document.getElementById('password');
             const confirmPasswordInput = document.getElementById('confirmPassword');
+            const roleSelect = document.getElementById('role');
             
             if (passwordInput) {
                 passwordInput.addEventListener('input', function() {
@@ -427,15 +438,49 @@
                     checkPasswordMatch();
                 });
             }
+            
+            // Role-based field display
+            if (roleSelect) {
+                function updateFieldDisplay() {
+                    const role = roleSelect.value;
+                    const doctorFields = document.getElementById('doctorFields');
+                    const professionalDetails = document.getElementById('professionalDetails');
+                    
+                    // Reset field display
+                    if (doctorFields) doctorFields.style.display = 'none';
+                    if (professionalDetails) professionalDetails.style.display = 'none';
+                    
+                    // Set required attributes
+                    const doctorRequiredFields = document.querySelectorAll('.doctorRequired');
+                    doctorRequiredFields.forEach(field => {
+                        const input = field.closest('.form-group').querySelector('input, select');
+                        if (input) {
+                            input.required = role === 'DOCTOR';
+                        }
+                    });
+                    
+                    // Show fields based on role
+                    if (role === 'DOCTOR') {
+                        if (doctorFields) doctorFields.style.display = 'block';
+                        if (professionalDetails) professionalDetails.style.display = 'block';
+                    } else if (role === 'STAFF' || role === 'RECEPTIONIST') {
+                        if (professionalDetails) professionalDetails.style.display = 'block';
+                    }
+                }
+                
+                roleSelect.addEventListener('change', updateFieldDisplay);
+                // Initialize field display
+                updateFieldDisplay();
+            }
         }
     </script>
 </head>
 <body>
     <div class="welcome-container">
         <div class="sidebar-menu">
-        <div class="logo">
-            <img src="${pageContext.request.contextPath}/images/tooth-repair.svg" alt="PeriDesk Logo">
-            <h1>PeriDesk</h1>
+            <div class="logo">
+                <img src="${pageContext.request.contextPath}/images/tooth-repair.svg" alt="PeriDesk Logo">
+                <h1>PeriDesk</h1>
             </div>
             <a href="${pageContext.request.contextPath}/" class="action-card">
                 <i class="fas fa-sign-in-alt"></i>
@@ -445,10 +490,10 @@
                 </div>
             </a>
             <a href="${pageContext.request.contextPath}/register" class="action-card">
-                <i class="fas fa-clinic-medical"></i>
+                <i class="fas fa-user-plus"></i>
                 <div class="card-text">
-                    <h3>Clinic Registration</h3>
-                    <p>Create a new clinic account</p>
+                    <h3>User Registration</h3>
+                    <p>Create a new user account</p>
                 </div>
             </a>
             <div class="footer">
@@ -461,52 +506,160 @@
             <div class="form-container">
                 <div class="logo">
                     <h1>Create Account</h1>
-                    <p>Register your dental clinic</p>
-        </div>
-        
-        <c:if test="${not empty error}">
-            <div class="error">
+                    <p>Register as a new user</p>
+                </div>
+                
+                <c:if test="${not empty error}">
+                    <div class="error">
                         <i class="fas fa-exclamation-circle"></i> ${error}
-            </div>
-        </c:if>
-        <c:if test="${not empty success}">
-            <div class="success">
+                    </div>
+                </c:if>
+                <c:if test="${not empty success}">
+                    <div class="success">
                         <i class="fas fa-check-circle"></i> ${success}
-            </div>
-        </c:if>
-        
-        <form action="${pageContext.request.contextPath}/register" method="post">
-            <input type="hidden" name="${_csrf.parameterName}" value="${_csrf.token}"/>
+                    </div>
+                </c:if>
+                
+                <form:form action="${pageContext.request.contextPath}/register" method="post" modelAttribute="registrationDto">
+                    <input type="hidden" name="${_csrf.parameterName}" value="${_csrf.token}"/>
                     
                     <div class="form-section">
-                        <h3 class="section-title"><i class="fas fa-clinic-medical"></i> Clinic Details</h3>
-                        <div class="form-group">
-                            <label for="username">Clinic ID <span class="required">*</span></label>
-                            <input type="text" id="username" name="username" required placeholder="Choose a unique clinic identifier">
-                            <div class="form-tip">
-                                <i class="fas fa-info-circle"></i> This will be used for login
+                        <h3 class="section-title"><i class="fas fa-user"></i> Personal Information</h3>
+                        <div class="form-row">
+                            <div class="form-group">
+                                <label for="firstName">First Name <span class="required">*</span></label>
+                                <form:input path="firstName" id="firstName" required="true" placeholder="Enter your first name"/>
+                            </div>
+                            <div class="form-group">
+                                <label for="lastName">Last Name <span class="required">*</span></label>
+                                <form:input path="lastName" id="lastName" required="true" placeholder="Enter your last name"/>
                             </div>
                         </div>
+                        <div class="form-row">
+                            <div class="form-group">
+                                <label for="email">Email</label>
+                                <form:input path="email" id="email" type="email" placeholder="Enter your email address"/>
+                            </div>
+                            <div class="form-group">
+                                <label for="phoneNumber">Phone Number</label>
+                                <form:input path="phoneNumber" id="phoneNumber" placeholder="Enter your phone number"/>
+                            </div>
+                        </div>
+                    </div>
+                    
+                    <div class="form-section">
+                        <h3 class="section-title"><i class="fas fa-clinic-medical"></i> Clinic Association</h3>
                         <div class="form-group">
-                            <label for="referralModel">How did you hear about us? <span class="required">*</span></label>
-                            <select id="referralModel" name="referralModel" required class="form-control">
-                                <option value="">Select an option</option>
-                                <c:forEach items="${referralModels}" var="model">
-                                    <option value="${model}">${model.displayName}</option>
+                            <label for="clinicId">Select Clinic</label>
+                            <form:select path="clinicId" id="clinicId">
+                                <form:option value="">-- Select a clinic --</form:option>
+                                <c:forEach items="${clinics}" var="clinic">
+                                    <form:option value="${clinic.id}">${clinic.clinicName}</form:option>
                                 </c:forEach>
-                            </select>
+                            </form:select>
                             <div class="form-tip">
-                                <i class="fas fa-info-circle"></i> This helps us understand how patients find us
+                                <i class="fas fa-info-circle"></i> Select the clinic you are associated with
+                            </div>
+                        </div>
+                        
+                        <div class="form-group">
+                            <label for="role">User Role <span class="required">*</span></label>
+                            <form:select path="role" id="role" required="true">
+                                <form:option value="STAFF">Staff</form:option>
+                                <form:option value="DOCTOR">Doctor</form:option>
+                                <form:option value="RECEPTIONIST">Receptionist</form:option>
+                            </form:select>
+                            <div class="form-tip">
+                                <i class="fas fa-info-circle"></i> Select your role in the clinic
+                            </div>
+                        </div>
+                    </div>
+                    
+                    <!-- Doctor specific fields -->
+                    <div id="doctorFields" class="form-section" style="display: none;">
+                        <h3 class="section-title"><i class="fas fa-user-md"></i> Professional Details</h3>
+                        <div class="form-row">
+                            <div class="form-group">
+                                <label for="specialization">Specialization <span class="required doctorRequired">*</span></label>
+                                <form:select path="specialization" id="specialization">
+                                    <form:option value="">-- Select Specialization --</form:option>
+                                    <form:option value="Orthodontist">Orthodontist</form:option>
+                                    <form:option value="Periodontist">Periodontist</form:option>
+                                    <form:option value="Endodontist">Endodontist</form:option>
+                                    <form:option value="Oral Surgeon">Oral Surgeon</form:option>
+                                    <form:option value="Pediatric Dentist">Pediatric Dentist</form:option>
+                                    <form:option value="Prosthodontist">Prosthodontist</form:option>
+                                    <form:option value="General Dentist">General Dentist</form:option>
+                                </form:select>
+                            </div>
+                        </div>
+                        
+                        <div class="form-row">
+                            <div class="form-group">
+                                <label for="licenseNumber">License Number <span class="required doctorRequired">*</span></label>
+                                <form:input path="licenseNumber" id="licenseNumber" placeholder="Enter your license number"/>
+                            </div>
+                            <div class="form-group">
+                                <label for="licenseExpiryDate">License Expiry Date</label>
+                                <form:input path="licenseExpiryDate" id="licenseExpiryDate" type="date"/>
+                            </div>
+                        </div>
+                        
+                        <div class="form-group">
+                            <label for="bio">Professional Biography</label>
+                            <form:textarea path="bio" id="bio" rows="4" placeholder="Brief description of your professional experience and expertise" style="width: 100%; padding: 12px 15px; border: 1px solid #e0e0e0; border-radius: 8px;"/>
+                        </div>
+                    </div>
+                    
+                    <!-- Professional Details for all healthcare staff -->
+                    <div id="professionalDetails" class="form-section" style="display: none;">
+                        <h3 class="section-title"><i class="fas fa-id-badge"></i> Employment Details</h3>
+                        <div class="form-row">
+                            <div class="form-group">
+                                <label for="qualification">Qualification</label>
+                                <form:input path="qualification" id="qualification" placeholder="Your educational qualifications (e.g., BDS, MDS)"/>
+                            </div>
+                            <div class="form-group">
+                                <label for="designation">Designation/Position</label>
+                                <form:input path="designation" id="designation" placeholder="Your job title or position"/>
+                            </div>
+                        </div>
+                        
+                        <div class="form-row">
+                            <div class="form-group">
+                                <label for="joiningDate">Joining Date</label>
+                                <form:input path="joiningDate" id="joiningDate" type="date"/>
+                            </div>
+                            
+                            <div class="form-group">
+                                <label for="emergencyContact">Emergency Contact</label>
+                                <form:input path="emergencyContact" id="emergencyContact" placeholder="Emergency contact number"/>
+                            </div>
+                        </div>
+                        
+                        <div class="form-group">
+                            <label for="address">Address</label>
+                            <form:input path="address" id="address" placeholder="Your residential address"/>
+                        </div>
+                    </div>
+                    
+                    <div class="form-section">
+                        <h3 class="section-title"><i class="fas fa-id-card"></i> Account Information</h3>
+                        <div class="form-group">
+                            <label for="username">Username <span class="required">*</span></label>
+                            <form:input path="username" id="username" required="true" placeholder="Choose a unique username"/>
+                            <div class="form-tip">
+                                <i class="fas fa-info-circle"></i> This will be used for login
                             </div>
                         </div>
                     </div>
                     
                     <div class="form-section">
                         <h3 class="section-title"><i class="fas fa-lock"></i> Security</h3>
-            <div class="form-group">
+                        <div class="form-group">
                             <label for="password">Password <span class="required">*</span></label>
-                <div class="password-container">
-                                <input type="password" id="password" name="password" required placeholder="Create a strong password">
+                            <div class="password-container">
+                                <form:password path="password" id="password" required="true" placeholder="Create a strong password"/>
                                 <span class="password-toggle" onclick="togglePassword('password')"><i class="fas fa-eye"></i></span>
                             </div>
                             <div class="strength-meter">
@@ -515,25 +668,25 @@
                             <div id="password-strength-text" class="password-strength-text"></div>
                             <div class="form-tip">
                                 <i class="fas fa-shield-alt"></i> Use 8+ characters with a mix of letters, numbers & symbols
-                </div>
-            </div>
-            <div class="form-group">
+                            </div>
+                        </div>
+                        <div class="form-group">
                             <label for="confirmPassword">Confirm Password <span class="required">*</span></label>
-                <div class="password-container">
-                                <input type="password" id="confirmPassword" name="confirmPassword" required placeholder="Type your password again">
+                            <div class="password-container">
+                                <form:password path="confirmPassword" id="confirmPassword" required="true" placeholder="Type your password again"/>
                                 <span class="password-toggle" onclick="togglePassword('confirmPassword')"><i class="fas fa-eye"></i></span>
                             </div>
                             <div id="password-match-text" class="password-strength-text"></div>
-                </div>
-            </div>
+                        </div>
+                    </div>
                     
                     <button type="submit">Create Account</button>
-        
-        <div class="login-link">
+                    
+                    <div class="login-link">
                         <p>Already have an account? <a href="${pageContext.request.contextPath}/login">Sign in</a></p>
                     </div>
-                </form>
-        </div>
+                </form:form>
+            </div>
         </div>
     </div>
 </body>

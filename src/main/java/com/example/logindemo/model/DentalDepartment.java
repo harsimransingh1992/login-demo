@@ -11,7 +11,10 @@ public enum DentalDepartment {
     PEDODONTICS("Pedodontics"),
     PROSTHODONTICS("Prosthodontics"),
     IMPLANTOLOGY("Implantology"),
-    DIAGNOSIS_ORAL_MEDICINE_RADIOLOGY("Diagnosis, Oral Medicine & Radiology");
+    DIAGNOSIS_ORAL_MEDICINE_RADIOLOGY("Diagnosis, Oral Medicine & Radiology"),
+    ENDODONTICS_CONSERVATIVE_DENTISTRY("Department of Endodontics & Conservative Dentistry"),
+    ORAL_MAXILLOFACIAL_SURGERY("Department of Oral & Maxillofacial Surgery");
+
 
     private final String displayName;
 

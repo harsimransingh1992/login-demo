@@ -117,6 +117,26 @@
             font-size: 0.9em;
             color: #ecf0f1;
         }
+        .stats-card {
+            border-radius: 10px;
+            transition: transform 0.3s;
+        }
+        .stats-card:hover {
+            transform: translateY(-5px);
+            box-shadow: 0 10px 20px rgba(0,0,0,0.1);
+        }
+        .stats-icon {
+            font-size: 3rem;
+            opacity: 0.8;
+        }
+        .card-link {
+            text-decoration: none;
+            color: inherit;
+        }
+        .card-link:hover {
+            text-decoration: none;
+            color: inherit;
+        }
     </style>
 </head>
 <body>
@@ -156,6 +176,12 @@
                 </div>
                 
                 <div class="admin-card">
+                    <h3>Doctor Targets</h3>
+                    <p>Configure monthly targets for doctors based on city tiers</p>
+                    <a href="${pageContext.request.contextPath}/admin/targets" class="btn">Manage Targets</a>
+                </div>
+                
+                <div class="admin-card">
                     <h3>Database Maintenance</h3>
                     <p>Fix database integrity issues and perform maintenance</p>
                     <a href="${pageContext.request.contextPath}/admin/database-status" class="btn">Database Tools</a>
@@ -170,6 +196,7 @@
             <a href="${pageContext.request.contextPath}/admin/users/create" class="btn">Create New User</a>
             <a href="${pageContext.request.contextPath}/admin/doctors/create" class="btn">Add New Doctor</a>
             <a href="${pageContext.request.contextPath}/admin/prices/create" class="btn">Add New Procedure Price</a>
+            <a href="${pageContext.request.contextPath}/admin/targets/new" class="btn">Create New Target</a>
             <a href="${pageContext.request.contextPath}/admin/database-status" class="btn">Database Maintenance</a>
             <a href="${pageContext.request.contextPath}/welcome" class="btn">Back to Main App</a>
         </div>
