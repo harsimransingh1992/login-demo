@@ -159,6 +159,9 @@ public class PatientServiceImpl implements PatientService{
             patient.setEmergencyContactPhoneNumber(patientDTO.getEmergencyContactPhoneNumber());
             patient.setProfilePicturePath(patientDTO.getProfilePicturePath());
             
+            // Set referralOther
+            patient.setReferralOther(patientDTO.getReferralOther());
+            
             // Set audit fields
             patient.setCreatedBy(currentUser);
             patient.setRegisteredClinic(currentUser.getClinic());

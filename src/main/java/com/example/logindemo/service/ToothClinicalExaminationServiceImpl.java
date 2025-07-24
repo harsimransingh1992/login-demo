@@ -507,4 +507,5 @@ public class ToothClinicalExaminationServiceImpl implements ToothClinicalExamina
         return toothClinicalExaminationRepository.findByAssignedDoctorAndExaminationDateBetween(doctor, from, to);
     }
 
+
 }

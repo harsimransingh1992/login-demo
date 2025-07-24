@@ -15,6 +15,12 @@ import java.time.LocalDateTime;
 import java.time.format.DateTimeFormatter;
 import java.util.*;
 import java.util.stream.Collectors;
+import com.example.logindemo.model.ClinicModel;
+import org.springframework.data.domain.Page;
+import org.springframework.data.domain.Pageable;
+import org.springframework.data.domain.PageRequest;
+import org.springframework.data.domain.Sort;
+import org.springframework.data.domain.PageImpl;
 
 @Controller
 @RequestMapping("/receptionist/appointments")
@@ -25,62 +31,81 @@ public class AppointmentTrackingController {
     private AppointmentService appointmentService;
 
     @GetMapping("/tracking")
-    public String showAppointmentTracking(Model model) {
-        return "receptionist/appointment-tracking";
-    }
+    public String showAppointmentTrackingPage(
+            @RequestParam(required = false) String startDate,
+            @RequestParam(required = false) String endDate,
+            @RequestParam(required = false) String statusFilter,
+            @RequestParam(defaultValue = "0") int page,
+            @RequestParam(defaultValue = "10") int pageSize,
+            @RequestParam(defaultValue = "appointmentDateTime") String sort,
+            @RequestParam(defaultValue = "desc") String direction,
+            Model model
+    ) {
+        model.addAttribute("appointmentStatuses", AppointmentStatus.values());
 
-    @PostMapping("/track")
-    @ResponseBody
-    public Map<String, Object> trackAppointments(@RequestBody Map<String, Object> request) {
-        Map<String, Object> response = new HashMap<>();
-        
-        try {
-            String startDateStr = request.get("startDate").toString();
-            String endDateStr = request.get("endDate").toString();
-            String statusFilter = request.get("statusFilter") != null ? request.get("statusFilter").toString() : "";
-            
-            LocalDate startDate = LocalDate.parse(startDateStr);
-            LocalDate endDate = LocalDate.parse(endDateStr);
-            
-            // Get the current user's clinic
-            String clinicId = PeriDeskUtils.getCurrentClinicModel().getClinicId();
-            
-            // Get all appointments for the clinic within the date range
-            List<Appointment> allAppointments = appointmentService.getAppointmentsByDateRange(
-                startDate.atStartOfDay(), 
-                endDate.atTime(23, 59, 59)
+        // Set default date range (last 30 days)
+        LocalDate today = LocalDate.now();
+        LocalDate thirtyDaysAgo = today.minusDays(30);
+        LocalDate start = (startDate != null && !startDate.isEmpty()) ? LocalDate.parse(startDate) : thirtyDaysAgo;
+        LocalDate end = (endDate != null && !endDate.isEmpty()) ? LocalDate.parse(endDate) : today;
+        model.addAttribute("startDate", start.toString());
+        model.addAttribute("endDate", end.toString());
+        model.addAttribute("statusFilter", statusFilter);
+
+        // Get the current user's clinic
+        ClinicModel clinic = PeriDeskUtils.getCurrentClinicModel();
+        Sort sortObj = Sort.by("desc".equalsIgnoreCase(direction) ? Sort.Direction.DESC : Sort.Direction.ASC, sort);
+        Pageable pageable = PageRequest.of(page, pageSize, sortObj);
+        Page<Appointment> appointmentPage;
+
+        if (statusFilter != null && !statusFilter.isEmpty()) {
+            AppointmentStatus status = AppointmentStatus.valueOf(statusFilter);
+            appointmentPage = appointmentService.getAppointmentsByDateRangeAndClinicAndStatusPaginated(
+                start.atStartOfDay(), end.atTime(23, 59, 59), clinic, status, pageable
             );
-            
-            // Filter by clinic and status if specified
-            List<Appointment> filteredAppointments = allAppointments.stream()
-                .filter(appointment -> appointment.getClinic().getClinicId().equals(clinicId))
-                .collect(Collectors.toList());
-            
-            if (!statusFilter.isEmpty()) {
-                AppointmentStatus status = AppointmentStatus.valueOf(statusFilter);
-                filteredAppointments = filteredAppointments.stream()
-                    .filter(appointment -> appointment.getStatus() == status)
-                    .collect(Collectors.toList());
-            }
-            
-            // Calculate statistics
-            Map<String, Object> stats = calculateStats(filteredAppointments);
-            
-            // Convert to appointment data
-            List<Map<String, Object>> appointments = filteredAppointments.stream()
-                .map(this::convertToAppointmentData)
-                .collect(Collectors.toList());
-            
-            response.put("success", true);
-            response.put("stats", stats);
-            response.put("appointments", appointments);
-            
-        } catch (Exception e) {
-            response.put("success", false);
-            response.put("message", "Error tracking appointments: " + e.getMessage());
+        } else {
+            appointmentPage = appointmentService.getAppointmentsByDateRangeAndClinicPaginated(
+                start.atStartOfDay(), end.atTime(23, 59, 59), clinic, pageable
+            );
         }
-        
-        return response;
+
+        List<Map<String, Object>> appointmentRows = new ArrayList<>();
+        DateTimeFormatter displayFormatter = DateTimeFormatter.ofPattern("dd/MM/yyyy hh:mm a");
+        for (Appointment appointment : appointmentPage.getContent()) {
+            Map<String, Object> row = new HashMap<>();
+            row.put("id", appointment.getId());
+            row.put("patient", appointment.getPatient());
+            row.put("patientName", appointment.getPatientName());
+            row.put("patientMobile", appointment.getPatientMobile());
+            row.put("appointmentDateTimeStr", appointment.getAppointmentDateTime() != null ? appointment.getAppointmentDateTime().format(displayFormatter) : "");
+            row.put("status", appointment.getStatus());
+            row.put("notes", appointment.getNotes());
+            row.put("clinic", appointment.getClinic());
+            row.put("doctor", appointment.getDoctor());
+            appointmentRows.add(row);
+        }
+        model.addAttribute("appointments", appointmentRows);
+        model.addAttribute("currentPage", page);
+        model.addAttribute("totalPages", appointmentPage.getTotalPages());
+        model.addAttribute("totalItems", appointmentPage.getTotalElements());
+        model.addAttribute("pageSize", pageSize);
+        model.addAttribute("sort", sort);
+        model.addAttribute("direction", direction);
+
+        // Stats
+        List<Appointment> allAppointmentsForStats = appointmentService.getAppointmentsByDateRangeAndClinic(
+            start.atStartOfDay(), end.atTime(23, 59, 59), clinic
+        );
+        if (statusFilter != null && !statusFilter.isEmpty()) {
+            AppointmentStatus status = AppointmentStatus.valueOf(statusFilter);
+            allAppointmentsForStats = allAppointmentsForStats.stream()
+                .filter(appointment -> appointment.getStatus() == status)
+                .collect(Collectors.toList());
+        }
+        Map<String, Object> stats = calculateStats(allAppointmentsForStats);
+        model.addAttribute("stats", stats);
+
+        return "receptionist/appointment-tracking";
     }
 
     @PostMapping("/save-notes")

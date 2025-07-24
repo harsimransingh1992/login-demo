@@ -2082,48 +2082,53 @@
                         <button class="btn-quick" id="toggleClinicalNotes">
                             <i class="fas fa-clipboard-list"></i> Clinical Notes
                         </button>
+                        <c:if test="${canAttachMoreImages}">
+                            <button class="btn btn-secondary" style="margin-left: 10px;" onclick="document.getElementById('xrayUploadModal').style.display = 'block';">
+                                <i class="fas fa-paperclip"></i> Attach More Images
+                            </button>
+                        </c:if>
                         <button class="btn btn-success" id="printPrescriptionBtn" type="button" style="margin-left: 10px;">
                             <i class="fas fa-print"></i> Print Prescription
-                                </button>
+                        </button>
                     </div>
                 </div>
                 
-                <!-- X-ray Upload Modal for Case Closure -->
+                <!-- X-ray Upload Modal for Attaching More Images -->
                 <div id="xrayUploadModal" class="modal" style="display: none;">
                     <div class="modal-content">
                         <div class="modal-header">
-                            <h3><i class="fas fa-x-ray"></i> X-ray Upload Required</h3>
+                            <h3><i class="fas fa-paperclip"></i> Attach Additional Images</h3>
                             <span class="close-modal" id="closeXrayModal">&times;</span>
                         </div>
                         <div class="modal-body">
                             <div class="xray-upload-section">
-                                <p class="upload-description">An X-ray image is mandatory to close this case. Please upload the X-ray image before proceeding.</p>
-                                
+                                <p class="upload-description">You can attach additional X-ray or clinical images to this closed case (within 3 days of closure). Drag and drop or click below to select images. You can add more images at any time before uploading.</p>
                                 <div class="xray-upload-container">
                                     <div class="xray-upload-item">
                                         <label for="xray-upload" class="upload-label">
-                                            <i class="fas fa-upload"></i> X-ray Image
+                                            <i class="fas fa-upload"></i> Additional Images
                                             <span class="required-indicator">*</span>
                                         </label>
-                                        <input type="file" id="xray-upload" name="xrayPicture" accept="image/*" class="xray-file-input" required>
-                                        <div id="xray-preview" class="xray-preview">
-                                            <i class="fas fa-image"></i>
-                                            <span>No image selected</span>
+                                        <div id="xray-dropzone" class="xray-preview" tabindex="0" style="outline: 2px dashed #bdc3c7; outline-offset: -2px; min-height: 120px; display: flex; flex-direction: column; align-items: center; justify-content: center; cursor: pointer; background: #f8f9fa;">
+                                            <i class="fas fa-images" style="font-size: 2.5rem; color: #bdc3c7;"></i>
+                                            <span style="color: #7f8c8d; font-size: 0.95rem;">Click or drag to select one or more images</span>
+                                            <div id="xray-thumbnails" style="display: flex; flex-wrap: wrap; gap: 8px; margin-top: 10px;"></div>
                                         </div>
+                                        <input type="file" id="xray-upload" name="xrayPictures" accept="image/*" class="xray-file-input" multiple required style="display: none;">
+                                        <button type="button" id="addMoreImagesBtn" class="btn btn-secondary" style="margin-top:10px;">Add More Images</button>
                                         <div class="upload-status" id="xray-status"></div>
                                     </div>
                                 </div>
-                                
                                 <div class="upload-validation" id="xray-validation">
                                     <i class="fas fa-info-circle"></i>
-                                    <span>X-ray image is required to close the case.</span>
+                                    <span>At least one image is required to upload.</span>
                                 </div>
                             </div>
                         </div>
                         <div class="modal-footer">
                             <button type="button" class="btn btn-secondary" id="cancelXrayUpload">Cancel</button>
                             <button type="button" class="btn btn-primary" id="confirmXrayUpload" disabled>
-                                <i class="fas fa-check"></i> Close Case
+                                <i class="fas fa-check"></i> Upload Images
                             </button>
                         </div>
                     </div>
@@ -2565,37 +2570,204 @@
             const confirmXrayUpload = document.getElementById('confirmXrayUpload');
             const cancelXrayUpload = document.getElementById('cancelXrayUpload');
             const closeXrayModal = document.getElementById('closeXrayModal');
+            const addMoreImagesBtn = document.getElementById('addMoreImagesBtn');
+            let allSelectedFiles = [];
             
             // Initialize X-ray upload functionality
             function initializeXrayUpload() {
-                // X-ray upload
-                xrayPreview.addEventListener('click', () => xrayInput.click());
-                xrayInput.addEventListener('change', handleXrayUpload);
-                
-                // Modal controls
+                const xrayInput = document.getElementById('xray-upload');
+                const xrayDropzone = document.getElementById('xray-dropzone');
+                const xrayThumbnails = document.getElementById('xray-thumbnails');
+                const xrayStatus = document.getElementById('xray-status');
+                const xrayValidation = document.getElementById('xray-validation');
+                const confirmXrayUpload = document.getElementById('confirmXrayUpload');
+                const addMoreImagesBtn = document.getElementById('addMoreImagesBtn');
+                const cancelXrayUpload = document.getElementById('cancelXrayUpload');
+                const closeXrayModal = document.getElementById('closeXrayModal');
+                const xrayUploadModal = document.getElementById('xrayUploadModal');
+                let allSelectedFiles = [];
+
+                // Click or keyboard focus opens file dialog
+                xrayDropzone.addEventListener('click', () => xrayInput.click());
+                xrayDropzone.addEventListener('keydown', (e) => {
+                    if (e.key === 'Enter' || e.key === ' ') {
+                        e.preventDefault();
+                        xrayInput.click();
+                    }
+                });
+                addMoreImagesBtn.addEventListener('click', () => xrayInput.click());
+
+                // Drag-and-drop support
+                xrayDropzone.addEventListener('dragover', (e) => {
+                    e.preventDefault();
+                    xrayDropzone.style.background = '#fff5f5';
+                    xrayDropzone.style.outlineColor = '#e74c3c';
+                });
+                xrayDropzone.addEventListener('dragleave', (e) => {
+                    e.preventDefault();
+                    xrayDropzone.style.background = '#f8f9fa';
+                    xrayDropzone.style.outlineColor = '#bdc3c7';
+                });
+                xrayDropzone.addEventListener('drop', async (e) => {
+                    e.preventDefault();
+                    xrayDropzone.style.background = '#f8f9fa';
+                    xrayDropzone.style.outlineColor = '#bdc3c7';
+                    const files = Array.from(e.dataTransfer.files).filter(f => f.type.startsWith('image/'));
+                    if (files.length > 0) {
+                        await mergeFiles(files);
+                    }
+                });
+
+                // File input change
+                xrayInput.addEventListener('change', async function(event) {
+                    const files = Array.from(event.target.files);
+                    await mergeFiles(files);
+                });
+
+                async function mergeFiles(newFiles) {
+                    for (const file of newFiles) {
+                        if (!allSelectedFiles.some(f => f.name === file.name && f.size === file.size)) {
+                            // Compress the image before adding
+                            const compressed = await ImageCompression.compressImage(file, {
+                                maxSizeKB: 500,      // or your preferred size
+                                maxDimension: 1200,  // or your preferred dimension
+                                quality: 0.8
+                            });
+                            allSelectedFiles.push(compressed);
+                        }
+                    }
+                    updateThumbnails();
+                }
+
+                function updateThumbnails() {
+                    xrayThumbnails.innerHTML = '';
+                    if (allSelectedFiles.length === 0) {
+                        xrayThumbnails.innerHTML = '';
+                        confirmXrayUpload.disabled = true;
+                        xrayStatus.textContent = '';
+                        xrayValidation.className = 'upload-validation';
+                        xrayValidation.innerHTML = '<i class="fas fa-info-circle"></i> At least one X-ray image is required to close the case.';
+                        return;
+                    }
+                    allSelectedFiles.forEach(file => {
+                        if (!file.type.startsWith('image/')) return;
+                        const reader = new FileReader();
+                        reader.onload = function(e) {
+                            const img = document.createElement('img');
+                            img.src = e.target.result;
+                            img.style.maxWidth = '90px';
+                            img.style.maxHeight = '90px';
+                            img.style.borderRadius = '6px';
+                            img.style.boxShadow = '0 1px 4px rgba(0,0,0,0.08)';
+                            xrayThumbnails.appendChild(img);
+                        };
+                        reader.readAsDataURL(file);
+                    });
+                    confirmXrayUpload.disabled = false;
+                    xrayStatus.textContent = allSelectedFiles.length + ' image(s) selected.';
+                    xrayStatus.className = 'upload-status success';
+                    xrayValidation.className = 'upload-validation success';
+                    xrayValidation.innerHTML = '<i class="fas fa-check-circle"></i> Ready to upload ' + allSelectedFiles.length + ' image(s).';
+                }
+
+                // Modal close/cancel logic
+                function resetXrayUpload() {
+                    allSelectedFiles = [];
+                    xrayInput.value = '';
+                    xrayThumbnails.innerHTML = '';
+                    xrayStatus.textContent = '';
+                    xrayValidation.className = 'upload-validation';
+                    xrayValidation.innerHTML = '<i class="fas fa-info-circle"></i> At least one X-ray image is required to close the case.';
+                    confirmXrayUpload.disabled = true;
+                }
+
                 cancelXrayUpload.addEventListener('click', () => {
                     xrayUploadModal.style.display = 'none';
-                    pendingStatusUpdate = null;
+                    if (typeof pendingStatusUpdate !== 'undefined') pendingStatusUpdate = null;
                     resetXrayUpload();
                 });
-                
                 closeXrayModal.addEventListener('click', () => {
                     xrayUploadModal.style.display = 'none';
-                    pendingStatusUpdate = null;
+                    if (typeof pendingStatusUpdate !== 'undefined') pendingStatusUpdate = null;
                     resetXrayUpload();
                 });
-                
-                // Close modal when clicking outside
                 xrayUploadModal.addEventListener('click', (e) => {
                     if (e.target === xrayUploadModal) {
                         xrayUploadModal.style.display = 'none';
-                        pendingStatusUpdate = null;
+                        if (typeof pendingStatusUpdate !== 'undefined') pendingStatusUpdate = null;
                         resetXrayUpload();
                     }
                 });
-                
-                // Confirm X-ray upload
-                confirmXrayUpload.addEventListener('click', handleXrayConfirm);
+
+                // Confirm X-ray upload: send allSelectedFiles to backend
+                confirmXrayUpload.addEventListener('click', async function() {
+                    if (!allSelectedFiles || allSelectedFiles.length === 0) {
+                        alert('Please select at least one X-ray image.');
+                        return;
+                    }
+                    confirmXrayUpload.disabled = true;
+                    confirmXrayUpload.innerHTML = '<i class="fas fa-spinner fa-spin"></i> Uploading...';
+
+                    try {
+                        const examinationId = document.getElementById('examinationId').value;
+                        const formData = new FormData();
+                        allSelectedFiles.forEach(file => formData.append('xrayPictures', file));
+
+                        // CSRF token
+                        const token = $("meta[name='_csrf']").attr("content");
+                        const header = $("meta[name='_csrf_header']").attr("content");
+
+                        const response = await fetch(
+                            `${pageContext.request.contextPath}/patients/examination/${examinationId}/upload-xray`,
+                            {
+                                method: 'POST',
+                                headers: { [header]: token },
+                                body: formData
+                            }
+                        );
+
+                        if (response.ok) {
+                            // Images uploaded, now close the case
+                            const statusResponse = await fetch(
+                                `${pageContext.request.contextPath}/patients/update-examination-status`,
+                                {
+                                    method: 'POST',
+                                    headers: {
+                                        'Content-Type': 'application/json',
+                                        [header]: token
+                                    },
+                                    body: JSON.stringify({ examinationId: examinationId, status: 'CLOSED' })
+                                }
+                            );
+                            if (statusResponse.ok) {
+                                alert('Case closed successfully!');
+                                document.getElementById('xrayUploadModal').style.display = 'none';
+                                resetXrayUpload();
+                                window.location.reload();
+                            } else {
+                                alert('Images uploaded, but failed to close the case.');
+                            }
+                            return;
+                        } else {
+                            let errorMsg = 'Failed to upload X-ray images.';
+                            try {
+                                const errorData = await response.json();
+                                if (errorData && errorData.message) errorMsg = errorData.message;
+                            } catch (e) {}
+                            alert(errorMsg);
+                        }
+                    } catch (error) {
+                        alert('Error uploading X-ray images. Please try again.');
+                    } finally {
+                        confirmXrayUpload.disabled = false;
+                        confirmXrayUpload.innerHTML = '<i class="fas fa-check"></i> Close Case';
+                    }
+                });
+
+                // When submitting, use allSelectedFiles for upload
+                window.getAllSelectedXrayFiles = function() {
+                    return allSelectedFiles;
+                };
             }
             
             // Initialize follow-up modal functionality
@@ -2826,19 +2998,6 @@
                     confirmXrayUpload.disabled = false;
                     confirmXrayUpload.innerHTML = '<i class="fas fa-check"></i> Close Case';
                 }
-            }
-            
-            // Reset X-ray upload
-            function resetXrayUpload() {
-                xrayFile = null;
-                xrayUploadComplete = false;
-                xrayInput.value = '';
-                xrayPreview.innerHTML = '<i class="fas fa-image"></i><span>No image selected</span>';
-                xrayStatus.textContent = '';
-                xrayStatus.className = 'upload-status';
-                xrayValidation.className = 'upload-validation';
-                xrayValidation.innerHTML = '<i class="fas fa-info-circle"></i> X-ray image is required to close the case.';
-                confirmXrayUpload.disabled = true;
             }
             
             // Status dropdown functionality

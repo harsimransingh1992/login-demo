@@ -65,23 +65,29 @@ public class SecurityConfig {
                 // Public pages
                 .antMatchers("/login", "/register", "/forgot-password").permitAll()
                 
-                // Admin section
+                // Admin section - system maintenance and database management
                 .antMatchers("/admin/**").hasRole("ADMIN")
                 
+                // Moderator section - business insights and clinic monitoring
+                .antMatchers("/moderator/**").hasRole("MODERATOR")
+                
                 // Clinic owner section
-                .antMatchers("/clinic/dashboard/**", "/clinic/manage/**").hasRole("CLINIC_OWNER")
+                .antMatchers("/clinic/dashboard/**", "/clinic/manage/**").hasAnyRole("CLINIC_OWNER", "MODERATOR")
                 
                 // Doctor specific pages
-                .antMatchers("/doctor/dashboard/**", "/patients/examination/*/procedures/**", "/examination/*/procedures/**").hasRole("DOCTOR")
+                .antMatchers("/doctor/dashboard/**", "/patients/examination/*/procedures/**", "/examination/*/procedures/**").hasAnyRole("DOCTOR", "MODERATOR")
                 
                 // Receptionist specific pages
-                .antMatchers("/appointments/management/**").hasAnyRole("RECEPTIONIST", "ADMIN", "DOCTOR")
+                .antMatchers("/appointments/management/**").hasAnyRole("RECEPTIONIST", "ADMIN", "DOCTOR", "MODERATOR")
                 
                 // Patient management - accessible to all staff
-                .antMatchers("/patients/**").hasAnyRole("DOCTOR", "STAFF", "RECEPTIONIST", "ADMIN", "CLINIC_OWNER")
+                .antMatchers("/patients/**").hasAnyRole("DOCTOR", "STAFF", "RECEPTIONIST", "ADMIN", "CLINIC_OWNER", "MODERATOR")
                 
                 // Follow-up management - accessible to all staff
-                .antMatchers("/follow-up/**").hasAnyRole("DOCTOR", "STAFF", "RECEPTIONIST", "ADMIN", "CLINIC_OWNER")
+                .antMatchers("/follow-up/**").hasAnyRole("DOCTOR", "STAFF", "RECEPTIONIST", "ADMIN", "CLINIC_OWNER", "MODERATOR")
+                
+                // Payments - accessible to receptionists and moderators (read-only for moderators)
+                .antMatchers("/payments/**").hasAnyRole("RECEPTIONIST", "ADMIN", "MODERATOR")
                 
                 // Welcome page and basic features - accessible to all authenticated users
                 .antMatchers("/welcome", "/profile/**").authenticated()

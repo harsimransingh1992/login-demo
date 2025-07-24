@@ -77,4 +77,6 @@ public interface CheckInRecordRepository extends JpaRepository<CheckInRecord, Lo
     
     // Filter by patient registration code and end date with pagination
     Page<CheckInRecord> findByPatientRegistrationCodeAndCheckInTimeBeforeOrderByCheckInTimeDesc(String registrationCode, LocalDateTime endTime, Pageable pageable);
+    
+    List<CheckInRecord> findByClinic_IdAndCheckInTimeBetween(Long clinicId, java.time.LocalDateTime start, java.time.LocalDateTime end);
 }

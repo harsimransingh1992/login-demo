@@ -96,4 +96,11 @@ public interface AppointmentRepository extends JpaRepository<Appointment, Long> 
     // Find upcoming appointments where the user is the assigned doctor (for 'myAppointments')
     @Query("SELECT a FROM Appointment a WHERE a.doctor = ?1 AND a.clinic = ?2 AND a.appointmentDateTime >= ?3 ORDER BY a.appointmentDateTime ASC")
     Page<Appointment> findUpcomingAppointmentsForDoctorInClinicWithPagination(User doctor, ClinicModel clinic, LocalDateTime fromDateTime, Pageable pageable);
+
+    // Count appointments (check-ins) by clinic and date range, grouped by clinic
+    @org.springframework.data.jpa.repository.Query("SELECT a.clinic.id, COUNT(a) FROM Appointment a WHERE a.clinic IS NOT NULL AND a.appointmentDateTime BETWEEN :start AND :end GROUP BY a.clinic.id")
+    java.util.List<Object[]> countCheckinsByClinicAndDate(@org.springframework.data.repository.query.Param("start") java.time.LocalDateTime start, @org.springframework.data.repository.query.Param("end") java.time.LocalDateTime end);
+
+    Page<Appointment> findByClinicAndAppointmentDateTimeBetweenAndStatusOrderByAppointmentDateTimeDesc(
+        ClinicModel clinic, LocalDateTime start, LocalDateTime end, AppointmentStatus status, Pageable pageable);
 } 

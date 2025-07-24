@@ -35,4 +35,5 @@ public interface AppointmentService {
     Page<Appointment> getAppointmentsByClinicPaginated(ClinicModel clinic, Pageable pageable);
     Page<Appointment> getAppointmentsByDateRangeAndClinicPaginated(LocalDateTime startDate, LocalDateTime endDate, ClinicModel clinic, Pageable pageable);
     Page<Appointment> getUpcomingAppointmentsForUserInClinicPaginated(User user, ClinicModel clinic, Pageable pageable);
+    Page<Appointment> getAppointmentsByDateRangeAndClinicAndStatusPaginated(LocalDateTime startDate, LocalDateTime endDate, ClinicModel clinic, AppointmentStatus status, Pageable pageable);
 } 

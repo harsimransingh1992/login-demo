@@ -35,6 +35,7 @@ import com.example.logindemo.model.PaymentNotes;
 import com.example.logindemo.model.PaymentEntry;
 import com.example.logindemo.utils.PeriDeskUtils;
 import com.example.logindemo.repository.PaymentEntryRepository;
+import com.example.logindemo.model.ClinicModel;
 
 @Service
 @Primary

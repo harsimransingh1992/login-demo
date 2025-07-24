@@ -38,6 +38,8 @@ import javax.servlet.http.HttpSession;
 import org.springframework.http.HttpStatus;
 import java.util.Optional;
 import com.fasterxml.jackson.databind.ObjectMapper;
+import com.example.logindemo.model.MediaFile;
+import com.example.logindemo.model.ProcedureLifecycleTransition;
 
 @Controller
 @RequestMapping("/patients")
@@ -94,6 +96,9 @@ public class PatientController {
 
     @Autowired
     private FollowUpService followUpService;
+
+    @Autowired
+    private MediaFileRepository mediaFileRepository;
 
     @InitBinder
     public void initBinder(WebDataBinder binder) {
@@ -1255,6 +1260,21 @@ public class PatientController {
             List<Map<String, Object>> lifecycleStages = lifecycleService.getFormattedLifecycleStages(examination);
             log.info("Successfully loaded {} lifecycle stages for examination ID: {}", lifecycleStages.size(), examinationId);
 
+            // Get closure date from ProcedureLifecycleTransition
+            List<ProcedureLifecycleTransition> transitions = procedureLifecycleTransitionRepository.findByExaminationOrderByTransitionTimeAsc(examination);
+            LocalDateTime caseClosureDate = null;
+            for (ProcedureLifecycleTransition t : transitions) {
+                if ("CLOSED".equalsIgnoreCase(t.getStageName())) {
+                    caseClosureDate = t.getTransitionTime();
+                }
+            }
+            model.addAttribute("caseClosureDate", caseClosureDate);
+            boolean canAttachMoreImages = false;
+            if (examination.getProcedureStatus() == ProcedureStatus.CLOSED && caseClosureDate != null) {
+                canAttachMoreImages = caseClosureDate.plusDays(3).isAfter(LocalDateTime.now());
+            }
+            model.addAttribute("canAttachMoreImages", canAttachMoreImages);
+
             // Get motivation quote for doctors
             MotivationQuote motivationQuote = motivationQuoteService.getRandomQuote().orElse(null);
             model.addAttribute("motivationQuote", motivationQuote);
@@ -1805,54 +1825,52 @@ public class PatientController {
     @PostMapping("/examination/{examinationId}/upload-xray")
     @ResponseBody
     @Transactional
-    public ResponseEntity<?> uploadXrayImage(
+    public ResponseEntity<?> uploadXrayImages(
             @PathVariable Long examinationId,
-            @RequestParam("xrayPicture") MultipartFile xrayPicture) {
+            @RequestParam("xrayPictures") MultipartFile[] xrayPictures) {
         try {
-            log.info("Uploading X-ray for examination ID: {}", examinationId);
-            
-            // Validate that X-ray picture is provided
-            if (xrayPicture == null || xrayPicture.isEmpty()) {
+            log.info("Uploading X-rays for examination ID: {}", examinationId);
+
+            // Validate that at least one X-ray picture is provided
+            if (xrayPictures == null || xrayPictures.length == 0) {
                 return ResponseEntity.badRequest().body(Map.of(
                     "success", false,
-                    "message", "X-ray picture is required"
+                    "message", "At least one X-ray picture is required"
                 ));
             }
-            
+
             // Get the examination
             ToothClinicalExamination examination = toothClinicalExaminationRepository.findById(examinationId)
                 .orElseThrow(() -> new RuntimeException("Examination not found"));
-            
-            // Save the X-ray picture
-            String xrayPath = null;
-            try {
-                xrayPath = fileStorageService.storeFile(xrayPicture, "xray-pictures");
-                log.info("Saved X-ray picture: {}", xrayPath);
-            } catch (Exception e) {
-                log.error("Error saving X-ray picture: {}", e.getMessage(), e);
-                return ResponseEntity.badRequest().body(Map.of(
-                    "success", false,
-                    "message", "Error saving X-ray picture: " + e.getMessage()
-                ));
+
+            // Save each X-ray picture
+            List<String> savedPaths = new ArrayList<>();
+            for (MultipartFile xrayPicture : xrayPictures) {
+                if (xrayPicture != null && !xrayPicture.isEmpty()) {
+                    String xrayPath = fileStorageService.storeFile(xrayPicture, "xray-pictures");
+                    log.info("Saved X-ray picture: {}", xrayPath);
+                    savedPaths.add(xrayPath);
+
+                    // Save MediaFile entry
+                    MediaFile media = new MediaFile();
+                    media.setExamination(examination);
+                    media.setFilePath(xrayPath);
+                    media.setFileType("xray");
+                    mediaFileRepository.save(media);
+                }
             }
-            
-            // Update the examination with X-ray path
-            examination.setXrayPicturePath(xrayPath);
             examination.setUpdatedAt(LocalDateTime.now());
-            
-            // Save the examination
             toothClinicalExaminationRepository.save(examination);
-            
-            log.info("Successfully uploaded X-ray for examination {}", examinationId);
-            
+
+            log.info("Successfully uploaded {} X-rays for examination {}", savedPaths.size(), examinationId);
+
             return ResponseEntity.ok(Map.of(
                 "success", true,
-                "message", "X-ray uploaded successfully",
-                "xrayPath", xrayPath
+                "message", "X-ray(s) uploaded successfully",
+                "xrayPaths", savedPaths
             ));
-            
         } catch (Exception e) {
-            log.error("Error uploading X-ray: {}", e.getMessage(), e);
+            log.error("Error uploading X-rays: {}", e.getMessage(), e);
             return ResponseEntity.badRequest().body(Map.of(
                 "success", false,
                 "message", e.getMessage()

@@ -13,6 +13,7 @@ import com.example.logindemo.service.UserService;
 import com.example.logindemo.service.PatientService;
 import com.example.logindemo.repository.ToothClinicalExaminationRepository;
 import com.example.logindemo.utils.PeriDeskUtils;
+import com.example.logindemo.service.PaymentFilterService;
 import org.modelmapper.ModelMapper;
 import org.springframework.beans.factory.annotation.Autowired;
 import org.springframework.security.access.prepost.PreAuthorize;
@@ -22,12 +23,17 @@ import org.springframework.ui.Model;
 import org.springframework.web.bind.annotation.*;
 import org.springframework.web.servlet.mvc.support.RedirectAttributes;
 
+import java.time.LocalDate;
+import java.time.LocalDateTime;
+import java.time.LocalTime;
 import java.util.List;
 import java.util.Map;
 import java.util.HashMap;
 import java.util.Optional;
 import java.util.ArrayList;
 import java.util.stream.Collectors;
+import org.slf4j.Logger;
+import org.slf4j.LoggerFactory;
 
 @Controller
 @RequestMapping("/payments")
@@ -48,22 +54,38 @@ public class PendingPaymentController {
     @Autowired
     private ModelMapper modelMapper;
 
+    @Autowired
+    private PaymentFilterService paymentFilterService;
+
     @GetMapping("/pending")
     @PreAuthorize("hasRole('RECEPTIONIST')")
-    public String showPendingPayments(Model model) {
+    public String showPendingPayments(
+            @RequestParam(required = false) String startDate,
+            @RequestParam(required = false) String endDate,
+            @RequestParam(required = false, defaultValue = "pending") String filterType,
+            Model model) {
         String username = SecurityContextHolder.getContext().getAuthentication().getName();
         User user = modelMapper.map(
             userService.getUserByUsername(username)
                 .orElseThrow(() -> new RuntimeException("User not found")),
             User.class
         );
-        
-        // Get the clinic ID from the logged-in user
         String clinicId = user.getClinic().getClinicId();
-        
-        // Get pending examinations for the clinic
-        List<ToothClinicalExamination> pendingExaminations = examinationService.findByProcedureStatusAndExaminationClinic_ClinicId(ProcedureStatus.PAYMENT_PENDING, clinicId);
-        model.addAttribute("pendingExaminations", pendingExaminations);
+        List<ToothClinicalExamination> results;
+        if (startDate != null && !startDate.isEmpty() && endDate != null && !endDate.isEmpty()) {
+            LocalDateTime start = LocalDate.parse(startDate).atStartOfDay();
+            LocalDateTime end = LocalDate.parse(endDate).atTime(LocalTime.MAX);
+            if ("all".equalsIgnoreCase(filterType)) {
+                results = paymentFilterService.getAllPaymentsByDateRange(start, end);
+            } else {
+                results = paymentFilterService.getPendingPaymentsByTreatmentStartDateAndClinic(
+                    start, end, clinicId);
+            }
+        } else {
+            results = examinationService.findByProcedureStatusAndExaminationClinic_ClinicId(
+                ProcedureStatus.PAYMENT_PENDING, clinicId);
+        }
+        model.addAttribute("pendingExaminations", results);
         return "payments/pending";
     }
 
@@ -151,7 +173,8 @@ public class PendingPaymentController {
     @ResponseBody
     public Map<String, Object> searchPatientByRegistrationCode(@RequestParam String registrationCode) {
         Map<String, Object> response = new HashMap<>();
-        
+        // Add logger
+        Logger logger = LoggerFactory.getLogger(PendingPaymentController.class);
         try {
             // Get the current user's clinic
             String clinicId = PeriDeskUtils.getCurrentClinicModel().getClinicId();
@@ -175,7 +198,17 @@ public class PendingPaymentController {
             Patient patient = patientOpt.get();
             
             // Find all examinations for this patient in the current clinic
-            List<ToothClinicalExamination> pendingExaminations = examinationService.findByPatient_IdAndExaminationClinic_ClinicId(patient.getId(), clinicId);
+            List<ToothClinicalExamination> allExaminations = examinationService.findByPatient_IdAndExaminationClinic_ClinicId(patient.getId(), clinicId);
+            logger.info("Found {} total examinations for patient {} in clinic {}", allExaminations.size(), registrationCode, clinicId);
+            // Filter to only those with pending payments
+            List<ToothClinicalExamination> pendingExaminations = allExaminations.stream()
+                .filter(exam -> exam.getTotalProcedureAmount() != null &&
+                                (exam.getTotalPaidAmount() == null || exam.getTotalProcedureAmount() > exam.getTotalPaidAmount()))
+                .collect(Collectors.toList());
+            logger.info("Filtered to {} pending examinations for patient {} in clinic {}", pendingExaminations.size(), registrationCode, clinicId);
+            for (ToothClinicalExamination exam : pendingExaminations) {
+                logger.info("Pending Exam ID: {}, totalProcedureAmount: {}, totalPaidAmount: {}", exam.getId(), exam.getTotalProcedureAmount(), exam.getTotalPaidAmount());
+            }
             
             if (pendingExaminations.isEmpty()) {
                 response.put("success", false);

@@ -22,5 +22,6 @@ public class ProcedurePrice {
     
     private Double price;
 
+    @Enumerated(EnumType.STRING)
     private DentalDepartment dentalDepartment;
 }

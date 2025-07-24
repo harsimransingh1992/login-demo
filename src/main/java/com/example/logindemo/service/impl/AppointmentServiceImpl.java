@@ -241,4 +241,10 @@ public class AppointmentServiceImpl implements AppointmentService {
         LocalDateTime now = LocalDateTime.now();
         return appointmentRepository.findUpcomingAppointmentsForDoctorInClinicWithPagination(user, clinic, now, pageable);
     }
+
+    @Override
+    @Transactional(readOnly = true)
+    public Page<Appointment> getAppointmentsByDateRangeAndClinicAndStatusPaginated(LocalDateTime startDate, LocalDateTime endDate, ClinicModel clinic, AppointmentStatus status, Pageable pageable) {
+        return appointmentRepository.findByClinicAndAppointmentDateTimeBetweenAndStatusOrderByAppointmentDateTimeDesc(clinic, startDate, endDate, status, pageable);
+    }
 } 

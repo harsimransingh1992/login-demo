@@ -22,9 +22,9 @@ public interface MotivationQuoteRepository extends JpaRepository<MotivationQuote
     List<MotivationQuote> findByCategoryAndIsActiveTrue(String category);
     
     /**
-     * Get a random active quote
+     * Get a random quote (active or not)
      */
-    @Query(value = "SELECT * FROM motivation_quotes WHERE is_active = true ORDER BY RAND() LIMIT 1", nativeQuery = true)
+    @Query(value = "SELECT * FROM motivation_quotes ORDER BY RAND() LIMIT 1", nativeQuery = true)
     Optional<MotivationQuote> findRandomActiveQuote();
     
     /**

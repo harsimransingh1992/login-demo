@@ -5,7 +5,8 @@ public enum UserRole {
     CLINIC_OWNER("Clinic Owner"),
     DOCTOR("Doctor"),
     STAFF("Staff"),
-    RECEPTIONIST("Receptionist");
+    RECEPTIONIST("Receptionist"),
+    MODERATOR("Moderator");
     
     private final String displayName;
     

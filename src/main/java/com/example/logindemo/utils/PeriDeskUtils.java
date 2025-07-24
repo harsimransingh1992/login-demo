@@ -43,7 +43,15 @@ public class PeriDeskUtils {
             
             Optional<User> currentUser = userRepository.findByUsername(authentication.getName());
             if(currentUser.isPresent()){
-                return currentUser.get().getClinic();
+                User user = currentUser.get();
+                
+                // Moderators don't have a specific clinic - they can access all clinics
+                if (user.getRole() == com.example.logindemo.model.UserRole.MODERATOR) {
+                    logger.info("User {} is a moderator - no specific clinic assigned", authentication.getName());
+                    throw new IllegalStateException("Moderators don't have a specific clinic assigned");
+                }
+                
+                return user.getClinic();
             } else {
                 logger.error("No user found for username: {}", authentication.getName());
                 throw new IllegalStateException("No user found for current authentication");

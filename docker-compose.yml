@@ -1,0 +1,44 @@
+version: '3.8'
+
+services:
+  # MySQL Database
+  mysql:
+    image: mysql:8.0
+    container_name: peridesk-mysql
+    environment:
+      MYSQL_ROOT_PASSWORD: rootpassword
+      MYSQL_DATABASE: peridesk
+      MYSQL_USER: peridesk
+      MYSQL_PASSWORD: peridesk123
+    ports:
+      - "3306:3306"
+    volumes:
+      - mysql_data:/var/lib/mysql
+    networks:
+      - peridesk-network
+    restart: unless-stopped
+
+  # PeriDesk Application
+  peridesk:
+    build: .
+    container_name: peridesk-app
+    ports:
+      - "5050:5050"
+    environment:
+      SPRING_PROFILES_ACTIVE: docker
+      SPRING_DATASOURCE_URL: jdbc:mysql://mysql:3306/peridesk?useSSL=false&allowPublicKeyRetrieval=true&serverTimezone=UTC
+      SPRING_DATASOURCE_USERNAME: peridesk
+      SPRING_DATASOURCE_PASSWORD: peridesk123
+      SPRING_DATASOURCE_DRIVER_CLASS_NAME: com.mysql.cj.jdbc.Driver
+    depends_on:
+      - mysql
+    networks:
+      - peridesk-network
+    restart: unless-stopped
+
+volumes:
+  mysql_data:
+
+networks:
+  peridesk-network:
+    driver: bridge 

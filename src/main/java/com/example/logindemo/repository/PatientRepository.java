@@ -42,4 +42,8 @@ public interface PatientRepository extends JpaRepository<Patient, Long> {
     // Search by examination ID with pagination (custom query)
     @Query("SELECT DISTINCT p FROM Patient p JOIN p.toothClinicalExaminations e WHERE e.id = :examinationId")
     Page<Patient> findByExaminationId(Long examinationId, Pageable pageable);
+
+    // Count patients registered at each clinic in a date range, grouped by clinic
+    @org.springframework.data.jpa.repository.Query("SELECT p.registeredClinic.id, COUNT(p) FROM Patient p WHERE p.registeredClinic IS NOT NULL AND p.registrationDate BETWEEN :start AND :end GROUP BY p.registeredClinic.id")
+    java.util.List<Object[]> countRegisteredByClinicAndDate(@org.springframework.data.repository.query.Param("start") java.util.Date start, @org.springframework.data.repository.query.Param("end") java.util.Date end);
 } 

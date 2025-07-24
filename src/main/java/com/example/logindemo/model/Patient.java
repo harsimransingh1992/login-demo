@@ -75,6 +75,9 @@ public class Patient {
     @Enumerated(EnumType.STRING)
     private ReferralModel referralModel;
 
+    @Column(name = "referral_other")
+    private String referralOther;
+
     @OneToOne
     private CheckInRecord currentCheckInRecord;
 

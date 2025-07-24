@@ -41,6 +41,8 @@ public class CustomAuthenticationSuccessHandler implements AuthenticationSuccess
         // Route to appropriate dashboard based on role
         if (authorities.stream().anyMatch(a -> a.getAuthority().equals("ROLE_ADMIN"))) {
             response.sendRedirect(contextPath + "/welcome");
+        } else if (authorities.stream().anyMatch(a -> a.getAuthority().equals("ROLE_MODERATOR"))) {
+            response.sendRedirect(contextPath + "/moderator/dashboard"); // Moderators go to moderator dashboard
         } else if (authorities.stream().anyMatch(a -> a.getAuthority().equals("ROLE_CLINIC_OWNER"))) {
             response.sendRedirect(contextPath + "/clinic/dashboard");
         } else if (authorities.stream().anyMatch(a -> a.getAuthority().equals("ROLE_DOCTOR"))) {

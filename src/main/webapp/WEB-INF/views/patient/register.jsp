@@ -653,6 +653,7 @@
                                 <form:option value="">Select an option</form:option>
                                 <form:options items="${referralModels}" itemLabel="displayName" itemValue="name"/>
                             </form:select>
+                            <form:input type="text" id="referralOther" path="referralOther" class="form-control" placeholder="Please specify" style="display:none; margin-top:8px;" disabled="true" />
                             <div class="form-tip">
                                 <i class="fas fa-info-circle"></i> This helps us understand how patients find us
                             </div>
@@ -746,6 +747,11 @@
         
         // Validate the form before submission
         $('form').on('submit', function(e) {
+            // Ensure referralOther is enabled if visible
+            var referralOtherInput = $('#referralOther');
+            if (referralOtherInput.is(':visible')) {
+                referralOtherInput.prop('disabled', false);
+            }
             // Check if city is selected when state is selected
             const stateValue = $('#state').val();
             const cityValue = $('#city').val();
@@ -1021,6 +1027,19 @@
                 'font-weight': '500'
             });
         });
+
+        // Show/hide and enable/disable the 'Other' textbox for referral
+        $('#referral').on('change', function() {
+            if ($(this).val() === 'OTHER') {
+                $('#referralOther').show().prop('disabled', false);
+            } else {
+                $('#referralOther').hide().prop('disabled', true).val('');
+            }
+        });
+        // If page loads with OTHER selected (e.g., after validation error)
+        if ($('#referral').val() === 'OTHER') {
+            $('#referralOther').show().prop('disabled', false);
+        }
     });
 </script>
 

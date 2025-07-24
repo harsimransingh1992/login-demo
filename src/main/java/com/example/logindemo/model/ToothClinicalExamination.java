@@ -155,9 +155,17 @@ public class ToothClinicalExamination {
     private String lowerDenturePicturePath;
 
     /**
+     * List of X-ray images associated with this examination.
+     */
+    @OneToMany(mappedBy = "examination", cascade = CascadeType.ALL, orphanRemoval = true, fetch = FetchType.LAZY)
+    private List<MediaFile> xrayImages = new ArrayList<>();
+
+    /**
      * Path to the uploaded X-ray picture when case is closed.
      * Stored as a string in the database.
+     * @deprecated Use xrayImages instead.
      */
+    @Deprecated
     @Column(name = "xray_picture_path")
     private String xrayPicturePath;
 

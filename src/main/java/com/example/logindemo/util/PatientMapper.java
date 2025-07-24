@@ -88,6 +88,7 @@ public class PatientMapper implements Mapper<Patient, PatientDTO> {
         patientDTO.setProfilePicturePath(patient.getProfilePicturePath());
         patientDTO.setRegistrationCode(patient.getRegistrationCode());
         patientDTO.setCheckedIn(patient.getCheckedIn());
+        patientDTO.setReferralOther(patient.getReferralOther());
 
         // Set audit fields
         if (patient.getCreatedBy() != null) {
@@ -145,6 +146,7 @@ public class PatientMapper implements Mapper<Patient, PatientDTO> {
         patient.setEmergencyContactPhoneNumber(patientDTO.getEmergencyContactPhoneNumber());
         patient.setRegistrationDate(patientDTO.getRegistrationDate());
         patient.setProfilePicturePath(patientDTO.getProfilePicturePath());
+        patient.setReferralOther(patientDTO.getReferralOther());
 
         // Handle occupation conversion - support both OccupationDTO and String
         if (patientDTO.getOccupation() != null) {

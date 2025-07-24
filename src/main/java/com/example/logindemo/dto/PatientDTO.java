@@ -65,6 +65,8 @@ public class PatientDTO {
 
     private Integer age;
     
+    private String referralOther;
+    
     // Audit fields
     private String createdBy;
     private String registeredClinic;

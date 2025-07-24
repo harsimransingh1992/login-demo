@@ -1318,6 +1318,29 @@
                 </form>
             </div>
 
+            <div class="filter-section" style="margin-bottom: 30px; background: #fff; border-radius: 12px; padding: 20px; box-shadow: 0 2px 8px rgba(0,0,0,0.05);">
+                <form id="paymentFilterForm" class="search-form" method="get" action="">
+                    <div class="form-group">
+                        <label for="startDate" class="search-label">Start Date</label>
+                        <input type="date" id="startDate" name="startDate" class="search-input" required>
+                    </div>
+                    <div class="form-group">
+                        <label for="endDate" class="search-label">End Date</label>
+                        <input type="date" id="endDate" name="endDate" class="search-input" required>
+                    </div>
+                    <div class="form-group">
+                        <label class="search-label">Type</label>
+                        <select id="paymentType" name="paymentType" class="search-input">
+                            <option value="pending">Pending Only</option>
+                            <option value="all">All Collected</option>
+                        </select>
+                    </div>
+                    <button type="submit" class="btn btn-primary search-btn">
+                        <i class="fas fa-filter"></i> Filter
+                    </button>
+                </form>
+            </div>
+
             <div class="today-pending-section">
                 <div class="section-header">
                     <h2 class="section-title">
