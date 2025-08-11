@@ -11,6 +11,8 @@
     <meta name="_csrf" content="${_csrf.token}"/>
     <meta name="viewport" content="width=device-width, initial-scale=1.0">
     <link rel="stylesheet" href="${pageContext.request.contextPath}/css/style.css">
+    <link rel="stylesheet" href="${pageContext.request.contextPath}/css/color-code-component.css">
+    <link rel="stylesheet" href="${pageContext.request.contextPath}/css/chairside-note-component.css">
     <link href="https://fonts.googleapis.com/css2?family=Poppins:wght@300;400;500;600;700&display=swap" rel="stylesheet">
     <link rel="stylesheet" href="https://cdnjs.cloudflare.com/ajax/libs/font-awesome/6.4.0/css/all.min.css">
     <link rel="stylesheet" href="https://code.jquery.com/ui/1.13.2/themes/base/jquery-ui.css">
@@ -19,6 +21,8 @@
     <script src="https://code.jquery.com/ui/1.13.2/jquery-ui.min.js"></script>
     <script src="https://cdnjs.cloudflare.com/ajax/libs/jquery-ui-timepicker-addon/1.6.3/jquery-ui-timepicker-addon.min.js"></script>
     <script src="${pageContext.request.contextPath}/js/common.js"></script>
+    <script src="${pageContext.request.contextPath}/js/color-code-component.js"></script>
+    <script src="${pageContext.request.contextPath}/js/chairside-note-component.js"></script>
     <!-- Add flatpickr CSS and JS -->
     <link rel="stylesheet" href="https://cdn.jsdelivr.net/npm/flatpickr/dist/flatpickr.min.css">
     <script src="https://cdn.jsdelivr.net/npm/flatpickr"></script>
@@ -29,6 +33,58 @@
         const contextPath = '${pageContext.request.contextPath}';
     </script>
     <script src="${pageContext.request.contextPath}/js/patient-details.js"></script>
+    <script>
+        function joinUrl(base, path) {
+            if (!base || base === '/') return path;
+            if (base.endsWith('/') && path.startsWith('/')) return base.replace(/\/+$/, '') + path;
+            if (!base.endsWith('/') && !path.startsWith('/')) return base + '/' + path;
+            return base + path;
+        }
+
+        function duplicateExaminationFromEl(btn){
+            let examId = btn.getAttribute('data-exam-id');
+            if (!examId) {
+                const tr = btn.closest('tr');
+                if (tr) {
+                    const idCell = tr.querySelector('.exam-id-col');
+                    if (idCell) {
+                        examId = String(idCell.textContent || '').trim();
+                    }
+                }
+            }
+            if (!examId) {
+                alert('Could not determine examination ID for duplication.');
+                return;
+            }
+            duplicateExamination(examId);
+        }
+
+        async function duplicateExamination(examId) {
+            if (!confirm('Create a duplicate examination with the same tooth number and doctor?')) {
+                return;
+            }
+            try {
+                const token = document.querySelector('meta[name="_csrf"]').content;
+                const url = joinUrl(contextPath, '/patients/examination/' + encodeURIComponent(examId) + '/duplicate');
+                const res = await fetch(url, {
+                    method: 'POST',
+                    headers: { 'X-CSRF-TOKEN': token }
+                });
+                const text = await res.text();
+                let result;
+                try { result = JSON.parse(text); } catch (_) { result = { success: res.ok, message: text }; }
+                if (result.success) {
+                    alert('Duplicated successfully');
+                    // Reload patient details to show new examination
+                    window.location.reload();
+                } else {
+                    alert('Error: ' + (result.message || 'Failed to duplicate'));
+                }
+            } catch (e) {
+                alert('Error: ' + e.message);
+            }
+        }
+    </script>
     
     <!-- Include common menu styles -->
     <jsp:include page="/WEB-INF/views/common/menuStyles.jsp" />
@@ -288,6 +344,69 @@
             border-bottom: 1px solid #e0e0e0;
             color: #4b5563;
         }
+
+        /* Align action buttons neatly */
+        .action-buttons {
+            display: inline-flex;
+            align-items: center;
+            gap: 8px;
+            white-space: nowrap;
+        }
+
+        /* Instant tooltips */
+        .has-tooltip {
+            position: relative;
+        }
+        .has-tooltip::after {
+            content: attr(data-tooltip);
+            position: absolute;
+            bottom: 100%;
+            left: 50%;
+            transform: translateX(-50%);
+            background: #2c3e50;
+            color: #fff;
+            padding: 6px 8px;
+            border-radius: 4px;
+            font-size: 12px;
+            white-space: nowrap;
+            opacity: 0;
+            pointer-events: none;
+            transition: opacity 0.05s ease;
+            margin-bottom: 6px;
+            z-index: 10;
+        }
+        .has-tooltip::before {
+            content: '';
+            position: absolute;
+            bottom: 100%;
+            left: 50%;
+            transform: translateX(-50%);
+            border-width: 6px;
+            border-style: solid;
+            border-color: transparent transparent #2c3e50 transparent;
+            opacity: 0;
+            transition: opacity 0.05s ease;
+            margin-bottom: -6px;
+            z-index: 10;
+        }
+        .has-tooltip:hover::after,
+        .has-tooltip:hover::before {
+            opacity: 1;
+        }
+
+        /* Avoid overlap: only show parent tooltip when not hovering on a child */
+        .parent-tooltips {
+            position: relative;
+        }
+        .parent-tooltips:hover::after,
+        .parent-tooltips:hover::before {
+            opacity: 1;
+        }
+        /* Hide parent tooltip if any child with tooltip is hovered */
+        .parent-tooltips:hover:has(.has-tooltip:hover)::after,
+        .parent-tooltips:hover:has(.has-tooltip:hover)::before {
+            opacity: 0;
+        }
         
         .examination-row:hover {
             background-color: #f0f7ff;
@@ -330,9 +449,73 @@
             font-style: italic;
         }
         
+        /* Procedure column styling */
+        .procedure-name {
+            font-weight: 500;
+            color: #2c3e50;
+            display: block;
+        }
+        
+        .procedure-price {
+            color: #27ae60;
+            font-weight: 500;
+            font-size: 0.85rem;
+        }
+        
         /* Dental Chart section styles */
         .dental-chart-section {
             margin-top: 30px;
+        }
+        
+        /* General Consultation Section styles */
+        .general-consultation-section {
+            margin-bottom: 30px;
+        }
+        
+        .consultation-card {
+            display: flex;
+            align-items: center;
+            gap: 20px;
+            padding: 25px;
+            background: linear-gradient(135deg, #667eea 0%, #764ba2 100%);
+            color: white;
+            border-radius: 12px;
+            cursor: pointer;
+            transition: all 0.3s ease;
+            box-shadow: 0 4px 15px rgba(102, 126, 234, 0.2);
+        }
+        
+        .consultation-card:hover {
+            transform: translateY(-2px);
+            box-shadow: 0 6px 20px rgba(102, 126, 234, 0.3);
+        }
+        
+        .consultation-icon {
+            font-size: 2.5rem;
+            opacity: 0.9;
+        }
+        
+        .consultation-content h3 {
+            margin: 0 0 8px 0;
+            font-size: 1.3rem;
+            font-weight: 600;
+        }
+        
+        .consultation-content p {
+            margin: 0;
+            opacity: 0.9;
+            font-size: 0.95rem;
+        }
+        
+
+        
+        .form-actions {
+            display: flex;
+            gap: 10px;
+            justify-content: flex-end;
+            margin-top: 20px;
+            padding-top: 20px;
+            border-top: 1px solid #eee;
         }
         
         /* Clinic Code Styling */
@@ -1092,6 +1275,369 @@
             color: #666;
             font-style: italic;
         }
+        
+        /* View Notes Link Styles */
+        .view-notes-link {
+            color: #3498db;
+            text-decoration: none;
+            font-weight: 500;
+            padding: 4px 8px;
+            border-radius: 4px;
+            background: rgba(52, 152, 219, 0.1);
+            transition: all 0.2s ease;
+            font-size: 0.85rem;
+        }
+        
+        .view-notes-link:hover {
+            background: rgba(52, 152, 219, 0.2);
+            color: #2980b9;
+            text-decoration: none;
+        }
+        
+        /* Notes Popup Modal Styles */
+        .notes-modal {
+            display: none;
+            position: fixed;
+            z-index: 1000;
+            left: 0;
+            top: 0;
+            width: 100%;
+            height: 100%;
+            background-color: rgba(0, 0, 0, 0.5);
+            backdrop-filter: blur(2px);
+        }
+        
+        .notes-modal-content {
+            background-color: white;
+            margin: 5% auto;
+            padding: 0;
+            border-radius: 12px;
+            width: 90%;
+            max-width: 600px;
+            box-shadow: 0 10px 30px rgba(0, 0, 0, 0.3);
+            animation: modalSlideIn 0.3s ease-out;
+        }
+        
+        @keyframes modalSlideIn {
+            from {
+                opacity: 0;
+                transform: translateY(-50px);
+            }
+            to {
+                opacity: 1;
+                transform: translateY(0);
+            }
+        }
+        
+        .notes-modal-header {
+            background: linear-gradient(135deg, #3498db, #2980b9);
+            color: white;
+            padding: 20px;
+            border-radius: 12px 12px 0 0;
+            display: flex;
+            justify-content: space-between;
+            align-items: center;
+        }
+        
+        .notes-modal-title {
+            margin: 0;
+            font-size: 1.2rem;
+            font-weight: 600;
+        }
+        
+        .notes-modal-close {
+            color: white;
+            font-size: 28px;
+            font-weight: bold;
+            cursor: pointer;
+            line-height: 1;
+            transition: opacity 0.2s ease;
+        }
+        
+        .notes-modal-close:hover {
+            opacity: 0.7;
+        }
+        
+        .notes-modal-body {
+            padding: 25px;
+            max-height: 400px;
+            overflow-y: auto;
+        }
+        
+        .notes-content {
+            font-size: 1rem;
+            line-height: 1.6;
+            color: #2c3e50;
+            white-space: pre-wrap;
+            word-wrap: break-word;
+        }
+        
+        .notes-modal-footer {
+            padding: 15px 25px;
+            border-top: 1px solid #e9ecef;
+            text-align: right;
+        }
+        
+        .btn-close-modal {
+            background: #6c757d;
+            color: white;
+            border: none;
+            padding: 8px 16px;
+            border-radius: 6px;
+            cursor: pointer;
+            font-size: 0.9rem;
+            transition: background-color 0.2s ease;
+        }
+        
+        .btn-close-modal:hover {
+            background: #5a6268;
+        }
+        
+
+        
+        /* Color Code Strip Styles */
+        .color-code-strip {
+            width: 100%;
+            height: 8px;
+            border-radius: 4px 4px 0 0;
+            margin-bottom: 0;
+            position: relative;
+        }
+        
+        .color-code-strip.code-blue {
+            background: linear-gradient(90deg, #0066CC, #0052a3);
+        }
+        
+        .color-code-strip.code-yellow {
+            background: linear-gradient(90deg, #FFD700, #FFC107);
+        }
+        
+        .color-code-strip.no-code {
+            background: linear-gradient(90deg, #E0E0E0, #BDBDBD);
+        }
+        
+        /* Chairside Note Floating Button */
+        .chairside-note-fab {
+            position: fixed;
+            bottom: 30px;
+            right: 30px;
+            width: 60px;
+            height: 60px;
+            background: linear-gradient(135deg, #3498db, #2980b9);
+            border-radius: 50%;
+            display: flex;
+            align-items: center;
+            justify-content: center;
+            cursor: pointer;
+            box-shadow: 0 4px 20px rgba(52, 152, 219, 0.3);
+            transition: all 0.3s ease;
+            z-index: 1000;
+            color: white;
+            font-size: 1.5rem;
+        }
+        
+        .chairside-note-fab:hover {
+            transform: translateY(-2px);
+            box-shadow: 0 6px 25px rgba(52, 152, 219, 0.4);
+        }
+        
+        .chairside-note-fab .fab-tooltip {
+            position: absolute;
+            right: 70px;
+            background: #2c3e50;
+            color: white;
+            padding: 8px 12px;
+            border-radius: 6px;
+            font-size: 0.8rem;
+            white-space: nowrap;
+            opacity: 0;
+            visibility: hidden;
+            transition: all 0.3s ease;
+            pointer-events: none;
+        }
+        
+        .chairside-note-fab:hover .fab-tooltip {
+            opacity: 1;
+            visibility: visible;
+        }
+        
+        /* Chairside Note Modal */
+        .chairside-note-modal {
+            display: none;
+            position: fixed;
+            z-index: 2000;
+            left: 0;
+            top: 0;
+            width: 100%;
+            height: 100%;
+            background-color: rgba(0, 0, 0, 0.5);
+            backdrop-filter: blur(5px);
+        }
+        
+        .chairside-note-modal-content {
+            background-color: white;
+            margin: 5% auto;
+            padding: 0;
+            border-radius: 12px;
+            width: 95%;
+            max-width: 800px;
+            box-shadow: 0 10px 40px rgba(0, 0, 0, 0.2);
+            animation: modalSlideIn 0.3s ease;
+        }
+        
+        @keyframes modalSlideIn {
+            from {
+                opacity: 0;
+                transform: translateY(-50px);
+            }
+            to {
+                opacity: 1;
+                transform: translateY(0);
+            }
+        }
+        
+        .chairside-note-modal-header {
+            display: flex;
+            justify-content: space-between;
+            align-items: center;
+            padding: 20px 25px;
+            border-bottom: 1px solid #e9ecef;
+            background: linear-gradient(135deg, #f8f9fa, #e9ecef);
+            border-radius: 12px 12px 0 0;
+        }
+        
+        .chairside-note-modal-header h3 {
+            margin: 0;
+            color: #2c3e50;
+            font-size: 1.3rem;
+            display: flex;
+            align-items: center;
+            gap: 10px;
+        }
+        
+        .chairside-note-modal-close {
+            color: #6c757d;
+            font-size: 1.5rem;
+            font-weight: bold;
+            cursor: pointer;
+            transition: color 0.3s ease;
+        }
+        
+        .chairside-note-modal-close:hover {
+            color: #dc3545;
+        }
+        
+        .chairside-note-modal-body {
+            padding: 25px;
+        }
+        
+        .chairside-note-modal-body .form-control {
+            width: 100%;
+            min-height: 200px;
+            resize: vertical;
+            font-family: 'Poppins', sans-serif;
+            font-size: 14px;
+            line-height: 1.5;
+        }
+        
+        .chairside-note-modal-footer {
+            display: flex;
+            justify-content: space-between;
+            align-items: center;
+            padding: 24px 32px;
+            border-top: 1px solid #e9ecef;
+            background: linear-gradient(135deg, #f8f9fa, #ffffff);
+            border-radius: 0 0 12px 12px;
+        }
+        
+        .footer-left {
+            display: flex;
+            align-items: center;
+        }
+        
+        .footer-right {
+            display: flex;
+            align-items: center;
+            gap: 12px;
+        }
+        
+        .chairside-note-modal-footer .btn {
+            display: inline-flex;
+            align-items: center;
+            justify-content: center;
+            gap: 8px;
+            padding: 10px 20px;
+            font-weight: 500;
+            font-size: 14px;
+            border-radius: 8px;
+            border: 2px solid transparent;
+            transition: all 0.3s ease;
+            cursor: pointer;
+            text-decoration: none;
+            min-width: 100px;
+            height: 40px;
+        }
+        
+        .chairside-note-modal-footer .btn-outline-danger {
+            background: transparent;
+            color: #dc3545;
+            border-color: #dc3545;
+        }
+        
+        .chairside-note-modal-footer .btn-outline-danger:hover {
+            background: #dc3545;
+            color: white;
+            transform: translateY(-1px);
+            box-shadow: 0 4px 12px rgba(220, 53, 69, 0.3);
+        }
+        
+        .chairside-note-modal-footer .btn-outline-secondary {
+            background: transparent;
+            color: #6c757d;
+            border-color: #6c757d;
+        }
+        
+        .chairside-note-modal-footer .btn-outline-secondary:hover {
+            background: #6c757d;
+            color: white;
+            transform: translateY(-1px);
+            box-shadow: 0 4px 12px rgba(108, 117, 125, 0.3);
+        }
+        
+        .chairside-note-modal-footer .btn-primary {
+            background: linear-gradient(135deg, #007bff, #0056b3);
+            color: white;
+            border-color: #007bff;
+            min-width: 120px;
+            font-weight: 600;
+        }
+        
+        .chairside-note-modal-footer .btn-primary:hover {
+            background: linear-gradient(135deg, #0056b3, #004085);
+            transform: translateY(-1px);
+            box-shadow: 0 4px 12px rgba(0, 123, 255, 0.3);
+        }
+        
+        .btn-danger {
+            background: linear-gradient(135deg, #dc3545, #c82333);
+            color: white;
+        }
+        
+        .btn-danger:hover {
+            background: linear-gradient(135deg, #c82333, #a71e2a);
+            transform: translateY(-1px);
+        }
+        
+        .form-text {
+            margin-top: 8px;
+            font-size: 0.85rem;
+            color: #6c757d;
+        }
+        
+        .form-text i {
+            margin-right: 5px;
+        }
+
     </style>
 </head>
 <body>
@@ -1129,6 +1675,9 @@
         </c:if>
         
         <div class="patient-details-container">
+            <!-- Color Code Strip -->
+            <jsp:include page="/WEB-INF/views/common/color-code-component.jsp" />
+            
             <div class="patient-header">
                 <!-- Add profile picture container -->
                 <div class="patient-profile-picture">
@@ -1147,7 +1696,7 @@
                 <!-- Patient name and other details -->
                 <div class="patient-details">
                     <h2 class="patient-name">${patient.firstName} ${patient.lastName}</h2>
-                    <p class="patient-id">Patient ID: ${patient.id} | Registration Code: ${patient.registrationCode}</p>
+                    <p class="patient-id">Registration Code: ${patient.registrationCode}</p>
                     <div class="patient-meta">
                         <span class="meta-item"><i class="fas fa-calendar-alt"></i> Age: <strong>${patient.age} years</strong></span>
                         <span class="meta-item"><i class="fas fa-venus-mars"></i> Gender: <strong>${patient.gender}</strong></span>
@@ -1165,6 +1714,7 @@
                                 </c:choose>
                             </strong>
                         </span>
+
                     </div>
                 </div>
                 <div class="patient-actions">
@@ -1354,6 +1904,20 @@
                         </c:choose>
                     </c:otherwise>
                 </c:choose>
+            </div>
+            
+            <!-- General Consultation Section -->
+            <div class="general-consultation-section" 
+                 <c:if test="${currentUserRole == 'RECEPTIONIST' || !patient.checkedIn}">style="opacity: 0.6; pointer-events: none;"</c:if>>
+                <div class="consultation-card" onclick="openGeneralConsultation()">
+                    <div class="consultation-icon">
+                        <i class="fas fa-stethoscope"></i>
+                    </div>
+                    <div class="consultation-content">
+                        <h3>General Consultation</h3>
+                        <p>Click here to add a general consultation record</p>
+                    </div>
+                </div>
             </div>
             
             <div class="dental-chart" 
@@ -1675,8 +2239,8 @@
                                 <th>Exam ID</th>
                                 <th>Tooth</th>
                                 <th>Examination Date</th>
-                                <th>Condition</th>
                                 <th>Treatment Start Date</th>
+                                <th>Procedure</th>
                                 <th>Notes</th>
                                 <th>Clinic</th>
                                 <th>Treating Doctor</th>
@@ -1687,7 +2251,16 @@
                         <c:forEach items="${examinationHistory}" var="exam" varStatus="status">
                             <tr class="examination-row" onclick="openExaminationDetails('${exam.id}')">
                                 <td class="exam-id-col">${exam.id}</td>
-                                <td data-tooth="${exam.toothNumber}">${exam.toothNumber.toString().replace('TOOTH_', '')}</td>
+                                <td data-tooth="${exam.toothNumber}">
+                                    <c:choose>
+                                        <c:when test="${exam.toothNumber == 'GENERAL_CONSULTATION'}">
+                                            General Consultation
+                                        </c:when>
+                                        <c:otherwise>
+                                            ${exam.toothNumber.toString().replace('TOOTH_', '')}
+                                        </c:otherwise>
+                                    </c:choose>
+                                </td>
                                     <td data-date="${exam.examinationDate}">
                                     <c:set var="dateStr" value="${exam.examinationDate}" />
                                             <c:set var="datePart" value="${fn:substringBefore(dateStr, 'T')}" />
@@ -1699,7 +2272,6 @@
                                             
                                     ${day}/${month}/${year} ${timePart}
                                     </td>
-                                <td>${exam.toothCondition}</td>
                                 <td>
                                     <c:set var="rawDate" value="${exam.treatmentStartingDate}"/>
                                     <c:choose>
@@ -1714,15 +2286,20 @@
                                 </td>
                                 <td>
                                     <c:choose>
+                                        <c:when test="${not empty exam.procedure}">
+                                            <span class="procedure-name">${exam.procedure.procedureName}</span>
+                                        </c:when>
+                                        <c:otherwise>
+                                            <span class="no-data">No procedure</span>
+                                        </c:otherwise>
+                                    </c:choose>
+                                </td>
+                                <td>
+                                    <c:choose>
                                         <c:when test="${not empty exam.examinationNotes}">
-                                            <c:choose>
-                                                <c:when test="${fn:length(exam.examinationNotes) > 50}">
-                                                    ${fn:substring(exam.examinationNotes, 0, 50)}...
-                                                </c:when>
-                                                <c:otherwise>
-                                                    ${exam.examinationNotes}
-                                                </c:otherwise>
-                                            </c:choose>
+                                            <a href="#" class="view-notes-link" onclick="showNotesPopup('${fn:escapeXml(exam.examinationNotes)}', '${exam.id}'); return false;">
+                                                VIEW
+                                            </a>
                                         </c:when>
                                         <c:otherwise>
                                             <span class="no-data">No notes</span>
@@ -1754,12 +2331,22 @@
                                     </c:choose>
                                 </td>
                                 <td>
-                                    <a href="${pageContext.request.contextPath}/patients/examination/${exam.id}" 
-                                       class="btn btn-sm" 
-                                       title="View Details"
-                                       onclick="event.stopPropagation();">
-                                        <i class="fas fa-eye"></i>
-                                    </a>
+                                    <div class="action-buttons has-tooltip parent-tooltips" data-tooltip="Actions">
+                                        <a href="${pageContext.request.contextPath}/patients/examination/${exam.id}" 
+                                           class="btn btn-sm has-tooltip" 
+                                           data-tooltip="View"
+                                           onclick="event.stopPropagation();">
+                                            <i class="fas fa-eye"></i>
+                                        </a>
+                                        <c:set var="canDup" value="${duplicateAllowed[exam.id]}"/>
+                                        <button class="btn btn-sm has-tooltip" 
+                                                data-tooltip="${canDup ? 'Duplicate' : 'Cannot duplicate'}" 
+                                                data-exam-id="${exam.id}"
+                                                onclick="event.stopPropagation(); if(this.disabled){return false;} duplicateExaminationFromEl(this)"
+                                                <c:if test="${!canDup}">disabled style="opacity:0.6; cursor:not-allowed;"</c:if>>
+                                            <i class="fas fa-clone"></i>
+                                        </button>
+                                    </div>
                                 </td>
                             </tr>
                         </c:forEach>
@@ -1774,6 +2361,47 @@
             </c:if>
                     </div>
     </div>
+    <!-- General Consultation Modal - Only show for non-receptionists -->
+    <c:if test="${currentUserRole != 'RECEPTIONIST'}">
+    <div id="consultationModal" class="modal consultation-modal">
+        <div class="modal-content">
+            <span class="close" onclick="closeConsultationModal()">&times;</span>
+            <h2 style="margin: 0 0 15px 0; font-size: 1.2rem; color: #2c3e50;">General Consultation</h2>
+            <form id="consultationForm" method="post" action="${pageContext.request.contextPath}/patients/tooth-examination/save">
+                <input type="hidden" id="consultationExaminationId" name="id" value="">
+                <input type="hidden" id="consultationPatientId" name="patientId" value="${patient.id}">
+                <input type="hidden" id="consultationToothNumber" name="toothNumber" value="GENERAL_CONSULTATION">
+                <input type="hidden" name="${_csrf.parameterName}" value="${_csrf.token}"/>
+
+                <!-- Chief Complaints Section -->
+                <div class="form-section chief-complaints-section">
+                    <h3>Chief Complaints</h3>
+                    <div class="form-group">
+                        <label for="consultationChiefComplaints">Patient's Chief Complaints</label>
+                        <textarea name="chiefComplaints" id="consultationChiefComplaints" rows="6" class="form-control" 
+                                  placeholder="Enter the patient's chief complaints in detail..."></textarea>
+                    </div>
+                </div>
+
+                <!-- Examination Notes Section -->
+                <div class="form-section notes-section">
+                    <h3>Consultation Notes</h3>
+                    <div class="form-group">
+                        <label for="consultationExaminationNotes">Examination Notes</label>
+                        <textarea name="examinationNotes" id="consultationExaminationNotes" rows="6" class="form-control" 
+                                  placeholder="Enter detailed consultation notes and findings..."></textarea>
+                    </div>
+                </div>
+
+                <div class="form-actions">
+                    <button type="submit" class="btn btn-primary">Save Consultation</button>
+                    <button type="button" class="btn btn-secondary" onclick="closeConsultationModal()">Cancel</button>
+                </div>
+            </form>
+        </div>
+    </div>
+    </c:if>
+
     <!-- Tooth Examination Modal - Only show for non-receptionists -->
     <c:if test="${currentUserRole != 'RECEPTIONIST'}">
     <div id="toothModal" class="modal tooth-examination-modal">
@@ -1787,7 +2415,7 @@
                 <input type="hidden" name="${_csrf.parameterName}" value="${_csrf.token}"/>
 
                 <!-- Chief Complaints Section -->
-                <div class="chief-complaints-section">
+                <div class="form-section chief-complaints-section">
                     <h3>Chief Complaints</h3>
                     <div class="form-group">
                         <label for="chiefComplaints">Patient's Chief Complaints</label>
@@ -1801,15 +2429,6 @@
                     <div class="form-column">
                         <div class="form-section">
                             <h3>Basic Assessment</h3>
-                            <div class="form-group">
-                                <label for="toothSurface">Surface</label>
-                                <select name="toothSurface" id="toothSurface" class="form-control">
-                                    <option value="">Select</option>
-                                    <c:forEach items="${toothSurfaces}" var="surface">
-                                        <option value="${surface}">${surface}</option>
-                                    </c:forEach>
-                                </select>
-                            </div>
                             <div class="form-group">
                                 <label for="toothCondition">Condition</label>
                                 <select name="toothCondition" id="toothCondition" class="form-control">
@@ -1951,5 +2570,25 @@
     </div>
     </c:if>
 </div>
+
+<!-- Notes Popup Modal -->
+<div id="notesModal" class="notes-modal">
+    <div class="notes-modal-content">
+        <div class="notes-modal-header">
+            <h3 class="notes-modal-title">Examination Notes</h3>
+            <span class="notes-modal-close" onclick="closeNotesModal()">&times;</span>
+        </div>
+        <div class="notes-modal-body">
+            <div id="notesContent" class="notes-content"></div>
+        </div>
+        <div class="notes-modal-footer">
+            <button class="btn-close-modal" onclick="closeNotesModal()">Close</button>
+        </div>
+    </div>
+</div>
+
+<!-- Chairside Note Component -->
+<jsp:include page="/WEB-INF/views/common/chairside-note-component.jsp" />
+
 </body>
 </html>

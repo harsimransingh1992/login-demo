@@ -9,6 +9,7 @@
 <head>
     <title>Select Procedure - PeriDesk</title>
     <meta name="_csrf" content="${_csrf.token}"/>
+    <meta name="_csrf_header" content="${_csrf.headerName}"/>
     <meta name="viewport" content="width=device-width, initial-scale=1.0">
     <link rel="stylesheet" href="${pageContext.request.contextPath}/css/style.css">
     <link href="https://fonts.googleapis.com/css2?family=Poppins:wght@300;400;500;600;700&display=swap" rel="stylesheet">
@@ -288,7 +289,8 @@
             cursor: not-allowed;
         }
         
-        /* Denture Upload Section Styles */
+        /* Denture Upload Section Styles - REMOVED FROM PROCEDURES PAGE */
+        /*
         .denture-upload-section {
             background: white;
             border-radius: 12px;
@@ -442,6 +444,7 @@
                 gap: 20px;
             }
         }
+        */
         
         @media (max-width: 768px) {
             .action-buttons {
@@ -1427,6 +1430,50 @@
                         <span class="meta-label">Tooth Number</span>
                         <span class="meta-value">${examination.toothNumber}</span>
                     </div>
+                    <div class="meta-item">
+                        <span class="meta-label">Treating Doctor</span>
+                        <span class="meta-value">
+                            <c:choose>
+                                <c:when test="${currentUserRole == 'RECEPTIONIST'}">
+                                    <c:if test="${not empty examination.assignedDoctorId}">
+                                        <c:forEach items="${doctors}" var="d">
+                                            <c:if test="${d.id == examination.assignedDoctorId}">
+                                                Dr. ${d.firstName} ${d.lastName}
+                                            </c:if>
+                                        </c:forEach>
+                                    </c:if>
+                                    <c:if test="${empty examination.assignedDoctorId}">
+                                        Not assigned yet
+                                    </c:if>
+                                </c:when>
+                                <c:otherwise>
+                                    <select id="treatingDoctorSelect" class="form-control" style="
+                                            width: 100%;
+                                            padding: 10px;
+                                            border: 1px solid #dee2e6;
+                                            border-radius: 8px;
+                                            font-size: 14px;
+                                            background-color: #ffffff;
+                                            box-shadow: inset 0 1px 2px rgba(0,0,0,0.02);
+                                            transition: border-color 0.2s ease, box-shadow 0.2s ease;"
+                                            <c:if test="${not empty examination.assignedDoctorId}">disabled</c:if>>
+                                        <option value="">Select Doctor</option>
+                                        <c:forEach items="${doctors}" var="d">
+                                            <option value="${d.id}"
+                                                <c:if test="${not empty examination.assignedDoctorId and d.id == examination.assignedDoctorId}">selected</c:if>>
+                                                ${d.firstName} ${d.lastName}
+                                            </option>
+                                        </c:forEach>
+                                    </select>
+                                    <c:if test="${not empty examination.assignedDoctorId}">
+                                        <small class="doctor-assignment-info">
+                                            <i class="fas fa-info-circle"></i> Doctor assignment cannot be changed once set
+                                        </small>
+                                    </c:if>
+                                </c:otherwise>
+                            </c:choose>
+                        </span>
+                    </div>
                 </div>
                 
                 <!-- Hidden field for JavaScript to access the examination ID -->
@@ -1436,12 +1483,8 @@
                     <h3>Tooth Examination Details</h3>
                     <div class="details-grid">
                         <div class="detail-item">
-                            <span class="detail-label">Tooth Condition</span>
+                            <span class="detail-label">Condition</span>
                             <span class="detail-value">${examination.toothCondition != null ? examination.toothCondition : 'Not specified'}</span>
-                        </div>
-                        <div class="detail-item">
-                            <span class="detail-label">Surface</span>
-                            <span class="detail-value">${examination.toothSurface != null ? examination.toothSurface : 'Not specified'}</span>
                         </div>
                         <div class="detail-item">
                             <span class="detail-label">Mobility</span>
@@ -1486,46 +1529,6 @@
                             <p>${examination.examinationNotes}</p>
                         </div>
                     </c:if>
-                    
-                    <!-- DENTURE PICTURE UPLOAD SECTION - START -->
-                    <div class="denture-upload-section">
-                        <h3><i class="fas fa-camera"></i> Denture Pictures Upload</h3>
-                        <p class="upload-description">Please upload pictures of the upper and lower dentures. Both pictures are mandatory to proceed with procedure selection.</p>
-                        
-                        <div class="denture-upload-container">
-                            <div class="denture-upload-item">
-                                <label for="upper-denture-upload" class="upload-label">
-                                    <i class="fas fa-upload"></i> Upper Denture Picture
-                                    <span class="required-indicator">*</span>
-                                </label>
-                                <input type="file" id="upper-denture-upload" name="upperDenturePicture" accept="image/*" class="denture-file-input" required>
-                                <div id="upper-denture-preview" class="denture-preview">
-                                    <i class="fas fa-image"></i>
-                                    <span>No image selected</span>
-                                </div>
-                                <div class="upload-status" id="upper-denture-status"></div>
-                            </div>
-                            
-                            <div class="denture-upload-item">
-                                <label for="lower-denture-upload" class="upload-label">
-                                    <i class="fas fa-upload"></i> Lower Denture Picture
-                                    <span class="required-indicator">*</span>
-                                </label>
-                                <input type="file" id="lower-denture-upload" name="lowerDenturePicture" accept="image/*" class="denture-file-input" required>
-                                <div id="lower-denture-preview" class="denture-preview">
-                                    <i class="fas fa-image"></i>
-                                    <span>No image selected</span>
-                                </div>
-                                <div class="upload-status" id="lower-denture-status"></div>
-                            </div>
-                        </div>
-                        
-                        <div class="upload-validation" id="denture-validation">
-                            <i class="fas fa-info-circle"></i>
-                            <span>Both upper and lower denture pictures are required to proceed.</span>
-                        </div>
-                    </div>
-                    <!-- DENTURE PICTURE UPLOAD SECTION - END -->
                     
                     <!-- PROCEDURE SELECTION ACTIONS AREA - START -->
                     <div class="selected-procedures-info">
@@ -1774,7 +1777,8 @@
             // Track selected procedures
             let selectedProcedure = null; // Single procedure object to store the selected procedure
             
-            // Denture upload variables
+            // Denture upload variables - REMOVED FROM PROCEDURES PAGE
+            /*
             let upperDentureFile = null;
             let lowerDentureFile = null;
             let dentureUploadsComplete = false;
@@ -1912,34 +1916,32 @@
                     dentureValidation.innerHTML = '<i class="fas fa-check-circle"></i><span>Both denture pictures uploaded successfully. You can now select procedures.</span>';
                 } else {
                     const missing = [];
-                    if (!hasUpper) missing.push('upper denture');
-                    if (!hasLower) missing.push('lower denture');
-                    
+                    if (!hasUpper) missing.push('upper');
+                    if (!hasLower) missing.push('lower');
                     dentureValidation.className = 'upload-validation error';
                     dentureValidation.innerHTML = `<i class="fas fa-exclamation-triangle"></i><span>Please upload ${missing.join(' and ')} picture${missing.length > 1 ? 's' : ''} to proceed.</span>`;
                 }
                 
-                // Update submit button state
+                // Update submit button state based on denture uploads and procedure selection
                 updateSubmitButtonState();
             }
+            */
             
-            // Update submit button state based on denture uploads and procedure selection
+            // Update submit button state based on both procedure selection and denture uploads
             function updateSubmitButtonState() {
                 const hasProcedure = selectedProcedure !== null;
-                const canSubmit = dentureUploadsComplete && hasProcedure;
-                
-                if (submitButton) {
-                    submitButton.disabled = !canSubmit;
-                    if (!canSubmit) {
-                        submitButton.title = !dentureUploadsComplete ? 'Please upload both denture pictures first' : 'Please select a procedure first';
-                    } else {
-                        submitButton.title = 'Submit procedure';
-                    }
-                }
+                const treatingDoctorSelect = document.getElementById('treatingDoctorSelect');
+                const hasDoctor = treatingDoctorSelect ? (treatingDoctorSelect.value !== '' || treatingDoctorSelect.disabled) : true;
+                const messages = [];
+                if (!hasProcedure) messages.push('Select a procedure');
+                if (!hasDoctor) messages.push('Select a treating doctor');
+                const canSubmit = messages.length === 0;
+                submitButton.disabled = !canSubmit;
+                submitButton.title = canSubmit ? 'Submit procedure' : messages.join(' | ');
             }
             
-            // Initialize denture uploads
-            initializeDentureUploads();
+            // Initialize denture uploads - REMOVED FROM PROCEDURES PAGE
+            // initializeDentureUploads();
             
             // Add event listener for view selected procedures button
             if (viewSelectedButton) {
@@ -2020,8 +2022,60 @@
                     }
                 }
                 
-                // Update submit button state based on both procedure selection and denture uploads
-                updateSubmitButtonState();
+            // Update submit button state on load
+            updateSubmitButtonState();
+            const treatingDoctorSelect = document.getElementById('treatingDoctorSelect');
+            if (treatingDoctorSelect) {
+                treatingDoctorSelect.addEventListener('change', async function(){
+                    // Clear red border on selection
+                    if (treatingDoctorSelect.value) {
+                        try { treatingDoctorSelect.style.borderColor = '#dee2e6'; } catch (e) {}
+                    }
+                    
+                    // If user selected a doctor, assign immediately via AJAX
+                    if (this.value) {
+                        const examinationId = '${examination.id}';
+                        const doctorId = this.value;
+                        const token = $("meta[name='_csrf']").attr("content");
+                        const header = $("meta[name='_csrf_header']").attr("content");
+                        // Disable while assigning
+                        this.disabled = true;
+                        try {
+                            const res = await fetch('${pageContext.request.contextPath}/patients/tooth-examination/assign-doctor', {
+                                method: 'POST',
+                                headers: { 'Content-Type': 'application/json', [header]: token },
+                                body: JSON.stringify({ examinationId: examinationId, doctorId: doctorId })
+                            });
+                            if (!res.ok) {
+                                // Restore selection and state on failure
+                                this.disabled = false;
+                                const errText = await res.text();
+                                showNotification('Error assigning doctor: ' + (errText || res.status), true);
+                                return;
+                            }
+                            const result = await res.json();
+                            if (result && result.success) {
+                                // Lock the select after successful assignment
+                                this.disabled = true;
+                                // Show info note if not already present
+                                const info = document.createElement('small');
+                                info.className = 'doctor-assignment-info';
+                                info.innerHTML = '<i class="fas fa-info-circle"></i> Doctor assignment cannot be changed once set';
+                                this.parentNode.appendChild(info);
+                                showNotification('Doctor assigned successfully.');
+                            } else {
+                                this.disabled = false;
+                                showNotification('Error: ' + (result && result.message ? result.message : 'Failed to assign doctor'), true);
+                            }
+                        } catch (e) {
+                            this.disabled = false;
+                            showNotification('Error assigning doctor: ' + e.message, true);
+                        }
+                    }
+                    
+                    updateSubmitButtonState();
+                });
+            }
             }
             
             // Function to update the selected procedures modal content
@@ -2161,16 +2215,25 @@
             
             // Handle submission of the procedure
             submitButton.addEventListener('click', async function() {
+                const treatingDoctorSelect = document.getElementById('treatingDoctorSelect');
+                const errors = [];
                 if (!selectedProcedure) {
-                    showNotification('Please select a procedure', true);
+                    errors.push('Please select a procedure');
+                }
+                if (treatingDoctorSelect && !treatingDoctorSelect.disabled && !treatingDoctorSelect.value) {
+                    errors.push('Please select a treating doctor');
+                    try { treatingDoctorSelect.style.borderColor = '#e74c3c'; } catch (e) {}
+                }
+                if (errors.length) {
+                    showNotification(errors.join(' | '), true);
                     return;
                 }
                 
-                // Validate denture pictures are uploaded
-                if (!dentureUploadsComplete) {
-                    showNotification('Please upload both upper and lower denture pictures before proceeding', true);
-                    return;
-                }
+                // Validate denture pictures are uploaded - REMOVED FROM PROCEDURES PAGE
+                // if (!dentureUploadsComplete) {
+                //     showNotification('Please upload both upper and lower denture pictures before proceeding', true);
+                //     return;
+                // }
                 
                 const examinationId = '${examination.id}';
                 const procedureId = selectedProcedure.id;
@@ -2178,18 +2241,33 @@
                 try {
                     // Show loading state
                     submitButton.disabled = true;
-                    submitButton.innerHTML = '<i class="fas fa-spinner fa-spin"></i> Uploading...';
+                    submitButton.innerHTML = '<i class="fas fa-spinner fa-spin"></i> Submitting...';
                     
-                    // Create FormData to send files
+                    // Create FormData to send procedure data (no denture files)
                     const formData = new FormData();
                     formData.append('examinationId', examinationId);
                     formData.append('procedureId', procedureId);
-                    formData.append('upperDenturePicture', upperDentureFile);
-                    formData.append('lowerDenturePicture', lowerDentureFile);
+                    // formData.append('upperDenturePicture', upperDentureFile); // REMOVED
+                    // formData.append('lowerDenturePicture', lowerDentureFile); // REMOVED
                     
-                    // Submit the selected procedure with denture pictures
-                    showNotification('Uploading denture pictures and submitting procedure...');
-                    
+                    // If treating doctor is selected and not already assigned, assign before starting
+                    const treatingDoctorSelect = document.getElementById('treatingDoctorSelect');
+                    if (treatingDoctorSelect && treatingDoctorSelect.value) {
+                        try {
+                            const token = $("meta[name='_csrf']").attr("content");
+                            const header = $("meta[name='_csrf_header']").attr("content");
+                            await fetch('${pageContext.request.contextPath}/patients/tooth-examination/assign-doctor', {
+                                method: 'POST',
+                                headers: { 'Content-Type': 'application/json', [header]: token },
+                                body: JSON.stringify({ examinationId: examinationId, doctorId: treatingDoctorSelect.value })
+                            });
+                        } catch (e) {
+                            console.warn('Treating doctor assignment failed before starting procedure:', e);
+                        }
+                    }
+
+                    // Submit the selected procedure
+                    showNotification('Submitting procedure...');
                     const response = await fetch('${pageContext.request.contextPath}/patients/examination/start-procedure', {
                         method: 'POST',
                         headers: {
@@ -2202,7 +2280,7 @@
                     const result = await response.json();
                     
                     if (result.success) {
-                        showNotification('Successfully uploaded denture pictures and assigned procedure');
+                        showNotification('Successfully assigned procedure');
                         
                         // Redirect after a short delay to the procedure lifecycle page
                         setTimeout(() => {
@@ -2243,6 +2321,10 @@
                 } catch (error) {
                     console.error('Error submitting procedure:', error);
                     showNotification('Error: ' + error.message, true);
+                } finally {
+                    // Reset button state
+                    submitButton.disabled = false;
+                    submitButton.innerHTML = '<i class="fas fa-check"></i> Submit';
                 }
             });
             

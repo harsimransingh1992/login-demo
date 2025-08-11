@@ -145,8 +145,6 @@ public class ProcedureLifecycleServiceImpl implements ProcedureLifecycleService 
                    examination.getToothNumber().toString() : "Not specified");
         details.put("Initial Condition", examination.getToothCondition() != null ? 
                    examination.getToothCondition().toString() : "Not recorded");
-        details.put("Surface", examination.getToothSurface() != null ? 
-                   examination.getToothSurface().toString() : "Not specified");
         stage.put("details", details);
         
         return stage;

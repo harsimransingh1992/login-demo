@@ -1,0 +1,255 @@
+/* Base Styles */
+body {
+    font-family: 'Poppins', sans-serif;
+    margin: 0;
+    padding: 0;
+    background: #f8fafc;
+    color: #1e293b;
+    line-height: 1.6;
+}
+
+.welcome-container {
+    display: flex;
+    min-height: 100vh;
+    flex-direction: row;
+    background: #f8fafc;
+}
+
+/* Main menu container */
+.sidebar-menu {
+    position: fixed;
+    left: 0;
+    top: 0;
+    bottom: 0;
+    width: 280px;
+    background: white;
+    box-shadow: 2px 0 5px rgba(0, 0, 0, 0.1);
+    z-index: 1000;
+    overflow-y: auto;
+    transition: transform 0.3s ease;
+}
+
+/* Menu header */
+.menu-header {
+    padding: 1.5rem;
+    border-bottom: 1px solid #e2e8f0;
+}
+
+.menu-header h2 {
+    color: #2d3748;
+    font-size: 1.5rem;
+    font-weight: 600;
+    margin: 0;
+}
+
+/* Menu items container */
+.menu-items {
+    padding: 1rem 0;
+}
+
+/* Menu section */
+.menu-section {
+    margin-bottom: 1.5rem;
+}
+
+.menu-section-title {
+    padding: 0.75rem 1.5rem 0.25rem 1.5rem;
+    color: #4a5568;
+    font-size: 0.85rem;
+    font-weight: 700;
+    text-transform: uppercase;
+    letter-spacing: 0.05em;
+    background: none;
+    margin-top: 1.2rem;
+    margin-bottom: 0.2rem;
+}
+.menu-divider {
+    height: 1px;
+    background: #e2e8f0;
+    margin: 0.5rem 0 0.5rem 1.5rem;
+    width: 80%;
+    border-radius: 2px;
+}
+.action-card.active {
+    background-color: #ebf8ff;
+    color: #2b6cb0;
+    border-left: 4px solid #2b6cb0;
+}
+
+/* Menu item */
+.menu-item {
+    display: flex;
+    align-items: center;
+    padding: 0.75rem 1.5rem;
+    color: #4a5568;
+    text-decoration: none;
+    transition: all 0.2s;
+    cursor: pointer;
+}
+
+.menu-item:hover {
+    background-color: #f7fafc;
+    color: #2b6cb0;
+}
+
+.menu-item.active {
+    background-color: #ebf8ff;
+    color: #2b6cb0;
+    border-left: 4px solid #2b6cb0;
+}
+
+/* Menu item icon */
+.menu-item i {
+    width: 24px;
+    margin-right: 0.75rem;
+    font-size: 1.25rem;
+    text-align: center;
+}
+
+/* Menu item text */
+.menu-item span {
+    font-size: 0.875rem;
+    font-weight: 500;
+}
+
+/* Mobile menu toggle */
+.menu-toggle {
+    display: none;
+    position: fixed;
+    top: 1rem;
+    left: 1rem;
+    z-index: 1001;
+    background: white;
+    border: none;
+    border-radius: 4px;
+    padding: 0.5rem;
+    box-shadow: 0 2px 4px rgba(0, 0, 0, 0.1);
+    cursor: pointer;
+}
+
+/* Mobile menu overlay */
+.overlay {
+    display: none;
+    position: fixed;
+    top: 0;
+    left: 0;
+    right: 0;
+    bottom: 0;
+    background: rgba(0, 0, 0, 0.5);
+    z-index: 999;
+    opacity: 0;
+    transition: opacity 0.3s ease;
+}
+
+.overlay.active {
+    display: block;
+    opacity: 1;
+}
+
+/* Main content adjustment */
+.main-content {
+    margin-left: 280px;
+    transition: margin-left 0.3s ease;
+}
+
+/* Responsive styles */
+@media (max-width: 1024px) {
+    .menu-toggle {
+        display: block;
+    }
+
+    .sidebar-menu {
+        transform: translateX(-100%);
+    }
+
+    .sidebar-menu.active {
+        transform: translateX(0);
+    }
+
+    .main-content {
+        margin-left: 0;
+    }
+}
+
+/* Footer */
+.footer {
+    padding: 1rem 1.5rem;
+    border-top: 1px solid #e2e8f0;
+    margin-top: auto;
+}
+
+/* User info in menu */
+.user-info {
+    display: flex;
+    align-items: center;
+    padding: 1rem 1.5rem;
+    border-bottom: 1px solid #e2e8f0;
+}
+
+.user-avatar {
+    width: 40px;
+    height: 40px;
+    border-radius: 50%;
+    margin-right: 0.75rem;
+}
+
+.user-details {
+    flex: 1;
+}
+
+.user-name {
+    font-weight: 600;
+    color: #2d3748;
+    margin: 0;
+    font-size: 0.875rem;
+}
+
+.user-role {
+    color: #718096;
+    font-size: 0.75rem;
+    margin: 0;
+}
+
+/* Menu item badge */
+.menu-badge {
+    margin-left: auto;
+    background: #e2e8f0;
+    color: #4a5568;
+    padding: 0.25rem 0.5rem;
+    border-radius: 9999px;
+    font-size: 0.75rem;
+    font-weight: 600;
+}
+
+/* Menu item with submenu */
+.menu-item.has-submenu {
+    position: relative;
+}
+
+.menu-item.has-submenu::after {
+    content: '\f107';
+    font-family: 'Font Awesome 5 Free';
+    font-weight: 900;
+    margin-left: auto;
+    transition: transform 0.2s;
+}
+
+.menu-item.has-submenu.open::after {
+    transform: rotate(180deg);
+}
+
+/* Submenu */
+.submenu {
+    display: none;
+    background: #f8fafc;
+    padding: 0.5rem 0;
+}
+
+.submenu.active {
+    display: block;
+}
+
+.submenu .menu-item {
+    padding-left: 3.5rem;
+    font-size: 0.875rem;
+} 

@@ -29,13 +29,6 @@ public class ToothClinicalExamination {
     private ToothNumber toothNumber;
 
     /**
-     * The surface of the tooth being examined.
-     * Stored as a string representation of the enum in the database.
-     */
-    @Enumerated(EnumType.STRING)
-    private ToothSurface toothSurface;
-
-    /**
      * The condition of the tooth.
      * Stored as a string representation of the enum in the database.
      */
@@ -123,7 +116,7 @@ public class ToothClinicalExamination {
      * Clinical notes for the examination.
      * Stored as text in the database.
      */
-    @Column
+    @Column(name = "examination_notes", columnDefinition = "TEXT")
     private String examinationNotes;
 
     /**
@@ -281,7 +274,12 @@ public class ToothClinicalExamination {
     @OneToMany(mappedBy = "examination", cascade = CascadeType.ALL, orphanRemoval = true, fetch = FetchType.LAZY)
     @OrderBy("sequenceNumber ASC")
     private List<FollowUpRecord> followUpRecords;
-
+    
+    // Reopening records
+    @OneToMany(mappedBy = "examination", cascade = CascadeType.ALL, orphanRemoval = true, fetch = FetchType.LAZY)
+    @OrderBy("reopenedAt DESC")
+    private List<ReopeningRecord> reopeningRecords = new ArrayList<>();
+    
     /**
      * Gets the total amount paid so far by summing up all payment entries.
      * @return the total amount paid
@@ -388,5 +386,41 @@ public class ToothClinicalExamination {
     }
 
     public void setPaymentAmount(Double price) {
+        this.totalProcedureAmount = price;
+    }
+    
+    /**
+     * Get the total number of times this case has been reopened
+     */
+    public int getReopenCount() {
+        return reopeningRecords != null ? reopeningRecords.size() : 0;
+    }
+    
+    /**
+     * Get the latest reopening record
+     */
+    public ReopeningRecord getLatestReopening() {
+        if (reopeningRecords == null || reopeningRecords.isEmpty()) {
+            return null;
+        }
+        return reopeningRecords.get(0); // Ordered by reopenedAt DESC
+    }
+    
+    /**
+     * Check if the case can be reopened (currently closed)
+     */
+    public boolean canBeReopened() {
+        return procedureStatus == ProcedureStatus.CLOSED;
+    }
+    
+    /**
+     * Add a new reopening record
+     */
+    public void addReopeningRecord(ReopeningRecord reopeningRecord) {
+        if (reopeningRecords == null) {
+            reopeningRecords = new ArrayList<>();
+        }
+        reopeningRecord.setReopeningSequence(getReopenCount() + 1);
+        reopeningRecords.add(reopeningRecord);
     }
 }

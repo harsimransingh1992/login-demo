@@ -1,0 +1,22 @@
+<?xml version="1.0" encoding="UTF-8"?>
+<svg width="80" height="80" viewBox="0 0 80 80" fill="none" xmlns="http://www.w3.org/2000/svg">
+    <!-- Tooth crown -->
+    <path d="M40 15C30 15 22 23 22 33C22 43 30 51 40 51C50 51 58 43 58 33C58 23 50 15 40 15Z" fill="#E8F4F8"/>
+    <path d="M40 15C30 15 22 23 22 33C22 43 30 51 40 51C50 51 58 43 58 33C58 23 50 15 40 15Z" stroke="#3498db" stroke-width="2"/>
+    
+    <!-- Tooth root -->
+    <path d="M35 51V65C35 67.7614 37.2386 70 40 70C42.7614 70 45 67.7614 45 65V51" stroke="#3498db" stroke-width="2"/>
+    
+    <!-- Dental drill -->
+    <path d="M25 35L45 45" stroke="#3498db" stroke-width="2" stroke-linecap="round"/>
+    <circle cx="25" cy="35" r="4" fill="#3498db"/>
+    <path d="M20 35L30 35" stroke="#3498db" stroke-width="2" stroke-linecap="round"/>
+    
+    <!-- Dental mirror -->
+    <path d="M45 30C45 30 50 35 50 40C50 45 45 50 45 50" stroke="#3498db" stroke-width="2" stroke-linecap="round"/>
+    <circle cx="45" cy="30" r="2" fill="#3498db"/>
+    
+    <!-- Shine effect -->
+    <path d="M30 25C30 25 35 30 35 35" stroke="#3498db" stroke-width="1" stroke-linecap="round" stroke-dasharray="2 2"/>
+    <path d="M45 25C45 25 50 30 50 35" stroke="#3498db" stroke-width="1" stroke-linecap="round" stroke-dasharray="2 2"/>
+</svg> 

@@ -48,4 +48,47 @@ public class Appointment {
     @Column(name = "notes", length = 1000)
     private String notes;
 
+    // Reschedule tracking fields
+    @Column(name = "original_appointment_date_time")
+    private LocalDateTime originalAppointmentDateTime;
+    
+    @Column(name = "rescheduled_count")
+    private Integer rescheduledCount = 0;
+    
+    @ManyToOne(fetch = FetchType.EAGER)
+    @JoinColumn(name = "last_rescheduled_by_id")
+    private User lastRescheduledBy;
+    
+    @Column(name = "last_rescheduled_at")
+    private LocalDateTime lastRescheduledAt;
+    
+    @Column(name = "reschedule_reason", length = 500)
+    private String rescheduleReason;
+    
+    // Helper methods for multiple reschedules
+    public boolean isRescheduled() {
+        return originalAppointmentDateTime != null;
+    }
+    
+    public boolean canBeRescheduled() {
+        // Business rule: max 3 reschedules allowed
+        return (rescheduledCount == null || rescheduledCount < 3) && 
+               (status == AppointmentStatus.SCHEDULED);
+    }
+    
+    public String getRescheduleHistory() {
+        if (rescheduledCount == null || rescheduledCount == 0) {
+            return "Not rescheduled";
+        }
+        return String.format("Rescheduled %d time(s)", rescheduledCount);
+    }
+    
+    public int getRemainingReschedules() {
+        return Math.max(0, 3 - (rescheduledCount != null ? rescheduledCount : 0));
+    }
+    
+    public boolean isAtMaxReschedules() {
+        return rescheduledCount != null && rescheduledCount >= 3;
+    }
+
 } 

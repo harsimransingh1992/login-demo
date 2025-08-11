@@ -522,6 +522,25 @@
             visibility: visible;
             opacity: 1;
         }
+        
+        /* Sortable table header styles */
+        .sortable-header {
+            cursor: pointer;
+            transition: background-color 0.2s ease;
+            user-select: none;
+        }
+        
+        .sortable-header:hover {
+            background-color: rgba(52, 152, 219, 0.1);
+        }
+        
+        .sortable-header i {
+            transition: transform 0.2s ease;
+        }
+        
+        .sortable-header:hover i {
+            transform: scale(1.1);
+        }
     </style>
 </head>
 <body>
@@ -571,15 +590,21 @@
                             <table class="table">
                                 <thead>
                                     <tr>
+                                        <th style="width: 60px;">#</th>
                                         <th>Patient Name</th>
-                                        <th>Check-in Time</th>
+                                        <th class="sortable-header" onclick="sortTable()">
+                                            Check-in Time <i class="fas fa-sort" style="margin-left: 5px; color: #3498db;"></i>
+                                        </th>
                                         <th>Waiting Time</th>
                                         <th style="text-align: center;">Actions</th>
                                     </tr>
                                 </thead>
                                 <tbody>
-                                    <c:forEach items="${waitingPatients}" var="patient">
+                                    <c:forEach items="${waitingPatients}" var="patient" varStatus="status">
                                         <tr>
+                                            <td style="text-align: center; font-weight: bold; color: #3498db;">
+                                                ${status.count}
+                                            </td>
                                             <td>
                                                 <div class="patient-info">
                                                     <c:choose>
@@ -726,6 +751,78 @@
                     notification.parentNode.removeChild(notification);
                 }
             }, 3000);
+        }
+        
+        // Table sorting functionality
+        let sortDirection = 'asc'; // Default sort is ascending (earliest first)
+        
+        function sortTable() {
+            const table = document.querySelector('.table');
+            const tbody = table.querySelector('tbody');
+            const rows = Array.from(tbody.querySelectorAll('tr'));
+            
+            // Toggle sort direction
+            sortDirection = sortDirection === 'asc' ? 'desc' : 'asc';
+            
+            // Update sort icon
+            const sortIcon = document.querySelector('.sortable-header i');
+            sortIcon.className = sortDirection === 'asc' ? 'fas fa-sort-up' : 'fas fa-sort-down';
+            
+            // Sort rows based on check-in time
+            rows.sort((a, b) => {
+                const timeA = getCheckInTime(a);
+                const timeB = getCheckInTime(b);
+                
+                if (timeA === null && timeB === null) return 0;
+                if (timeA === null) return 1;
+                if (timeB === null) return -1;
+                
+                if (sortDirection === 'asc') {
+                    return timeA - timeB;
+                } else {
+                    return timeB - timeA;
+                }
+            });
+            
+            // Reorder rows in the table
+            rows.forEach(row => tbody.appendChild(row));
+            
+            // Update row numbers
+            updateRowNumbers();
+            
+            // Show notification
+            const direction = sortDirection === 'asc' ? 'earliest first' : 'latest first';
+            showNotification(`Sorted by check-in time: ${direction}`, false);
+        }
+        
+        function getCheckInTime(row) {
+            const timeCell = row.querySelector('td:nth-child(3)'); // Check-in time column
+            const timeText = timeCell.textContent.trim();
+            
+            if (timeText === 'Not available') return null;
+            
+            // Parse time like "02:30 PM" to get minutes since midnight
+            const timeMatch = timeText.match(/(\d{1,2}):(\d{2})\s*(AM|PM)/i);
+            if (!timeMatch) return null;
+            
+            let hours = parseInt(timeMatch[1]);
+            const minutes = parseInt(timeMatch[2]);
+            const period = timeMatch[3].toUpperCase();
+            
+            if (period === 'PM' && hours !== 12) hours += 12;
+            if (period === 'AM' && hours === 12) hours = 0;
+            
+            return hours * 60 + minutes;
+        }
+        
+        function updateRowNumbers() {
+            const rows = document.querySelectorAll('.table tbody tr');
+            rows.forEach((row, index) => {
+                const numberCell = row.querySelector('td:first-child');
+                if (numberCell) {
+                    numberCell.textContent = index + 1;
+                }
+            });
         }
         
         // Image Modal functionality

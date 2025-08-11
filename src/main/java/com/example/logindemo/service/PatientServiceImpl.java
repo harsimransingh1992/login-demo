@@ -97,6 +97,7 @@ public class PatientServiceImpl implements PatientService{
                     checkInRecordRepository.save(patient.getCurrentCheckInRecord());
                 }
                 patient.setCurrentCheckInRecord(null);
+                
                 patientRepository.save(patient);
                 log.info("Successfully unchecked patient with ID: {}", patientId);
             } else {
@@ -118,6 +119,7 @@ public class PatientServiceImpl implements PatientService{
                         checkInRecordRepository.save(patient.getCurrentCheckInRecord());
                     }
                     patient.setCurrentCheckInRecord(null);
+                    
                     patientRepository.save(patient);
                     log.info("Successfully unchecked patient with ID using fallback method: {}", patientId);
                 }
@@ -161,6 +163,9 @@ public class PatientServiceImpl implements PatientService{
             
             // Set referralOther
             patient.setReferralOther(patientDTO.getReferralOther());
+            
+            // Set color code
+            patient.setColorCode(patientDTO.getColorCode());
             
             // Set audit fields
             patient.setCreatedBy(currentUser);
@@ -209,29 +214,15 @@ public class PatientServiceImpl implements PatientService{
     }
 
     /**
-     * Generates a registration code in the format SDC+YYYY+MM+sequence
+     * Generates a registration code as a simple sequential number starting from 1
      * @return the generated registration code
      */
     private String generateRegistrationCode() {
-        LocalDateTime now = LocalDateTime.now();
-        String year = String.valueOf(now.getYear());
-        String month = String.format("%02d", now.getMonthValue());
+        // Get the total count of patients and add 1 for the new patient
+        long sequence = patientRepository.count() + 1;
         
-        // Get the count of patients registered in the current month
-        Calendar calendar = Calendar.getInstance();
-        calendar.set(Calendar.DAY_OF_MONTH, 1);
-        calendar.set(Calendar.HOUR_OF_DAY, 0);
-        calendar.set(Calendar.MINUTE, 0);
-        calendar.set(Calendar.SECOND, 0);
-        Date startOfMonth = calendar.getTime();
-        
-        calendar.add(Calendar.MONTH, 1);
-        Date endOfMonth = calendar.getTime();
-        
-        long sequence = patientRepository.countByRegistrationDateBetween(startOfMonth, endOfMonth) + 1;
-        
-        // Format: SDC+YYYY+MM+sequence (padded to 4 digits)
-        return String.format("SDC%s%s%04d", year, month, sequence);
+        // Return just the sequence number as a string
+        return String.valueOf(sequence);
     }
 
     @Override
@@ -376,9 +367,6 @@ public class PatientServiceImpl implements PatientService{
             ToothClinicalExamination examination = examinationOpt.get();
             
             // Update only the fields that can be changed
-            if (request.getToothSurface() != null) {
-                examination.setToothSurface(request.getToothSurface());
-            }
             if (request.getToothCondition() != null) {
                 examination.setToothCondition(request.getToothCondition());
             }
@@ -580,6 +568,9 @@ public class PatientServiceImpl implements PatientService{
                     existingPatient.setReferralModel(ReferralModel.OTHER);
                 }
             }
+            
+            // Update color code
+            existingPatient.setColorCode(patientDTO.getColorCode());
             
             // Save the updated patient
             patientRepository.save(existingPatient);

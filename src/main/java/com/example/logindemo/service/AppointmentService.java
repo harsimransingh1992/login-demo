@@ -1,6 +1,8 @@
 package com.example.logindemo.service;
 
+import com.example.logindemo.dto.RescheduleAppointmentDTO;
 import com.example.logindemo.model.Appointment;
+import com.example.logindemo.model.AppointmentHistory;
 import com.example.logindemo.model.AppointmentStatus;
 import com.example.logindemo.model.ClinicModel;
 import com.example.logindemo.model.User;
@@ -10,6 +12,7 @@ import org.springframework.security.core.Authentication;
 
 import java.time.LocalDateTime;
 import java.util.List;
+import java.util.Map;
 
 public interface AppointmentService {
     List<Appointment> getTodayAppointments();
@@ -36,4 +39,13 @@ public interface AppointmentService {
     Page<Appointment> getAppointmentsByDateRangeAndClinicPaginated(LocalDateTime startDate, LocalDateTime endDate, ClinicModel clinic, Pageable pageable);
     Page<Appointment> getUpcomingAppointmentsForUserInClinicPaginated(User user, ClinicModel clinic, Pageable pageable);
     Page<Appointment> getAppointmentsByDateRangeAndClinicAndStatusPaginated(LocalDateTime startDate, LocalDateTime endDate, ClinicModel clinic, AppointmentStatus status, Pageable pageable);
+    
+    // Enhanced reschedule methods
+    Appointment rescheduleAppointment(RescheduleAppointmentDTO dto, User currentUser);
+    List<AppointmentHistory> getAppointmentHistory(Long appointmentId);
+    List<AppointmentHistory> getRescheduleHistory(Long appointmentId);
+    boolean canReschedule(Appointment appointment);
+    void validateRescheduleRequest(RescheduleAppointmentDTO dto);
+    int getRemainingReschedules(Long appointmentId);
+    Map<String, Object> getRescheduleSummary(Long appointmentId);
 } 

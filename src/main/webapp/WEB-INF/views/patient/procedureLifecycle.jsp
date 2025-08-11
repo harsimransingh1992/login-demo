@@ -11,10 +11,15 @@
     <title>Procedure Lifecycle - PeriDesk</title>
     <meta name="viewport" content="width=device-width, initial-scale=1.0">
     <link rel="stylesheet" href="${pageContext.request.contextPath}/css/style.css">
+    <link rel="stylesheet" href="${pageContext.request.contextPath}/css/color-code-component.css">
+    <link rel="stylesheet" href="${pageContext.request.contextPath}/css/chairside-note-component.css">
     <link href="https://fonts.googleapis.com/css2?family=Poppins:wght@300;400;500;600;700&display=swap" rel="stylesheet">
     <link rel="stylesheet" href="https://cdnjs.cloudflare.com/ajax/libs/font-awesome/6.4.0/css/all.min.css">
     <script src="https://code.jquery.com/jquery-3.6.4.min.js"></script>
     <script src="${pageContext.request.contextPath}/js/imageCompression.js"></script>
+    <script src="${pageContext.request.contextPath}/js/imagePerformanceMonitor.js"></script>
+    <script src="${pageContext.request.contextPath}/js/color-code-component.js"></script>
+    <script src="${pageContext.request.contextPath}/js/chairside-note-component.js"></script>
     
     <!-- Include common menu styles -->
     <jsp:include page="/WEB-INF/views/common/menuStyles.jsp" />
@@ -97,6 +102,44 @@
             border: none;
         }
         
+        /* Image loading optimization styles */
+        .image-loading {
+            opacity: 0;
+            transition: opacity 0.3s ease-in-out;
+        }
+        
+        .image-loaded {
+            opacity: 1;
+        }
+        
+        .image-error {
+            display: flex;
+            align-items: center;
+            justify-content: center;
+            height: 100%;
+            color: #e74c3c;
+            background: #f8f9fa;
+            border: 1px dashed #dee2e6;
+            border-radius: 8px;
+            padding: 20px;
+        }
+        
+        .image-loading-spinner {
+            display: inline-block;
+            width: 20px;
+            height: 20px;
+            border: 2px solid #f3f3f3;
+            border-top: 2px solid #3498db;
+            border-radius: 50%;
+            animation: spin 1s linear infinite;
+            margin-right: 10px;
+        }
+        
+        @keyframes spin {
+            0% { transform: rotate(0deg); }
+            100% { transform: rotate(360deg); }
+        }
+        
         .btn-primary {
             background: linear-gradient(135deg, #3498db, #2980b9);
             color: white;
@@ -106,6 +149,35 @@
             background: linear-gradient(135deg, #2980b9, #1c6ea4);
             transform: translateY(-2px);
             box-shadow: 0 4px 12px rgba(52, 152, 219, 0.2);
+        }
+        
+        /* Ensure button styling is not overridden */
+        .welcome-header .btn {
+            display: inline-flex !important;
+            align-items: center !important;
+            justify-content: center !important;
+            gap: 8px !important;
+            padding: 10px 20px !important;
+            border-radius: 8px !important;
+            cursor: pointer !important;
+            transition: all 0.3s ease !important;
+            font-family: 'Poppins', sans-serif !important;
+            font-weight: 500 !important;
+            font-size: 0.9rem !important;
+            text-decoration: none !important;
+            text-align: center !important;
+            border: none !important;
+        }
+        
+        .welcome-header .btn-primary {
+            background: linear-gradient(135deg, #3498db, #2980b9) !important;
+            color: white !important;
+        }
+        
+        .welcome-header .btn-primary:hover {
+            background: linear-gradient(135deg, #2980b9, #1c6ea4) !important;
+            transform: translateY(-2px) !important;
+            box-shadow: 0 4px 12px rgba(52, 152, 219, 0.2) !important;
         }
         
         .btn-secondary {
@@ -435,6 +507,26 @@
             background-color: #ebecf0;
         }
         
+        .status-dropdown-btn.disabled {
+            opacity: 0.5;
+            cursor: not-allowed;
+            pointer-events: none;
+        }
+        
+        .status-dropdown-btn.disabled:hover {
+            background-color: #f4f5f7;
+        }
+        
+        .status-dropdown-btn.cancelled {
+            opacity: 0.5;
+            cursor: not-allowed;
+            pointer-events: none;
+        }
+        
+        .status-dropdown-btn.cancelled:hover {
+            background-color: #f4f5f7;
+        }
+        
         .status-dropdown-btn .current-status {
             display: flex;
             align-items: center;
@@ -446,6 +538,11 @@
             transition: transform 0.2s;
         }
         
+        .status-dropdown-content.show + .status-dropdown-btn .dropdown-icon,
+        .status-dropdown-btn .dropdown-icon.open {
+            transform: rotate(180deg);
+        }
+        
         .status-dropdown-content {
             display: none;
             position: absolute;
@@ -453,12 +550,13 @@
             background-color: #fff;
             border-radius: 3px;
             box-shadow: 0 4px 8px rgba(9, 30, 66, 0.25);
-            z-index: 10;
+            z-index: 1000;
             max-height: 400px;
             overflow-y: auto;
             top: 100%;
             left: 0;
             margin-top: 4px;
+            border: 1px solid #dfe1e6;
         }
         
         .status-dropdown-content.show {
@@ -550,6 +648,15 @@
                 gap: 10px;
             }
             
+            .main-layout {
+                grid-template-columns: 1fr !important;
+                gap: 15px !important;
+            }
+            
+            .clinical-info-layout {
+                grid-template-columns: 1fr !important;
+            }
+            
             .lifecycle-timeline {
                 padding-left: 30px;
             }
@@ -562,7 +669,7 @@
                 flex-direction: column;
             }
             
-            .btn {
+            .action-buttons .btn {
                 width: 100%;
             }
             
@@ -579,6 +686,57 @@
             .status-dropdown-content {
                 width: 100%;
             }
+            
+            .quick-actions {
+                flex-direction: column;
+            }
+            
+            .btn-quick {
+                width: 100%;
+                justify-content: flex-start;
+            }
+        }
+        
+        /* Additional styling for better visual hierarchy */
+        .main-layout {
+            margin-bottom: 30px;
+        }
+        
+        .left-column, .right-column {
+            display: flex;
+            flex-direction: column;
+            gap: 20px;
+        }
+        
+        .clinical-card {
+            transition: all 0.3s ease;
+        }
+        
+        .clinical-card:hover {
+            box-shadow: 0 4px 16px rgba(0,0,0,0.1);
+            transform: translateY(-2px);
+        }
+        
+        /* Disable all hover effects when any modal is visible */
+        .modal[style*="display: block"] ~ * *:hover,
+        .modal[style*="display: block"] *:hover {
+            transform: none !important;
+            box-shadow: inherit !important;
+            background-color: inherit !important;
+        }
+        
+        .clinical-card-header {
+            background: linear-gradient(135deg, #f8f9fa 0%, #e9ecef 100%);
+        }
+        
+        .clinical-card-header h3 {
+            color: #495057;
+            font-weight: 600;
+        }
+        
+        .clinical-card-header h3 i {
+            color: #6c757d;
+            margin-right: 8px;
         }
         
         /* New Clinical Interface Styles */
@@ -625,6 +783,13 @@
             display: grid;
             grid-template-columns: 1fr 1fr;
             gap: 20px;
+            position: relative;
+            z-index: 1;
+        }
+        
+        .clinical-info-column {
+            position: relative;
+            z-index: 1;
         }
         
         .clinical-card {
@@ -1035,19 +1200,262 @@
             opacity: 1;
         }
         
-        /* X-ray Upload Modal Styles */
+        /* Simple Modal Styles */
         .modal {
             display: none;
             position: fixed;
-            z-index: 9999;
+            top: 0;
+            left: 0;
+            width: 100%;
+            height: 100%;
+            background-color: rgba(0, 0, 0, 0.5);
+            backdrop-filter: blur(5px);
+            -webkit-backdrop-filter: blur(5px);
+            z-index: 10000;
+        }
+        
+        .modal-options {
+            display: flex;
+            gap: 10px;
+            margin: 20px 0;
+        }
+        
+        .modal-options .btn {
+            flex: 1;
+        }
+        
+        /* Ensure modal content stays white and properly positioned */
+        .modal .modal-content {
+            background-color: white !important;
+            position: relative;
+            margin: 15% auto;
+            padding: 20px;
+            border-radius: 8px;
+            width: 80%;
+            max-width: 500px;
+            box-shadow: 0 4px 20px rgba(0, 0, 0, 0.3);
+        }
+        
+        /* Prevent modal content from turning black on hover */
+        .modal .modal-content:hover,
+        .modal .modal-content *:hover {
+            background-color: white !important;
+            color: inherit !important;
+        }
+        
+        /* Ensure modal buttons stay properly colored */
+        .modal .btn:hover {
+            background-color: inherit !important;
+            color: inherit !important;
+        }
+        
+        /* Attached Images Styles */
+        .image-card {
+            background: white;
+            border-radius: 12px;
+            box-shadow: 0 4px 12px rgba(0, 0, 0, 0.08);
+            overflow: hidden;
+            transition: all 0.3s ease;
+            border: 1px solid #e9ecef;
+        }
+        
+        .image-card:hover {
+            transform: translateY(-2px);
+            box-shadow: 0 8px 25px rgba(0, 0, 0, 0.12);
+        }
+        
+        .image-card .image-preview {
+            position: relative;
+            height: 180px;
+            overflow: hidden;
+            background: #f8f9fa;
+            display: flex;
+            align-items: center;
+            justify-content: center;
+        }
+        
+        .image-card .image-preview img {
+            width: 100%;
+            height: 100%;
+            object-fit: cover;
+            cursor: pointer;
+            transition: transform 0.3s ease;
+        }
+        
+        .image-card .image-preview img:hover {
+            transform: scale(1.05);
+        }
+        
+        .image-card .image-preview .pdf-thumbnail {
+            width: 100%;
+            height: 100%;
+            display: flex;
+            flex-direction: column;
+            align-items: center;
+            justify-content: center;
+            background: #e3f2fd;
+            cursor: pointer;
+            color: #1976d2;
+        }
+        
+        .image-card .image-preview .pdf-thumbnail i {
+            font-size: 3rem;
+            margin-bottom: 10px;
+        }
+        
+        .image-card .image-preview .pdf-thumbnail .pdf-filename {
+            font-size: 0.9rem;
+            text-align: center;
+            max-width: 90%;
+            word-break: break-word;
+        }
+        
+        .image-card .image-info {
+            padding: 15px;
+        }
+        
+        .image-card .image-type {
+            font-weight: 600;
+            color: #2c3e50;
+            margin-bottom: 8px;
+            font-size: 0.95rem;
+        }
+        
+        .image-card .image-upload-date {
+            color: #7f8c8d;
+            font-size: 0.85rem;
+            margin-bottom: 12px;
+        }
+        
+        .image-card .image-actions {
+            display: flex;
+            gap: 8px;
+            flex-wrap: wrap;
+        }
+        
+        .image-card .image-actions .btn {
+            flex: 1;
+            min-width: 80px;
+            font-size: 0.8rem;
+            padding: 6px 12px;
+        }
+        
+        .image-card .image-actions .btn i {
+            margin-right: 4px;
+        }
+        
+        /* Image Modal Styles */
+        .image-modal {
+            display: none;
+            position: fixed;
+            z-index: 10000;
             left: 0;
             top: 0;
             width: 100%;
             height: 100%;
-            background-color: rgba(0, 0, 0, 0.6);
-            overflow-y: auto;
+            background-color: rgba(0, 0, 0, 0.8);
+            backdrop-filter: blur(5px);
+        }
+        
+        .image-modal.show {
+            display: block;
+        }
+        
+        .image-modal-content {
+            position: relative;
+            margin: 2% auto;
+            padding: 0;
+            width: 90%;
+            max-width: 800px;
+            max-height: 90vh;
+            background: white;
+            border-radius: 12px;
+            overflow: hidden;
+            box-shadow: 0 20px 60px rgba(0, 0, 0, 0.3);
+        }
+        
+        .image-modal-header {
+            display: flex;
+            justify-content: space-between;
+            align-items: center;
             padding: 20px;
-            box-sizing: border-box;
+            background: #f8f9fa;
+            border-bottom: 1px solid #dee2e6;
+        }
+        
+        .image-modal-header h3 {
+            margin: 0;
+            color: #2c3e50;
+            font-size: 1.2rem;
+        }
+        
+        .image-modal-close {
+            background: none;
+            border: none;
+            font-size: 1.5rem;
+            cursor: pointer;
+            color: #6c757d;
+            padding: 5px;
+            border-radius: 50%;
+            width: 35px;
+            height: 35px;
+            display: flex;
+            align-items: center;
+            justify-content: center;
+            transition: all 0.3s ease;
+        }
+        
+        .image-modal-close:hover {
+            background: #e9ecef;
+            color: #495057;
+        }
+        
+        .image-modal-body {
+            padding: 0;
+            text-align: center;
+            max-height: 70vh;
+            overflow: auto;
+        }
+        
+        .image-modal-body img {
+            max-width: 100%;
+            max-height: 70vh;
+            object-fit: contain;
+        }
+        
+        .image-modal-body iframe {
+            width: 100%;
+            height: 70vh;
+            border: none;
+        }
+        
+        /* Collapsible Images Section Styles */
+        .attached-images-section .section-header {
+            background: linear-gradient(135deg, #f8f9fa 0%, #e9ecef 100%);
+            border: 1px solid #dee2e6;
+            border-radius: 8px;
+            padding: 15px 20px;
+            transition: all 0.3s ease;
+            user-select: none;
+        }
+        
+        .attached-images-section .section-header:hover {
+            background: linear-gradient(135deg, #e9ecef 0%, #dee2e6 100%);
+            box-shadow: 0 2px 8px rgba(0, 0, 0, 0.1);
+        }
+        
+        .attached-images-section .section-header:active {
+            transform: translateY(1px);
+        }
+        
+        #imagesToggleIcon {
+            color: #6c757d;
+            transition: transform 0.3s ease;
+        }
+        
+        #imagesSectionContent {
+            transition: all 0.3s ease;
+            overflow: hidden;
         }
         
         .modal-content {
@@ -1062,6 +1470,7 @@
             box-shadow: 0 15px 40px rgba(0, 0, 0, 0.4);
             animation: modalSlideIn 0.3s ease-out;
             position: relative;
+            z-index: 9999;
         }
         
         @keyframes modalSlideIn {
@@ -1510,19 +1919,19 @@
         }
         
         .follow-up-card.scheduled {
-            border-left: 4px solid #ffc107;
+            border-left: 4px solid #f39c12;
         }
         
         .follow-up-card.completed {
-            border-left: 4px solid #28a745;
+            border-left: 4px solid #27ae60;
         }
         
         .follow-up-card.cancelled {
-            border-left: 4px solid #dc3545;
+            border-left: 4px solid #e74c3c;
         }
         
         .follow-up-card.no_show {
-            border-left: 4px solid #6c757d;
+            border-left: 4px solid #95a5a6;
         }
         
         .follow-up-header {
@@ -1572,23 +1981,23 @@
         }
         
         .status-badge.scheduled {
-            background: #fff3cd;
-            color: #856404;
+            background: #f39c12;
+            color: #ffffff;
         }
         
         .status-badge.completed {
-            background: #d4edda;
-            color: #155724;
+            background: #27ae60;
+            color: #ffffff;
         }
         
         .status-badge.cancelled {
-            background: #f8d7da;
-            color: #721c24;
+            background: #e74c3c;
+            color: #ffffff;
         }
         
         .status-badge.no_show {
-            background: #e2e3e5;
-            color: #383d41;
+            background: #95a5a6;
+            color: #ffffff;
         }
         
         .latest-badge {
@@ -1728,14 +2137,14 @@
                             </div>
                             <div class="follow-up-history" style="display: flex; flex-direction: column; gap: 15px;">
                                 <c:forEach var="followUp" items="${followUpRecords}" varStatus="status">
-                                    <div class="follow-up-card ${followUp.status.name().toLowerCase()}" style="background: white; border-radius: 12px; padding: 20px; box-shadow: 0 4px 16px rgba(0,0,0,0.1); border-left: 4px solid; transition: all 0.3s ease; ${followUp.status.name() == 'SCHEDULED' ? 'border-left-color: #f39c12;' : followUp.status.name() == 'COMPLETED' ? 'border-left-color: #27ae60;' : followUp.status.name() == 'CANCELLED' ? 'border-left-color: #e74c3c;' : 'border-left-color: #95a5a6;'}">
+                                    <div class="follow-up-card ${followUp.status.name().toLowerCase()}" style="background: white; border-radius: 12px; padding: 20px; box-shadow: 0 4px 16px rgba(0,0,0,0.1); transition: all 0.3s ease;">
                                         <div class="follow-up-header" style="display: flex; justify-content: space-between; align-items: center; margin-bottom: 15px;">
                                             <div class="follow-up-number" style="display: flex; align-items: center; gap: 12px;">
                                                 <span class="sequence-badge" style="background: linear-gradient(135deg, #3498db, #2980b9); color: white; padding: 6px 12px; border-radius: 20px; font-size: 0.8rem; font-weight: 700;">${followUp.sequenceNumber}</span>
                                                 <h4 style="margin: 0; color: #2c3e50; font-size: 1.1rem;">${followUp.followUpNumber}</h4>
                                             </div>
                                             <div class="follow-up-status" style="display: flex; align-items: center; gap: 8px;">
-                                                <span class="status-badge ${followUp.status.name().toLowerCase()}" style="padding: 6px 12px; border-radius: 20px; font-size: 0.8rem; font-weight: 600; color: white; ${followUp.status.name() == 'SCHEDULED' ? 'background: #f39c12;' : followUp.status.name() == 'COMPLETED' ? 'background: #27ae60;' : followUp.status.name() == 'CANCELLED' ? 'background: #e74c3c;' : 'background: #95a5a6;'}">
+                                                <span class="status-badge ${followUp.status.name().toLowerCase()}" style="padding: 6px 12px; border-radius: 20px; font-size: 0.8rem; font-weight: 600;">
                                                         ${followUp.status.label}
                                                 </span>
                                                 <c:if test="${followUp.isLatest}">
@@ -1989,14 +2398,488 @@
                 </div>
             </div>
             <!-- End Collapsible Follow-up Section -->
+            
+            <!-- Image Modal for Viewing Attached Images -->
+            <div id="imageModal" class="image-modal">
+                <div class="image-modal-content">
+                    <div class="image-modal-header">
+                        <h3 id="imageModalTitle">Image View</h3>
+                        <button type="button" class="image-modal-close" onclick="closeImageModal()">
+                            <i class="fas fa-times"></i>
+                        </button>
+                    </div>
+                    <div class="image-modal-body" id="imageModalBody">
+                        <!-- Image or PDF will be displayed here -->
+                    </div>
+                </div>
+            </div>
 
             <script>
+            // Global modal functions - defined immediately for onclick attributes
+            window.showXrayUploadModal = function() {
+                const modal = document.getElementById('xrayUploadModal');
+                if (modal) {
+                    modal.style.display = 'block';
+                }
+            };
+            
+            window.closeXrayUploadModal = function() {
+                const modal = document.getElementById('xrayUploadModal');
+                if (modal) {
+                    modal.style.display = 'none';
+                }
+            };
+            
+            window.showXrayConfirmationModal = function() {
+                const modal = document.getElementById('xrayConfirmationModal');
+                if (modal) {
+                    modal.style.display = 'block';
+                }
+            };
+            
+            window.closeXrayConfirmationModal = function() {
+                const modal = document.getElementById('xrayConfirmationModal');
+                if (modal) {
+                    modal.style.display = 'none';
+                }
+            };
+            
+            window.showPaymentPendingModal = function() {
+                const modal = document.getElementById('paymentPendingModal');
+                if (modal) {
+                    modal.style.display = 'block';
+                }
+            };
+            
+            window.closePaymentPendingModal = function() {
+                const modal = document.getElementById('paymentPendingModal');
+                if (modal) {
+                    modal.style.display = 'none';
+                }
+            };
+            
+            // Add event listener for the simplified X-ray upload modal
+            document.addEventListener('DOMContentLoaded', function() {
+                const confirmXrayUploadBtn = document.getElementById('confirmXrayUpload');
+                if (confirmXrayUploadBtn) {
+                    confirmXrayUploadBtn.addEventListener('click', async function() {
+                        console.log('Upload Images button clicked');
+                        
+                        const fileInput = document.getElementById('xray-upload');
+                        const files = fileInput.files;
+                        
+                        if (!files || files.length === 0) {
+                            alert('Please select at least one image to upload.');
+                            return;
+                        }
+                        
+                        // Disable button and show loading
+                        confirmXrayUploadBtn.disabled = true;
+                        confirmXrayUploadBtn.innerHTML = '<i class="fas fa-spinner fa-spin"></i> Uploading...';
+                        
+                        try {
+                            const examinationId = document.getElementById('examinationId').value;
+                            const formData = new FormData();
+                            
+                            // Add all selected files
+                            for (let i = 0; i < files.length; i++) {
+                                formData.append('xrayPictures', files[i]);
+                            }
+                            
+                            // CSRF token
+                            const token = $("meta[name='_csrf']").attr("content");
+                            const header = $("meta[name='_csrf_header']").attr("content");
+                            
+                            console.log('Uploading files to examination:', examinationId);
+                            
+                            // Upload X-ray images
+                            const response = await fetch(
+                                `${pageContext.request.contextPath}/patients/examination/${examinationId}/upload-xray`,
+                                {
+                                    method: 'POST',
+                                    headers: { [header]: token },
+                                    body: formData
+                                }
+                            );
+                            
+                            if (response.ok) {
+                                console.log('Images uploaded successfully, now closing case');
+                                
+                                // Images uploaded, now close the case
+                                const statusResponse = await fetch(
+                                    `${pageContext.request.contextPath}/patients/update-procedure-status`,
+                                    {
+                                        method: 'POST',
+                                        headers: {
+                                            'Content-Type': 'application/json',
+                                            [header]: token
+                                        },
+                                        body: JSON.stringify({ examinationId: examinationId, status: 'CLOSED' })
+                                    }
+                                );
+                                
+                                console.log('Status update response status:', statusResponse.status);
+                                console.log('Status update response ok:', statusResponse.ok);
+                                
+                                if (statusResponse.ok) {
+                                    const statusResult = await statusResponse.json();
+                                    console.log('Status update result:', statusResult);
+                                    alert('Images uploaded and case closed successfully!');
+                                    document.getElementById('xrayUploadModal').style.display = 'none';
+                                    window.location.reload();
+                                } else {
+                                    const statusErrorText = await statusResponse.text();
+                                    console.error('Status update failed. Response:', statusErrorText);
+                                    
+                                    // Check if it's a payment pending error
+                                    if (statusErrorText.includes('payment') && statusErrorText.includes('pending')) {
+                                        showPaymentPendingModal();
+                                    } else {
+                                        alert('Images uploaded, but failed to close the case. Error: ' + statusErrorText);
+                                    }
+                                }
+                            } else {
+                                let errorMsg = 'Failed to upload images.';
+                                try {
+                                    const errorData = await response.json();
+                                    if (errorData && errorData.message) errorMsg = errorData.message;
+                                } catch (e) {}
+                                alert(errorMsg);
+                            }
+                        } catch (error) {
+                            console.error('Error uploading images:', error);
+                            alert('Error uploading images. Please try again.');
+                        } finally {
+                            // Reset button
+                            confirmXrayUploadBtn.disabled = false;
+                            confirmXrayUploadBtn.innerHTML = '<i class="fas fa-check"></i> Upload Images';
+                        }
+                    });
+                }
+            });
+            
+            window.selectXrayOption = function(option) {
+                console.log('=== SELECT XRAY OPTION CALLED ===');
+                console.log('Option:', option);
+                console.log('window.pendingStatusUpdate:', window.pendingStatusUpdate);
+                
+                closeXrayConfirmationModal();
+                
+                if (option === 'upload') {
+                    console.log('Opening upload modal');
+                    const xrayUploadModal = document.getElementById('xrayUploadModal');
+                    if (xrayUploadModal) {
+                        xrayUploadModal.style.display = 'block';
+                    }
+                } else if (option === 'close') {
+                    console.log('User chose to close without X-ray, proceeding with status update');
+                    console.log('window.pendingStatusUpdate value:', window.pendingStatusUpdate);
+                    
+                    // Check current payment status before proceeding
+                    const paymentStatusElement = document.querySelector('.payment-status');
+                    if (paymentStatusElement) {
+                        const currentPaymentStatus = paymentStatusElement.textContent.trim();
+                        console.log('Current payment status on page:', currentPaymentStatus);
+                        
+                        if (currentPaymentStatus.includes('PENDING') || currentPaymentStatus.includes('pending')) {
+                            console.log('Payment still shows as pending, showing payment modal');
+                            showPaymentPendingModal();
+                            return;
+                        }
+                    }
+                    
+                    // Continue with the status update without X-ray
+                    if (window.pendingStatusUpdate) {
+                        console.log('Using pendingStatusUpdate:', window.pendingStatusUpdate);
+                        updateProcedureStatusDirect(window.pendingStatusUpdate);
+                    } else {
+                        console.log('No pendingStatusUpdate, using fallback CLOSED');
+                        // Fallback: directly update to CLOSED status
+                        updateProcedureStatusDirect('CLOSED');
+                    }
+                }
+            };
+            
+            // Simple click outside to close for modals
+            document.addEventListener('DOMContentLoaded', function() {
+                // Add click outside to close for all modals
+                const modals = ['xrayConfirmationModal', 'xrayUploadModal', 'completeFollowUpModal', 'rescheduleFollowUpModal', 'cancelFollowUpModal', 'reopenModal', 'paymentPendingModal'];
+                
+                modals.forEach(function(modalId) {
+                    const modal = document.getElementById(modalId);
+                    if (modal) {
+                        modal.addEventListener('click', function(e) {
+                            if (e.target === modal) {
+                                modal.style.display = 'none';
+                            }
+                        });
+                    }
+                });
+            });
+            
+            window.closeClinicalNotesModal = function() {
+                document.getElementById('clinicalNotesModal').style.display = 'none';
+            };
+            
+            // Image Modal Functions
+            window.openImageModal = function(imageUrl, title) {
+                const modal = document.getElementById('imageModal');
+                const modalTitle = document.getElementById('imageModalTitle');
+                const modalBody = document.getElementById('imageModalBody');
+                
+                console.log('Opening image modal with URL:', imageUrl, 'Title:', title);
+                console.log('Modal elements found:', {
+                    modal: !!modal,
+                    modalTitle: !!modalTitle,
+                    modalBody: !!modalBody
+                });
+                
+                modalTitle.textContent = title || 'Image View';
+                
+                // Check if it's a PDF or image
+                if (imageUrl.toLowerCase().endsWith('.pdf')) {
+                    modalBody.innerHTML = '<iframe src="' + imageUrl + '" title="' + title + '"></iframe>';
+                } else {
+                    modalBody.innerHTML = '<img src="' + imageUrl + '" alt="' + title + '" style="max-width: 100%; max-height: 70vh; object-fit: contain;">';
+                }
+                
+                modal.style.display = 'block';
+                document.body.style.overflow = 'hidden';
+                
+                console.log('Modal opened, body content:', modalBody.innerHTML);
+            };
+            
+            window.closeImageModal = function() {
+                const modal = document.getElementById('imageModal');
+                modal.style.display = 'none';
+                document.body.style.overflow = 'auto';
+            };
+            
+            // Load attached images
+            window.loadAttachedImages = async function() {
+                const examinationId = document.getElementById('examinationId').value;
+                const imagesGrid = document.getElementById('attachedImagesGrid');
+                const noImagesMessage = document.getElementById('noImagesMessage');
+                
+                console.log('Loading attached images for examination ID:', examinationId);
+                
+                try {
+                    const contextPath = ''; // Root context
+                    const url = `${contextPath}/patients/examination/${examinationId}/media-files`;
+                    console.log('Context path:', contextPath);
+                    console.log('Fetching from URL:', url);
+                    
+                    const response = await fetch(url);
+                    console.log('Response status:', response.status);
+                    console.log('Response ok:', response.ok);
+                    
+                    if (!response.ok) {
+                        throw new Error(`HTTP error! status: ${response.status}`);
+                    }
+                    
+                    const result = await response.json();
+                    console.log('API Response:', result);
+                    
+                    if (result.success && result.mediaFiles && result.mediaFiles.length > 0) {
+                        console.log('Found media files:', result.mediaFiles);
+                        displayAttachedImages(result.mediaFiles);
+                        noImagesMessage.style.display = 'none';
+                    } else {
+                        console.log('No media files found or empty response');
+                        imagesGrid.innerHTML = '';
+                        noImagesMessage.style.display = 'block';
+                    }
+                } catch (error) {
+                    console.error('Error loading attached images:', error);
+                    imagesGrid.innerHTML = `<div style="text-align: center; padding: 20px; color: #e74c3c;">
+                        <i class="fas fa-exclamation-triangle" style="font-size: 2rem; margin-bottom: 10px;"></i>
+                        <p>Error loading images: ${error.message}</p>
+                    </div>`;
+                    noImagesMessage.style.display = 'none';
+                }
+            };
+            
+            // Display attached images
+            window.displayAttachedImages = function(mediaFiles) {
+                const imagesGrid = document.getElementById('attachedImagesGrid');
+                console.log('Displaying media files:', mediaFiles);
+                
+                const imagesHtml = mediaFiles.map(file => {
+                    console.log('Processing file:', file);
+                    const displayName = getImageTypeDisplayName(file.fileType);
+                    const filePath = file.filePath;
+                    const fileType = file.fileType;
+                    const fileId = file.id;
+                    const uploadedAt = new Date(file.uploadedAt).toLocaleDateString('en-IN');
+                    
+                    console.log('File details:', {
+                        displayName,
+                        filePath,
+                        fileType,
+                        fileId,
+                        uploadedAt
+                    });
+                    
+                    // Determine if it's an image or PDF
+                    const imageTypes = ['upper_arch', 'lower_arch', 'xray'];
+                    const isImage = imageTypes.includes(fileType);
+                    
+                    if (isImage) {
+                        const contextPath = ''; // Root context
+                        console.log('Before constructing imageSrc - filePath:', filePath, 'type:', typeof filePath);
+                        const imageSrc = contextPath + '/uploads/' + filePath;
+                        console.log('After constructing imageSrc:', imageSrc);
+                        console.log('Image URL:', imageSrc);
+                        console.log('File path:', filePath);
+                        console.log('Full image URL:', imageSrc);
+                        return '<div class="image-card">' +
+                            '<div class="image-preview">' +
+                            '<img src="' + imageSrc + '" alt="' + displayName + '" loading="lazy" onclick="openImageModal(\'' + imageSrc + '\', \'' + displayName + '\')" onerror="this.style.display=\'none\'; this.parentElement.innerHTML=\'<div style=\\\'display: flex; align-items: center; justify-content: center; height: 100%; color: #e74c3c;\\\'><i class=\\\'fas fa-exclamation-triangle\\\'></i> Image not found</div>\';">' +
+                            '</div>' +
+                            '<div class="image-info">' +
+                            '<div class="image-type">' + displayName + '</div>' +
+                            '<div class="image-upload-date">Uploaded: ' + uploadedAt + '</div>' +
+                            '<div class="image-actions">' +
+                            '<button type="button" class="btn btn-primary" onclick="openImageModal(\'' + imageSrc + '\', \'' + displayName + '\')">' +
+                            '<i class="fas fa-eye"></i> View' +
+                            '</button>' +
+                            '<a href="' + imageSrc + '" download="' + filePath.split('/').pop() + '" class="btn btn-success">' +
+                            '<i class="fas fa-download"></i> Download' +
+                            '</a>' +
+                            '</div>' +
+                            '</div>' +
+                            '</div>';
+                    } else {
+                        // Handle PDF files
+                        const contextPath = ''; // Root context
+                        const pdfSrc = contextPath + '/uploads/' + filePath;
+                        const fileName = filePath.split('/').pop();
+                        return '<div class="image-card">' +
+                            '<div class="image-preview">' +
+                            '<div class="pdf-thumbnail" onclick="openImageModal(\'' + pdfSrc + '\', \'' + displayName + '\')">' +
+                            '<i class="fas fa-file-pdf"></i>' +
+                            '<div class="pdf-filename">' + fileName + '</div>' +
+                            '</div>' +
+                            '</div>' +
+                            '<div class="image-info">' +
+                            '<div class="image-type">' + displayName + '</div>' +
+                            '<div class="image-upload-date">Uploaded: ' + uploadedAt + '</div>' +
+                            '<div class="image-actions">' +
+                            '<button type="button" class="btn btn-primary" onclick="openImageModal(\'' + pdfSrc + '\', \'' + displayName + '\')">' +
+                            '<i class="fas fa-eye"></i> View' +
+                            '</button>' +
+                            '<a href="' + pdfSrc + '" download="' + fileName + '" class="btn btn-success">' +
+                            '<i class="fas fa-download"></i> Download' +
+                            '</a>' +
+                            '</div>' +
+                            '</div>' +
+                            '</div>';
+                    }
+                }).join('');
+                
+                imagesGrid.innerHTML = imagesHtml;
+                
+                // Update the images count
+                const imagesCountElement = document.getElementById('imagesCount');
+                if (imagesCountElement) {
+                    imagesCountElement.textContent = mediaFiles.length;
+                }
+            };
+            
+            // Toggle images section
+            window.toggleImagesSection = function() {
+                const content = document.getElementById('imagesSectionContent');
+                const icon = document.getElementById('imagesToggleIcon');
+                const iconElement = icon.querySelector('i');
+                
+                if (content.style.display === 'none') {
+                    // Expand
+                    content.style.display = 'block';
+                    content.style.opacity = '0';
+                    content.style.transform = 'translateY(-10px)';
+                    
+                    setTimeout(() => {
+                        content.style.opacity = '1';
+                        content.style.transform = 'translateY(0)';
+                    }, 10);
+                    
+                    iconElement.classList.remove('fa-chevron-right');
+                    iconElement.classList.add('fa-chevron-down');
+                } else {
+                    // Collapse
+                    content.style.opacity = '0';
+                    content.style.transform = 'translateY(-10px)';
+                    
+                    setTimeout(() => {
+                        content.style.display = 'none';
+                    }, 300);
+                    
+                    iconElement.classList.remove('fa-chevron-down');
+                    iconElement.classList.add('fa-chevron-right');
+                }
+            };
+            
+            // Test function for image modal
+            window.testImageModal = function() {
+                console.log('Testing image modal...');
+                openImageModal('/uploads/dental-images/086b8428-2241-4f97-8d49-05240928fb80.jpeg', 'Test Image');
+            };
+            
+            // Test function to check image URLs
+            window.testImageUrls = async function() {
+                const testUrls = [
+                    '/uploads/dental-images/086b8428-2241-4f97-8d49-05240928fb80.jpeg',
+                    '/uploads/xray-pictures/0bad5d21-99e9-471c-873b-afbd5ac4c428.jpeg',
+                    '/uploads/documents/1997869e-2a35-4677-98f6-17f11bd87fe1.pdf'
+                ];
+                
+                console.log('Testing image URLs...');
+                const results = [];
+                for (const url of testUrls) {
+                    try {
+                        const response = await fetch(url, { method: 'HEAD' });
+                        const result = `${url}: ${response.status} ${response.statusText}`;
+                        console.log(result);
+                        results.push(result);
+                    } catch (error) {
+                        const result = `${url}: Error - ${error.message}`;
+                        console.log(result);
+                        results.push(result);
+                    }
+                }
+                
+                // Show results in an alert
+                alert('Image URL Test Results:\n\n' + results.join('\n'));
+            };
+            
+            // Helper function to get display name for file type
+            window.getImageTypeDisplayName = function(fileType) {
+                switch (fileType) {
+                    case 'upper_arch': return 'Upper Arch';
+                    case 'lower_arch': return 'Lower Arch';
+                    case 'xray': return 'X-Ray Image';
+                    case 'document': return 'Document';
+                    default: return fileType.charAt(0).toUpperCase() + fileType.slice(1).replace('_', ' ');
+                }
+            };
+            
+            // Debug: Check if functions are defined
+            console.log('Modal functions defined:', {
+                showXrayUploadModal: typeof window.showXrayUploadModal,
+                closeXrayUploadModal: typeof window.closeXrayUploadModal,
+                closeClinicalNotesModal: typeof window.closeClinicalNotesModal,
+                openImageModal: typeof window.openImageModal,
+                closeImageModal: typeof window.closeImageModal,
+                loadAttachedImages: typeof window.loadAttachedImages
+            });
+            
             // Ensure all modals are hidden on page load
             document.addEventListener('DOMContentLoaded', function() {
-                // Hide all modals explicitly
+                // Hide all modals explicitly and remove show class
                 const modals = document.querySelectorAll('.modal');
                 modals.forEach(modal => {
                     modal.style.display = 'none';
+                    modal.classList.remove('show');
                 });
                 
                 // Style payment status based on content
@@ -2044,12 +2927,53 @@
                 <meta name="_csrf" content="${_csrf.token}"/>
                 <meta name="_csrf_header" content="${_csrf.headerName}"/>
                 
+                <!-- Attached Images Section -->
+                <div class="attached-images-section" style="margin-bottom: 30px;">
+                    <div class="section-header" style="margin-bottom: 20px; cursor: pointer;" onclick="toggleImagesSection()">
+                        <h3 style="color: #2c3e50; font-size: 1.3rem; font-weight: 600; display: flex; align-items: center; gap: 10px; margin: 0;">
+                            <i class="fas fa-images" style="color: #3498db;"></i>
+                            Attached Images
+                            <span id="imagesCount" style="background: #3498db; color: white; padding: 2px 8px; border-radius: 12px; font-size: 0.8rem; font-weight: 600;">0</span>
+                            <span id="imagesToggleIcon" style="margin-left: auto; transition: transform 0.3s ease;">
+                                <i class="fas fa-chevron-right"></i>
+                            </span>
+                        </h3>
+                    </div>
+                    
+                    <div id="imagesSectionContent" style="display: none;">
+                    
+                    <!-- Images Grid Container -->
+                    <div class="images-grid-container" id="attachedImagesGrid" style="display: grid; grid-template-columns: repeat(auto-fill, minmax(250px, 1fr)); gap: 20px;">
+                        <!-- Images will be loaded here via JavaScript -->
+                        <div class="loading-placeholder" style="text-align: center; padding: 40px; color: #7f8c8d;">
+                            <i class="fas fa-spinner fa-spin" style="font-size: 2rem; margin-bottom: 10px;"></i>
+                            <p>Loading attached images...</p>
+                        </div>
+                    </div>
+                    
+                    <!-- No Images Message (hidden by default) -->
+                    <div class="no-images-message" id="noImagesMessage" style="display: none; text-align: center; padding: 40px; background: #f8f9fa; border-radius: 12px; border: 2px dashed #dee2e6;">
+                        <i class="fas fa-images" style="font-size: 3rem; color: #adb5bd; margin-bottom: 15px;"></i>
+                        <h4 style="color: #6c757d; margin-bottom: 10px;">No Images Attached</h4>
+                        <p style="color: #6c757d; margin: 0;">No images have been uploaded for this examination yet.</p>
+                        <button type="button" class="btn btn-primary" onclick="loadAttachedImages()" style="margin-top: 15px;">
+                            <i class="fas fa-refresh"></i> Retry Loading Images
+                        </button>
+                        <button type="button" class="btn btn-secondary" onclick="testImageUrls()" style="margin-top: 15px; margin-left: 10px;">
+                            <i class="fas fa-test"></i> Test Image URLs
+                        </button>
+                        <button type="button" class="btn btn-info" onclick="testImageModal()" style="margin-top: 15px; margin-left: 10px;">
+                            <i class="fas fa-eye"></i> Test Modal
+                        </button>
+                    </div>
+                    </div>
+                </div>
+                
                 <!-- Top Action Bar with Status and Quick Actions -->
                 <div class="clinical-action-bar">
                     <div class="status-dropdown" id="statusDropdown">
-                        <div class="status-dropdown-btn${scheduledCount > 0 ? ' disabled' : ''}" id="statusDropdownBtn"
-                             style="${examination.procedureStatus == 'CANCELLED' ? 'opacity: 0.5; position: relative; cursor: not-allowed;' : scheduledCount > 0 ? 'opacity: 0.5; position: relative; cursor: not-allowed;' : 'opacity: 1; cursor: pointer; pointer-events: auto;'}"
-                             title="${scheduledCount > 0 ? 'Cannot change status while follow-ups are scheduled. Please complete or cancel all follow-ups first.' : ''}">
+                        <div class="status-dropdown-btn${scheduledCount > 0 && examination.procedureStatus != 'CLOSED' ? ' disabled' : ''}${examination.procedureStatus == 'CANCELLED' ? ' cancelled' : ''}" id="statusDropdownBtn"
+                             title="${scheduledCount > 0 && examination.procedureStatus != 'CLOSED' ? 'Cannot change status while follow-ups are scheduled. Please complete or cancel all follow-ups first.' : examination.procedureStatus == 'CANCELLED' ? 'Cannot change status for cancelled procedures.' : ''}">
                             <span class="current-status">
                                 <span class="status-dot ${fn:toLowerCase(examination.procedureStatus)}"></span>
                                 <span class="status-text">${examination.procedureStatus.label}</span>
@@ -2061,19 +2985,27 @@
                         <div class="status-dropdown-content">
                             <div class="status-dropdown-header">Change status</div>
                             <c:forEach items="${examination.procedureStatus.allowedTransitions}" var="nextStatus">
-                                <div class="status-option" data-status="${nextStatus}">
-                                    <span class="status-dot ${fn:toLowerCase(nextStatus)}"></span>
-                                    <div>
-                                        <div class="status-text">${nextStatus.label}</div>
-                                        <div class="status-description">${nextStatus.description}</div>
+                                <c:if test="${nextStatus != 'REOPEN' || examination.procedureStatus != 'CLOSED'}">
+                                    <div class="status-option" data-status="${nextStatus}">
+                                        <span class="status-dot ${fn:toLowerCase(nextStatus)}"></span>
+                                        <div>
+                                            <div class="status-text">${nextStatus.label}</div>
+                                            <div class="status-description">${nextStatus.description}</div>
+                                        </div>
                                     </div>
-                                </div>
+                                </c:if>
                             </c:forEach>
                         </div>
-                        <c:if test="${scheduledCount > 0}">
+                        <c:if test="${scheduledCount > 0 && examination.procedureStatus != 'CLOSED'}">
                             <div class="status-blocked-message" style="margin-top: 8px; color: #e74c3c; font-size: 0.95rem; font-weight: 600; display: flex; align-items: center; gap: 8px;">
                                 <i class="fas fa-exclamation-triangle"></i>
                                 In order to change status, please close all scheduled follow-ups first.
+                            </div>
+                        </c:if>
+                        <c:if test="${scheduledCount > 0 && examination.procedureStatus == 'CLOSED'}">
+                            <div class="status-info-message" style="margin-top: 8px; color: #3498db; font-size: 0.95rem; font-weight: 600; display: flex; align-items: center; gap: 8px;">
+                                <i class="fas fa-info-circle"></i>
+                                Case is closed but has ${scheduledCount} scheduled follow-up${scheduledCount > 1 ? 's' : ''}. You can manage follow-ups or reopen the case if needed.
                             </div>
                         </c:if>
                     </div>
@@ -2083,54 +3015,13 @@
                             <i class="fas fa-clipboard-list"></i> Clinical Notes
                         </button>
                         <c:if test="${canAttachMoreImages}">
-                            <button class="btn btn-secondary" style="margin-left: 10px;" onclick="document.getElementById('xrayUploadModal').style.display = 'block';">
+                            <button class="btn btn-secondary" id="attachMoreImagesBtn" style="margin-left: 10px;">
                                 <i class="fas fa-paperclip"></i> Attach More Images
                             </button>
                         </c:if>
                         <button class="btn btn-success" id="printPrescriptionBtn" type="button" style="margin-left: 10px;">
                             <i class="fas fa-print"></i> Print Prescription
                         </button>
-                    </div>
-                </div>
-                
-                <!-- X-ray Upload Modal for Attaching More Images -->
-                <div id="xrayUploadModal" class="modal" style="display: none;">
-                    <div class="modal-content">
-                        <div class="modal-header">
-                            <h3><i class="fas fa-paperclip"></i> Attach Additional Images</h3>
-                            <span class="close-modal" id="closeXrayModal">&times;</span>
-                        </div>
-                        <div class="modal-body">
-                            <div class="xray-upload-section">
-                                <p class="upload-description">You can attach additional X-ray or clinical images to this closed case (within 3 days of closure). Drag and drop or click below to select images. You can add more images at any time before uploading.</p>
-                                <div class="xray-upload-container">
-                                    <div class="xray-upload-item">
-                                        <label for="xray-upload" class="upload-label">
-                                            <i class="fas fa-upload"></i> Additional Images
-                                            <span class="required-indicator">*</span>
-                                        </label>
-                                        <div id="xray-dropzone" class="xray-preview" tabindex="0" style="outline: 2px dashed #bdc3c7; outline-offset: -2px; min-height: 120px; display: flex; flex-direction: column; align-items: center; justify-content: center; cursor: pointer; background: #f8f9fa;">
-                                            <i class="fas fa-images" style="font-size: 2.5rem; color: #bdc3c7;"></i>
-                                            <span style="color: #7f8c8d; font-size: 0.95rem;">Click or drag to select one or more images</span>
-                                            <div id="xray-thumbnails" style="display: flex; flex-wrap: wrap; gap: 8px; margin-top: 10px;"></div>
-                                        </div>
-                                        <input type="file" id="xray-upload" name="xrayPictures" accept="image/*" class="xray-file-input" multiple required style="display: none;">
-                                        <button type="button" id="addMoreImagesBtn" class="btn btn-secondary" style="margin-top:10px;">Add More Images</button>
-                                        <div class="upload-status" id="xray-status"></div>
-                                    </div>
-                                </div>
-                                <div class="upload-validation" id="xray-validation">
-                                    <i class="fas fa-info-circle"></i>
-                                    <span>At least one image is required to upload.</span>
-                                </div>
-                            </div>
-                        </div>
-                        <div class="modal-footer">
-                            <button type="button" class="btn btn-secondary" id="cancelXrayUpload">Cancel</button>
-                            <button type="button" class="btn btn-primary" id="confirmXrayUpload" disabled>
-                                <i class="fas fa-check"></i> Upload Images
-                            </button>
-                        </div>
                     </div>
                 </div>
                 
@@ -2161,15 +3052,112 @@
                     </div>
                 </c:if>
                 
+                <!-- Reopen Case Section (only for closed cases) -->
+                <c:if test="${examination.procedureStatus == 'CLOSED'}">
+                    <div class="reopen-section" style="margin: 20px 0; padding: 20px; background: linear-gradient(135deg, #fff3cd 0%, #ffeaa7 100%); border: 1px solid #f39c12; border-radius: 12px; box-shadow: 0 4px 12px rgba(243, 156, 18, 0.15);">
+                        <div style="display: flex; align-items: center; justify-content: space-between; margin-bottom: 15px;">
+                            <div style="display: flex; align-items: center; gap: 10px;">
+                                <i class="fas fa-exclamation-triangle" style="color: #d68910; font-size: 1.2rem;"></i>
+                                <h4 style="margin: 0; color: #d68910; font-weight: 600; font-size: 1.1rem;">Case Reopening</h4>
+                            </div>
+                            <span class="badge" style="background: #e74c3c; color: white; padding: 4px 10px; border-radius: 15px; font-size: 0.8rem; font-weight: 600;">
+                                ${examination.reopenCount} time${examination.reopenCount != 1 ? 's' : ''}
+                            </span>
+                        </div>
+                        <p style="margin: 0 0 15px 0; color: #d68910; font-size: 0.9rem; line-height: 1.5;">
+                            <strong>Important:</strong> Only reopen this case if you are the doctor who will treat this patient further. 
+                            This action will be tracked under your name and the reopening will be recorded in the system.
+                        </p>
+                        <div class="action-buttons">
+                            <button class="btn btn-warning" onclick="showReopenModal()" style="background: linear-gradient(135deg, #f39c12 0%, #e67e22 100%); border: none; color: white; padding: 10px 20px; font-size: 0.9rem; font-weight: 600; border-radius: 8px; box-shadow: 0 3px 6px rgba(243, 156, 18, 0.3); transition: all 0.3s ease;">
+                                <i class="fas fa-redo" style="margin-right: 8px;"></i> Reopen Case
+                            </button>
+                        </div>
+                    </div>
+                </c:if>
+                
+                <!-- Reopening History Section -->
+                <c:if test="${examination.reopenCount > 0}">
+                    <div class="reopening-history-section" style="margin: 20px 0; padding: 20px; background: #f8f9fa; border: 1px solid #dee2e6; border-radius: 12px; box-shadow: 0 2px 8px rgba(0, 0, 0, 0.1);">
+                        <div style="display: flex; align-items: center; gap: 10px; margin-bottom: 15px;">
+                            <i class="fas fa-history" style="color: #6c757d; font-size: 1.2rem;"></i>
+                            <h4 style="margin: 0; color: #495057; font-weight: 600; font-size: 1.1rem;">Reopening History</h4>
+                            <span class="badge" style="background: #6c757d; color: white; padding: 4px 10px; border-radius: 15px; font-size: 0.8rem; font-weight: 600;">
+                                ${examination.reopenCount} reopening${examination.reopenCount != 1 ? 's' : ''}
+                            </span>
+                        </div>
+                        
+                        <div class="reopening-timeline" style="position: relative;">
+                            <c:forEach var="reopening" items="${examination.reopeningRecords}" varStatus="status">
+                                <div class="reopening-item" style="position: relative; padding: 15px; margin-bottom: 15px; background: white; border-radius: 8px; border-left: 4px solid #e67e22; box-shadow: 0 2px 4px rgba(0, 0, 0, 0.05);">
+                                    <div style="display: flex; justify-content: space-between; align-items: flex-start; margin-bottom: 10px;">
+                                        <div style="display: flex; align-items: center; gap: 8px;">
+                                            <span class="reopening-number" style="background: #e67e22; color: white; width: 24px; height: 24px; border-radius: 50%; display: flex; align-items: center; justify-content: center; font-size: 0.8rem; font-weight: 600;">
+                                                ${reopening.reopeningSequence}
+                                            </span>
+                                            <div>
+                                                <h5 style="margin: 0; color: #2c3e50; font-weight: 600; font-size: 1rem;">
+                                                    Reopened by ${reopening.reopenedByDoctor.firstName} ${reopening.reopenedByDoctor.lastName}
+                                                </h5>
+                                                <p style="margin: 5px 0 0 0; color: #6c757d; font-size: 0.85rem;">
+                                                    <i class="fas fa-calendar-alt"></i> 
+                                                    ${reopening.reopenedAt}
+                                                </p>
+                                            </div>
+                                        </div>
+                                        <span class="status-badge" style="background: #e67e22; color: white; padding: 3px 8px; border-radius: 12px; font-size: 0.75rem; font-weight: 600;">
+                                            Reopened
+                                        </span>
+                                    </div>
+                                    
+                                    <div class="reopening-details" style="margin-top: 12px;">
+                                        <c:if test="${not empty reopening.reopeningReason}">
+                                            <div class="detail-item" style="margin-bottom: 8px;">
+                                                <strong style="color: #495057; font-size: 0.9rem;">Reason:</strong>
+                                                <p style="margin: 5px 0 0 0; color: #6c757d; font-size: 0.9rem; line-height: 1.4;">${reopening.reopeningReason}</p>
+                                            </div>
+                                        </c:if>
+                                        
+                                        <c:if test="${not empty reopening.patientCondition}">
+                                            <div class="detail-item" style="margin-bottom: 8px;">
+                                                <strong style="color: #495057; font-size: 0.9rem;">Patient Condition:</strong>
+                                                <p style="margin: 5px 0 0 0; color: #6c757d; font-size: 0.9rem; line-height: 1.4;">${reopening.patientCondition}</p>
+                                            </div>
+                                        </c:if>
+                                        
+                                        <c:if test="${not empty reopening.treatmentPlan}">
+                                            <div class="detail-item" style="margin-bottom: 8px;">
+                                                <strong style="color: #495057; font-size: 0.9rem;">Treatment Plan:</strong>
+                                                <p style="margin: 5px 0 0 0; color: #6c757d; font-size: 0.9rem; line-height: 1.4;">${reopening.treatmentPlan}</p>
+                                            </div>
+                                        </c:if>
+                                        
+                                        <c:if test="${not empty reopening.notes}">
+                                            <div class="detail-item" style="margin-bottom: 8px;">
+                                                <strong style="color: #495057; font-size: 0.9rem;">Additional Notes:</strong>
+                                                <p style="margin: 5px 0 0 0; color: #6c757d; font-size: 0.9rem; line-height: 1.4;">${reopening.notes}</p>
+                                            </div>
+                                        </c:if>
+                                    </div>
+                                </div>
+                            </c:forEach>
+                        </div>
+                    </div>
+                </c:if>
+                
                 <!-- Two-column layout for patient and procedure info -->
-                <div class="clinical-info-layout">
+                <div class="clinical-info-layout" data-patient-id="${patient.id}">
                     <!-- Left column: Patient info -->
                     <div class="clinical-info-column">
+                        <!-- Color Code Strip -->
+                        <jsp:include page="/WEB-INF/views/common/color-code-component.jsp" />
+                        
                         <div class="clinical-card">
                             <div class="clinical-card-header">
                                 <h3><i class="fas fa-user"></i> Patient Information</h3>
                             </div>
                             <div class="clinical-card-body">
+                                <div id="notification" class="notification" style="display:none"></div>
                                 <div class="patient-profile">
                                     <c:if test="${not empty patient.profilePicturePath}">
                                         <div class="patient-image">
@@ -2180,7 +3168,6 @@
                                         <h4>${patient.firstName} ${patient.lastName}</h4>
                                         <p class="patient-id">Registration Code: ${patient.registrationCode}</p>
                                         <p class="patient-id">Examination ID: ${examination.id}</p>
-                                        <p class="patient-id">ID: ${patient.id}</p>
                                         <p><i class="fas fa-phone"></i> ${patient.phoneNumber}</p>
                                         <p><i class="fas fa-calendar-alt"></i> Age: 
                                             <c:if test="${not empty patient.age}">
@@ -2228,12 +3215,6 @@
                                         <span class="info-label">Tooth Number</span>
                                         <span class="info-value">${examination.toothNumber}</span>
                                     </div>
-                                    <c:if test="${not empty examination.toothSurface}">
-                                        <div class="procedure-info-item">
-                                            <span class="info-label">Tooth Surface</span>
-                                            <span class="info-value">${examination.toothSurface}</span>
-                                        </div>
-                                    </c:if>
                                     <c:if test="${not empty examination.toothCondition}">
                                         <div class="procedure-info-item">
                                             <span class="info-label">Tooth Condition</span>
@@ -2276,6 +3257,8 @@
                                             <span class="info-value">${examination.gingivalRecession}</span>
                                         </div>
                                     </c:if>
+                
+
                                     <c:if test="${not empty examination.toothVitality}">
                                         <div class="procedure-info-item">
                                             <span class="info-label">Tooth Vitality</span>
@@ -2292,6 +3275,18 @@
                                         <div class="procedure-info-item">
                                             <span class="info-label">Tooth Sensitivity</span>
                                             <span class="info-value">${examination.toothSensitivity}</span>
+                                        </div>
+                                    </c:if>
+                                    <c:if test="${not empty examination.chiefComplaints}">
+                                        <div class="procedure-info-item">
+                                            <span class="info-label">Chief Complaints</span>
+                                            <span class="info-value">${examination.chiefComplaints}</span>
+                                        </div>
+                                    </c:if>
+                                    <c:if test="${not empty examination.advised}">
+                                        <div class="procedure-info-item">
+                                            <span class="info-label">Treatment Advised</span>
+                                            <span class="info-value">${examination.advised}</span>
                                         </div>
                                     </c:if>
                                     <div class="procedure-info-item">
@@ -2323,22 +3318,38 @@
                             </div>
                         </div>
                         
-                        <!-- Doctor's Notes Section (Initially Hidden) -->
-                        <div class="clinical-card clinical-notes-card" id="clinicalNotesCard" style="display: none;">
-                            <div class="clinical-card-header">
-                                <h3><i class="fas fa-clipboard-list"></i> Clinical Notes</h3>
-                            </div>
-                            <div class="clinical-card-body">
-                                <form id="clinicalNotesForm">
-                                    <div class="form-group">
-                                        <textarea id="mainClinicalNotes" class="form-control" rows="5" placeholder="Enter detailed clinical observations, treatment notes, and any complications...">${examination.examinationNotes}</textarea>
-                                    </div>
-                                    <div class="form-actions">
-                                        <button type="button" id="saveClinicalNotes" class="btn btn-primary">
-                                            <i class="fas fa-save"></i> Save Notes
-                                        </button>
-                                    </div>
-                                </form>
+                        <!-- Clinical Notes Modal -->
+                        <div id="clinicalNotesModal" class="modal" style="display: none; position: fixed; z-index: 1000; left: 0; top: 0; width: 100%; height: 100%; background-color: rgba(0,0,0,0.5);">
+                            <div class="modal-content" style="background-color: white; margin: 5% auto; padding: 0; border-radius: 12px; width: 90%; max-width: 600px; box-shadow: 0 8px 32px rgba(0,0,0,0.3);">
+                                <div class="modal-header" style="background: linear-gradient(135deg, #3498db, #2980b9); color: white; padding: 20px; border-radius: 12px 12px 0 0;">
+                                    <h3 style="margin: 0; font-size: 1.3rem; display: flex; align-items: center; gap: 10px;">
+                                        <i class="fas fa-clipboard-list"></i> Clinical Notes
+                                    </h3>
+                                    <span class="close-modal" onclick="closeClinicalNotesModal()" style="position: absolute; right: 20px; top: 20px; font-size: 28px; font-weight: bold; cursor: pointer; color: white;">&times;</span>
+                                </div>
+                                <div class="modal-body" style="padding: 25px;">
+                                    <form id="clinicalNotesForm">
+                                        <div class="form-group" style="margin-bottom: 20px;">
+                                            <label for="mainClinicalNotes" style="display: block; margin-bottom: 8px; font-weight: 600; color: #2c3e50;">Add New Clinical Notes</label>
+                                            <textarea id="mainClinicalNotes" class="form-control" rows="4" placeholder="Enter new clinical observations, treatment notes, and any complications..." style="width: 100%; padding: 15px; border: 1px solid #ddd; border-radius: 8px; font-size: 14px; resize: vertical; font-family: 'Poppins', sans-serif;"></textarea>
+                                        </div>
+                                        
+                                        <c:if test="${not empty examination.examinationNotes}">
+                                            <div class="form-group" style="margin-bottom: 20px;">
+                                                <label style="display: block; margin-bottom: 8px; font-weight: 600; color: #2c3e50;">Clinical Notes History</label>
+                                                <div class="notes-history" style="background: #f8f9fa; border: 1px solid #dee2e6; border-radius: 8px; padding: 15px; max-height: 300px; overflow-y: auto; font-family: 'Courier New', monospace; font-size: 12px; white-space: pre-wrap; line-height: 1.4; color: #495057;">
+                                                    ${examination.examinationNotes}
+                                                </div>
+                                            </div>
+                                        </c:if>
+                                        <div class="modal-footer" style="display: flex; justify-content: flex-end; gap: 12px; padding: 20px 0 0 0; border-top: 1px solid #eee; margin-top: 20px;">
+                                            <button type="button" class="btn btn-secondary" onclick="closeClinicalNotesModal()" style="background: #95a5a6; color: white; border: none; padding: 10px 20px; border-radius: 6px; cursor: pointer;">Cancel</button>
+                                            <button type="button" id="saveClinicalNotes" class="btn btn-primary" style="background: linear-gradient(135deg, #3498db, #2980b9); color: white; border: none; padding: 10px 20px; border-radius: 6px; cursor: pointer; font-weight: 600;">
+                                                <i class="fas fa-save"></i> Save Notes
+                                            </button>
+                                        </div>
+                                    </form>
+                                </div>
                             </div>
                         </div>
                         
@@ -2544,7 +3555,7 @@
             });
             
             // Initialize variables
-            let pendingStatusUpdate = null;
+            window.pendingStatusUpdate = null;
             const xrayUploadModal = document.getElementById('xrayUploadModal');
             
             // Get CSRF token
@@ -2586,6 +3597,13 @@
                 const closeXrayModal = document.getElementById('closeXrayModal');
                 const xrayUploadModal = document.getElementById('xrayUploadModal');
                 let allSelectedFiles = [];
+
+                // Check if all required elements exist before proceeding
+                if (!xrayInput || !xrayDropzone || !xrayThumbnails || !xrayStatus || !xrayValidation || 
+                    !confirmXrayUpload || !addMoreImagesBtn || !cancelXrayUpload || !closeXrayModal || !xrayUploadModal) {
+                    console.warn('Some X-ray upload elements not found, skipping initialization');
+                    return;
+                }
 
                 // Click or keyboard focus opens file dialog
                 xrayDropzone.addEventListener('click', () => xrayInput.click());
@@ -2683,18 +3701,18 @@
 
                 cancelXrayUpload.addEventListener('click', () => {
                     xrayUploadModal.style.display = 'none';
-                    if (typeof pendingStatusUpdate !== 'undefined') pendingStatusUpdate = null;
+                    if (typeof window.pendingStatusUpdate !== 'undefined') window.pendingStatusUpdate = null;
                     resetXrayUpload();
                 });
                 closeXrayModal.addEventListener('click', () => {
                     xrayUploadModal.style.display = 'none';
-                    if (typeof pendingStatusUpdate !== 'undefined') pendingStatusUpdate = null;
+                    if (typeof window.pendingStatusUpdate !== 'undefined') window.pendingStatusUpdate = null;
                     resetXrayUpload();
                 });
                 xrayUploadModal.addEventListener('click', (e) => {
                     if (e.target === xrayUploadModal) {
                         xrayUploadModal.style.display = 'none';
-                        if (typeof pendingStatusUpdate !== 'undefined') pendingStatusUpdate = null;
+                        if (typeof window.pendingStatusUpdate !== 'undefined') window.pendingStatusUpdate = null;
                         resetXrayUpload();
                     }
                 });
@@ -2729,7 +3747,7 @@
                         if (response.ok) {
                             // Images uploaded, now close the case
                             const statusResponse = await fetch(
-                                `${pageContext.request.contextPath}/patients/update-examination-status`,
+                                `${pageContext.request.contextPath}/patients/update-procedure-status`,
                                 {
                                     method: 'POST',
                                     headers: {
@@ -2789,13 +3807,13 @@
                 // Modal controls
                 cancelFollowUp.addEventListener('click', () => {
                     followUpModal.style.display = 'none';
-                    pendingStatusUpdate = null;
+                    window.pendingStatusUpdate = null;
                     resetFollowUpForm();
                 });
                 
                 closeFollowUpModal.addEventListener('click', () => {
                     followUpModal.style.display = 'none';
-                    pendingStatusUpdate = null;
+                    window.pendingStatusUpdate = null;
                     resetFollowUpForm();
                 });
                 
@@ -2803,7 +3821,7 @@
                 followUpModal.addEventListener('click', (e) => {
                     if (e.target === followUpModal) {
                         followUpModal.style.display = 'none';
-                        pendingStatusUpdate = null;
+                        window.pendingStatusUpdate = null;
                         resetFollowUpForm();
                     }
                 });
@@ -3001,22 +4019,61 @@
             }
             
             // Status dropdown functionality
-            const statusDropdownBtn = document.getElementById('statusDropdownBtn');
+            const statusDropdown = document.querySelector('.status-dropdown');
             const statusDropdownContent = document.querySelector('.status-dropdown-content');
             const statusOptions = document.querySelectorAll('.status-option');
             
-            if (statusDropdownBtn && statusDropdownContent) {
-                statusDropdownBtn.addEventListener('click', function(e) {
+            console.log('=== STATUS DROPDOWN INITIALIZATION ===');
+            console.log('Status dropdown found:', !!statusDropdown);
+            console.log('Status dropdown content found:', !!statusDropdownContent);
+            console.log('Status options found:', statusOptions.length);
+            
+            statusOptions.forEach(option => {
+                const status = option.getAttribute('data-status');
+                const statusText = option.querySelector('.status-text').textContent;
+                console.log('Available status option:', status, '-', statusText);
+            });
+            
+            if (statusDropdown) {
+                statusDropdown.addEventListener('click', function(e) {
                     e.stopPropagation();
-                    if (!this.classList.contains('disabled')) {
+                    const statusDropdownBtn = this.querySelector('.status-dropdown-btn');
+                    console.log('Status dropdown clicked');
+                    console.log('Status dropdown button found:', !!statusDropdownBtn);
+                    if (statusDropdownBtn) {
+                        console.log('Button classes:', statusDropdownBtn.className);
+                        console.log('Is disabled:', statusDropdownBtn.classList.contains('disabled'));
+                        console.log('Is cancelled:', statusDropdownBtn.classList.contains('cancelled'));
+                    }
+                    if (statusDropdownBtn && !statusDropdownBtn.classList.contains('disabled') && !statusDropdownBtn.classList.contains('cancelled')) {
+                        console.log('Opening dropdown');
                         statusDropdownContent.classList.toggle('show');
+                        
+                        // Debug: Log available status options
+                        const statusOptions = statusDropdownContent.querySelectorAll('.status-option');
+                        console.log('Available status options:', statusOptions.length);
+                        statusOptions.forEach((option, index) => {
+                            const status = option.getAttribute('data-status');
+                            console.log(`Option ${index + 1}: ${status}`);
+                        });
+                        
+                        const dropdownIcon = statusDropdownBtn.querySelector('.dropdown-icon i');
+                        if (dropdownIcon) {
+                            dropdownIcon.style.transform = statusDropdownContent.classList.contains('show') ? 'rotate(180deg)' : 'rotate(0deg)';
+                        }
+                    } else {
+                        console.log('Dropdown not opened - button is disabled or cancelled');
                     }
                 });
                 
                 // Close dropdown when clicking outside
                 document.addEventListener('click', function(e) {
-                    if (!statusDropdownBtn.contains(e.target) && !statusDropdownContent.contains(e.target)) {
+                    if (!statusDropdown.contains(e.target) && !statusDropdownContent.contains(e.target)) {
                         statusDropdownContent.classList.remove('show');
+                        const dropdownIcon = statusDropdown.querySelector('.dropdown-icon i');
+                        if (dropdownIcon) {
+                            dropdownIcon.style.transform = 'rotate(0deg)';
+                        }
                     }
                 });
                 
@@ -3024,27 +4081,80 @@
                 statusOptions.forEach(option => {
                     option.addEventListener('click', function() {
                         const newStatus = this.getAttribute('data-status');
+                        const currentStatus = '${examination.procedureStatus}';
+                        console.log('Status option clicked - Current:', currentStatus, 'New:', newStatus);
+                        
                         if (newStatus) {
+                            // Prevent selecting the same status
+                            if (newStatus === currentStatus) {
+                                console.log('Same status selected, no action needed');
+                                alert('This status is already active. No change needed.');
+                                statusDropdownContent.classList.remove('show');
+                                const dropdownIcon = statusDropdown.querySelector('.dropdown-icon i');
+                                if (dropdownIcon) {
+                                    dropdownIcon.style.transform = 'rotate(0deg)';
+                                }
+                                return;
+                            }
+                            
                             updateProcedureStatus(newStatus);
                         }
                         statusDropdownContent.classList.remove('show');
+                        const dropdownIcon = statusDropdown.querySelector('.dropdown-icon i');
+                        if (dropdownIcon) {
+                            dropdownIcon.style.transform = 'rotate(0deg)';
+                        }
                     });
                 });
             }
             
-            // Update procedure status
-            async function updateProcedureStatus(newStatus) {
-                const examinationId = $('#examinationId').val();
+            // Update procedure status directly (without X-ray)
+            window.updateProcedureStatusDirect = async function(newStatus) {
+                console.log('=== DIRECT STATUS UPDATE FUNCTION CALLED ===');
+                console.log('Requested status:', newStatus);
+                console.log('Function is being executed');
                 
-                // Check if X-ray is required for closing
-                if (newStatus === 'CLOSED' && !xrayUploadComplete) {
-                    pendingStatusUpdate = newStatus;
-                    xrayUploadModal.style.display = 'block';
-                    return;
+                const examinationId = $('#examinationId').val();
+                console.log('Examination ID:', examinationId);
+                
+                // First, refresh the payment status from server
+                console.log('Refreshing payment status from server...');
+                try {
+                    const refreshResponse = await fetch(`${pageContext.request.contextPath}/patients/examination/${examinationId}/payment-status`, {
+                        method: 'GET',
+                        headers: {
+                            'Content-Type': 'application/json'
+                        }
+                    });
+                    
+                    if (refreshResponse.ok) {
+                        const paymentData = await refreshResponse.json();
+                        console.log('Latest payment status from server:', paymentData);
+                        
+                        // Update the payment status on the page
+                        const paymentStatusElement = document.querySelector('.payment-status');
+                        if (paymentStatusElement && paymentData.paymentStatus) {
+                            paymentStatusElement.textContent = paymentData.paymentStatus;
+                            console.log('Updated payment status on page to:', paymentData.paymentStatus);
+                        }
+                    }
+                } catch (error) {
+                    console.log('Could not refresh payment status:', error);
                 }
                 
+                // Get CSRF token
+                const token = $("meta[name='_csrf']").attr("content");
+                const header = $("meta[name='_csrf_header']").attr("content");
+                console.log('CSRF token:', token);
+                console.log('CSRF header:', header);
+                
                 try {
-                    const response = await fetch('${pageContext.request.contextPath}/patients/update-examination-status', {
+                    console.log('Making API request to update status...');
+                    const url = '${pageContext.request.contextPath}/patients/update-procedure-status';
+                    console.log('Request URL:', url);
+                    console.log('Request body:', JSON.stringify({ examinationId: examinationId, status: newStatus }));
+                    
+                    const response = await fetch(url, {
                         method: 'POST',
                         headers: {
                             'Content-Type': 'application/json',
@@ -3053,7 +4163,140 @@
                         body: JSON.stringify({ examinationId: examinationId, status: newStatus })
                     });
                     
-                    if (response.ok) {
+                    console.log('Response status:', response.status);
+                    console.log('Response ok:', response.ok);
+                    
+                    const responseText = await response.text();
+                    console.log('Response text (first 200 chars):', responseText.substring(0, 200));
+                    
+                    if (responseText.trim().startsWith('<!DOCTYPE')) {
+                        console.error('Received HTML instead of JSON. This usually means a redirect to login or error page.');
+                        alert('Authentication error. Please refresh the page and try again.');
+                        return;
+                    }
+                    
+                    let result;
+                    try {
+                        result = JSON.parse(responseText);
+                    } catch (parseError) {
+                        console.error('Failed to parse response as JSON:', parseError);
+                        console.error('Full response:', responseText);
+                        alert('Server returned invalid response. Please try again.');
+                        return;
+                    }
+                    
+                    if (result.success) {
+                        console.log('Response data:', result);
+                        alert('Status updated successfully!');
+                        window.location.reload();
+                    } else {
+                        console.error('Status update failed:', result.message);
+                        
+                        // Check if it's a payment pending error
+                        if (result.message && result.message.includes('payment') && result.message.includes('pending')) {
+                            showPaymentPendingModal();
+                        } else {
+                            alert(result.message || 'Failed to update status');
+                        }
+                    }
+                } catch (error) {
+                    console.error('=== DIRECT STATUS UPDATE ERROR ===');
+                    console.error('Error updating status:', error);
+                    alert('Failed to update status. Please try again.');
+                }
+            }
+            
+            // Update procedure status
+            async function updateProcedureStatus(newStatus) {
+                console.log('=== FRONTEND STATUS UPDATE ===');
+                console.log('Requested status:', newStatus);
+                
+                const examinationId = $('#examinationId').val();
+                console.log('Examination ID:', examinationId);
+                
+                // Get CSRF token
+                const token = $("meta[name='_csrf']").attr("content");
+                const header = $("meta[name='_csrf_header']").attr("content");
+                console.log('CSRF token:', token);
+                console.log('CSRF header:', header);
+                
+                // Check if X-ray is required for closing
+                const currentStatus = '${examination.procedureStatus}';
+                console.log('Current status:', currentStatus);
+                console.log('New status:', newStatus);
+                console.log('X-ray upload complete:', xrayUploadComplete);
+                
+                if (newStatus === 'CLOSED' && currentStatus !== 'CLOSED' && !xrayUploadComplete) {
+                    console.log('X-ray upload option for closing');
+                    window.pendingStatusUpdate = newStatus;
+                    console.log('About to call showXrayConfirmationModal');
+                    try {
+                        showXrayConfirmationModal();
+                        console.log('showXrayConfirmationModal called successfully');
+                    } catch (error) {
+                        console.error('Error calling showXrayConfirmationModal:', error);
+                        // Fallback to alert
+                        const userChoice = confirm('Do you want to upload an X-ray image before closing the case?\n\nClick "OK" to upload X-ray\nClick "Cancel" to close without X-ray');
+                        if (userChoice) {
+                            const xrayUploadModal = document.getElementById('xrayUploadModal');
+                            if (xrayUploadModal) {
+                                xrayUploadModal.style.display = 'block';
+                            }
+                        } else {
+                            updateProcedureStatusDirect(newStatus);
+                        }
+                    }
+                    return;
+                }
+                
+                if (newStatus === 'CLOSED' && currentStatus === 'CLOSED') {
+                    console.log('Case is already CLOSED, no action needed');
+                    alert('This case is already closed. No action needed.');
+                    return;
+                }
+                
+                try {
+                    console.log('Making API request to update status...');
+                    const url = '${pageContext.request.contextPath}/patients/update-procedure-status';
+                    console.log('Request URL:', url);
+                    console.log('Request body:', JSON.stringify({ examinationId: examinationId, status: newStatus }));
+                    
+                    const response = await fetch(url, {
+                        method: 'POST',
+                        headers: {
+                            'Content-Type': 'application/json'
+                            // Temporarily removed CSRF token for testing
+                        },
+                        body: JSON.stringify({ examinationId: examinationId, status: newStatus })
+                    });
+                    
+                    console.log('Response status:', response.status);
+                    console.log('Response ok:', response.ok);
+                    
+                    // Debug: Check if response is JSON or HTML
+                    const responseText = await response.text();
+                    console.log('Response text (first 200 chars):', responseText.substring(0, 200));
+                    
+                    if (responseText.trim().startsWith('<!DOCTYPE')) {
+                        console.error('Received HTML instead of JSON. This usually means a redirect to login or error page.');
+                        alert('Authentication error. Please refresh the page and try again.');
+                        return;
+                    }
+                    
+                    // Try to parse as JSON
+                    let result;
+                    try {
+                        result = JSON.parse(responseText);
+                    } catch (parseError) {
+                        console.error('Failed to parse response as JSON:', parseError);
+                        console.error('Full response:', responseText);
+                        alert('Server returned invalid response. Please try again.');
+                        return;
+                    }
+                    
+                    if (result.success) {
+                        console.log('Response data:', result);
+                        
                         // Show success notification
                         const notification = document.querySelector('.status-notification');
                         notification.style.display = 'block';
@@ -3062,39 +4305,69 @@
                         }, 3000);
                         
                         // Reload page to reflect changes
+                        console.log('Reloading page in 1 second...');
                         setTimeout(() => {
                         window.location.reload();
                         }, 1000);
                     } else {
-                        let errorMsg = 'Failed to update status';
-                        try {
-                            const errorData = await response.json();
-                            if (errorData && errorData.message) errorMsg = errorData.message;
-                        } catch (e) {}
-                        alert(errorMsg);
+                        console.error('Status update failed:', result.message);
+                        alert(result.message || 'Failed to update status');
                         return;
                     }
                 } catch (error) {
+                    console.error('=== FRONTEND STATUS UPDATE ERROR ===');
                     console.error('Error updating status:', error);
                     alert('Failed to update status. Please try again.');
                 }
             }
             
-            // Clinical notes toggle
+            // Clinical notes modal toggle
             const toggleClinicalNotes = document.getElementById('toggleClinicalNotes');
-            const clinicalNotesCard = document.getElementById('clinicalNotesCard');
             
-            if (toggleClinicalNotes && clinicalNotesCard) {
+            if (toggleClinicalNotes) {
                 toggleClinicalNotes.addEventListener('click', function() {
-                    if (clinicalNotesCard.style.display === 'none') {
-                        clinicalNotesCard.style.display = 'block';
-                        this.innerHTML = '<i class="fas fa-clipboard-list"></i> Hide Clinical Notes';
-                    } else {
-                        clinicalNotesCard.style.display = 'none';
-                        this.innerHTML = '<i class="fas fa-clipboard-list"></i> Clinical Notes';
+                    document.getElementById('clinicalNotesModal').style.display = 'block';
+                });
+            }
+            
+            // Attach more images button
+            const attachMoreImagesBtn = document.getElementById('attachMoreImagesBtn');
+            
+            if (attachMoreImagesBtn) {
+                attachMoreImagesBtn.addEventListener('click', function() {
+                    showXrayUploadModal();
+                });
+            }
+            
+            // Load attached images when page loads
+            loadAttachedImages();
+            
+            // Test if modal elements exist
+            console.log('Testing modal elements:');
+            console.log('xrayConfirmationModal exists:', !!document.getElementById('xrayConfirmationModal'));
+            console.log('xrayUploadModal exists:', !!document.getElementById('xrayUploadModal'));
+            
+            // Image modal event listeners
+            const imageModal = document.getElementById('imageModal');
+            if (imageModal) {
+                imageModal.addEventListener('click', function(e) {
+                    if (e.target === this) {
+                        closeImageModal();
                     }
                 });
             }
+            
+            // Close image modal with Escape key
+            document.addEventListener('keydown', function(e) {
+                if (e.key === 'Escape' && document.getElementById('imageModal').style.display === 'block') {
+                    closeImageModal();
+                }
+                
+                // Toggle images section with 'I' key
+                if (e.key === 'i' || e.key === 'I') {
+                    toggleImagesSection();
+                }
+            });
             
             // Save clinical notes
             const saveClinicalNotes = document.getElementById('saveClinicalNotes');
@@ -3104,26 +4377,37 @@
                 saveClinicalNotes.addEventListener('click', async function() {
                     const notes = mainClinicalNotes.value;
                     const examinationId = $('#examinationId').val();
-                
-                try {
-                        const response = await fetch('${pageContext.request.contextPath}/patients/examination/' + examinationId + '/update-notes', {
-                        method: 'POST',
-                        headers: {
-                            'Content-Type': 'application/json',
-                                [header]: token
-                        },
-                            body: JSON.stringify({ notes: notes })
-                    });
                     
+                    // Get CSRF token
+                    const token = $("meta[name='_csrf']").attr("content");
+                    const header = $("meta[name='_csrf_header']").attr("content");
+                
+                    try {
+                        const response = await fetch('${pageContext.request.contextPath}/patients/examination/' + examinationId + '/save-notes', {
+                            method: 'POST',
+                            headers: {
+                                'Content-Type': 'application/json',
+                                [header]: token
+                            },
+                            body: JSON.stringify({ notes: notes })
+                        });
+                        
                         if (response.ok) {
-                            alert('Clinical notes saved successfully!');
-                    } else {
+                            const result = await response.json();
+                            if (result.success) {
+                                alert('Clinical notes saved successfully!');
+                                // Close the modal after successful save
+                                document.getElementById('clinicalNotesModal').style.display = 'none';
+                            } else {
+                                throw new Error(result.message || 'Failed to save notes');
+                            }
+                        } else {
                             throw new Error('Failed to save notes');
-                    }
-                } catch (error) {
+                        }
+                    } catch (error) {
                         console.error('Error saving notes:', error);
                         alert('Failed to save notes. Please try again.');
-                }
+                    }
                 });
             }
             
@@ -3173,6 +4457,8 @@
                 document.getElementById('cancelFollowUpModal').style.display = 'none';
             };
             
+
+            
             window.showCancelFollowUpModal = function(followUpId, examinationId) {
                 document.getElementById('cancelFollowUpId').value = followUpId;
                 document.getElementById('cancelExaminationId').value = examinationId;
@@ -3180,6 +4466,68 @@
                 if (reasonInput) reasonInput.value = '';
                 document.getElementById('cancelFollowUpModal').style.display = 'block';
             };
+            
+            // Reopen case functionality
+            window.showReopenModal = function() {
+                document.getElementById('reopenModal').style.display = 'block';
+                // Clear form
+                document.getElementById('reopenForm').reset();
+            };
+            
+            window.closeReopenModal = function() {
+                document.getElementById('reopenModal').style.display = 'none';
+            };
+            
+            window.reopenCase = async function() {
+                const reopeningReason = document.getElementById('reopeningReason').value.trim();
+                const patientCondition = document.getElementById('patientCondition').value.trim();
+                const treatmentPlan = document.getElementById('treatmentPlan').value.trim();
+                const notes = document.getElementById('notes').value.trim();
+                
+                if (!reopeningReason) {
+                    alert('Please provide a reason for reopening the case.');
+                    return;
+                }
+                
+                if (!confirm('Are you sure you want to reopen this case? This action will be recorded under your name.')) {
+                    return;
+                }
+                
+                const examinationId = '${examination.id}';
+                const csrfToken = document.querySelector('meta[name="_csrf"]').content;
+                
+                try {
+                    const response = await fetch('${pageContext.request.contextPath}/patients/examination/' + examinationId + '/reopen', {
+                        method: 'POST',
+                        headers: {
+                            'Content-Type': 'application/json',
+                            'X-CSRF-TOKEN': csrfToken
+                        },
+                        body: JSON.stringify({
+                            reopeningReason: reopeningReason,
+                            patientCondition: patientCondition,
+                            treatmentPlan: treatmentPlan,
+                            notes: notes
+                        })
+                    });
+                    
+                    const result = await response.json();
+                    
+                    if (result.success) {
+                        alert('Case reopened successfully! The case is now in "Reopen" status and can be moved to "In Progress".');
+                        closeReopenModal();
+                        // Reload the page to show updated status
+                        window.location.reload();
+                    } else {
+                        alert('Error reopening case: ' + result.message);
+                    }
+                } catch (error) {
+                    console.error('Error reopening case:', error);
+                    alert('Error reopening case. Please try again.');
+                }
+            };
+            
+
         });
     </script>
     <script>
@@ -3197,6 +4545,203 @@
             alert('Please allow pop-ups for this site to print prescription');
         }
         });
+    </script>
+    
+    <!-- Chairside Note Component -->
+    <jsp:include page="/WEB-INF/views/common/chairside-note-component.jsp" />
+    
+    <script>
+    // Doctor assignment moved to the procedures page
+    </script>
+
+    <!-- X-ray Upload Confirmation Modal -->
+    <div id="xrayConfirmationModal" class="modal">
+        <div class="modal-content">
+            <div class="modal-header">
+                <h3><i class="fas fa-question-circle"></i> Close Case Options</h3>
+                <span class="close-modal" onclick="closeXrayConfirmationModal()">&times;</span>
+            </div>
+            <div class="modal-body">
+                <p>Do you want to upload an X-ray image before closing the case?</p>
+                <div class="modal-options">
+                    <button type="button" class="btn btn-primary" onclick="selectXrayOption('upload')">
+                        <i class="fas fa-upload"></i> Upload X-ray Image
+                    </button>
+                    <button type="button" class="btn btn-success" onclick="console.log('Button clicked!'); selectXrayOption('close');">
+                        <i class="fas fa-check-circle"></i> Close Without X-ray
+                    </button>
+                </div>
+            </div>
+            <div class="modal-footer">
+                <button type="button" class="btn btn-secondary" onclick="closeXrayConfirmationModal()">Cancel</button>
+            </div>
+        </div>
+    </div>
+
+    <!-- X-ray Upload Modal for Attaching More Images -->
+    <div id="xrayUploadModal" class="modal">
+        <div class="modal-content">
+            <div class="modal-header">
+                <h3><i class="fas fa-paperclip"></i> Attach Additional Images</h3>
+                <span class="close-modal" onclick="closeXrayUploadModal()">&times;</span>
+            </div>
+            <div class="modal-body">
+                <p>Upload X-ray or clinical images for this case.</p>
+                <input type="file" id="xray-upload" name="xrayPictures" accept="image/*" multiple>
+            </div>
+            <div class="modal-footer">
+                <button type="button" class="btn btn-secondary" onclick="closeXrayUploadModal()">Cancel</button>
+                <button type="button" class="btn btn-primary" id="confirmXrayUpload">
+                    <i class="fas fa-check"></i> Upload Images
+                </button>
+            </div>
+        </div>
+    </div>
+
+    <!-- Payment Pending Modal -->
+    <div id="paymentPendingModal" class="modal">
+        <div class="modal-content">
+            <div class="modal-header">
+                <h3><i class="fas fa-exclamation-triangle"></i> Payment Required</h3>
+                <span class="close-modal" onclick="closePaymentPendingModal()">&times;</span>
+            </div>
+            <div class="modal-body">
+                <div style="text-align: center; margin: 20px 0;">
+                    <i class="fas fa-credit-card" style="font-size: 3rem; color: #e74c3c; margin-bottom: 15px;"></i>
+                    <h4 style="color: #e74c3c; margin-bottom: 15px;">Payment Pending</h4>
+                    <p style="font-size: 1.1rem; line-height: 1.6; color: #2c3e50;">
+                        Cannot close the case because payment is still pending. Please collect the full payment before closing the case.
+                    </p>
+                </div>
+            </div>
+            <div class="modal-footer">
+                <button type="button" class="btn btn-primary" onclick="closePaymentPendingModal()">
+                    <i class="fas fa-check"></i> Understood
+                </button>
+            </div>
+        </div>
+    </div>
+
+    <!-- Reopen Case Modal -->
+    <div id="reopenModal" class="modal" style="display: none;">
+        <div class="modal-content">
+            <div class="modal-header">
+                <h3><i class="fas fa-redo"></i> Reopen Case</h3>
+                <span class="close-modal" onclick="closeReopenModal()">&times;</span>
+            </div>
+            <div class="modal-body">
+                <div class="reopen-warning" style="background: #fff3cd; border: 1px solid #ffeaa7; border-radius: 6px; padding: 15px; margin-bottom: 20px;">
+                    <div style="display: flex; align-items: center; gap: 8px; margin-bottom: 10px;">
+                        <i class="fas fa-exclamation-triangle" style="color: #856404;"></i>
+                        <strong style="color: #856404;">Important Notice</strong>
+                    </div>
+                    <p style="margin: 0 0 15px 0; color: #856404; font-size: 0.95rem;">
+                        Only reopen this case if you are the doctor who will treat this patient further. 
+                        This action will be tracked under your name and the reopening will be recorded in the system.
+                    </p>
+                </div>
+                
+                <form id="reopenForm">
+                    <div class="form-group">
+                        <label for="reopeningReason" style="font-weight: 600; color: #2c3e50; margin-bottom: 8px; display: block;">
+                            Reason for Reopening <span style="color: #e74c3c;">*</span>
+                        </label>
+                        <textarea id="reopeningReason" name="reopeningReason" rows="3" class="form-control" 
+                                  placeholder="Please provide a detailed reason for reopening this case..." required></textarea>
+                    </div>
+                    
+                    <div class="form-group">
+                        <label for="patientCondition" style="font-weight: 600; color: #2c3e50; margin-bottom: 8px; display: block;">
+                            Patient's Current Condition
+                        </label>
+                        <textarea id="patientCondition" name="patientCondition" rows="3" class="form-control" 
+                                  placeholder="Describe the patient's current condition..."></textarea>
+                    </div>
+                    
+                    <div class="form-group">
+                        <label for="treatmentPlan" style="font-weight: 600; color: #2c3e50; margin-bottom: 8px; display: block;">
+                            Treatment Plan
+                        </label>
+                        <textarea id="treatmentPlan" name="treatmentPlan" rows="3" class="form-control" 
+                                  placeholder="Outline the treatment plan for the reopened case..."></textarea>
+                    </div>
+                    
+                    <div class="form-group">
+                        <label for="notes" style="font-weight: 600; color: #2c3e50; margin-bottom: 8px; display: block;">
+                            Additional Notes
+                        </label>
+                        <textarea id="notes" name="notes" rows="2" class="form-control" 
+                                  placeholder="Any additional notes or observations..."></textarea>
+                    </div>
+                </form>
+            </div>
+            <div class="modal-footer">
+                <button type="button" class="btn btn-secondary" onclick="closeReopenModal()">Cancel</button>
+                <button type="button" class="btn btn-warning" onclick="reopenCase()" style="background: #ffc107; border-color: #ffc107; color: #212529;">
+                    <i class="fas fa-redo"></i> Reopen Case
+                </button>
+            </div>
+        </div>
+    </div>
+    
+    <!-- Image optimization and preloading script -->
+    <script>
+        // Image preloading for better performance
+        function preloadImages(imageUrls) {
+            imageUrls.forEach(url => {
+                const img = new Image();
+                img.src = url;
+            });
+        }
+        
+        // Preload common images when page loads
+        document.addEventListener('DOMContentLoaded', function() {
+            // Preload common UI images
+            const commonImages = [
+                '${pageContext.request.contextPath}/images/tooth-repair.svg',
+                '${pageContext.request.contextPath}/images/default-profile.png'
+            ];
+            preloadImages(commonImages);
+            
+            // Add intersection observer for lazy loading
+            if ('IntersectionObserver' in window) {
+                const imageObserver = new IntersectionObserver((entries, observer) => {
+                    entries.forEach(entry => {
+                        if (entry.isIntersecting) {
+                            const img = entry.target;
+                            img.src = img.dataset.src;
+                            img.classList.remove('lazy');
+                            observer.unobserve(img);
+                        }
+                    });
+                });
+                
+                // Observe all lazy images
+                document.querySelectorAll('img[data-src]').forEach(img => {
+                    imageObserver.observe(img);
+                });
+            }
+        });
+        
+        // Image loading optimization
+        function optimizeImageLoading() {
+            const images = document.querySelectorAll('img[src*="/uploads/"]');
+            images.forEach(img => {
+                // Add loading="lazy" if not already present
+                if (!img.hasAttribute('loading')) {
+                    img.setAttribute('loading', 'lazy');
+                }
+                
+                // Add error handling
+                img.onerror = function() {
+                    this.style.display = 'none';
+                    this.parentElement.innerHTML = '<div style="display: flex; align-items: center; justify-content: center; height: 100%; color: #e74c3c;"><i class="fas fa-exclamation-triangle"></i> Image not found</div>';
+                };
+            });
+        }
+        
+        // Call optimization when page loads
+        document.addEventListener('DOMContentLoaded', optimizeImageLoading);
     </script>
 </body>
 </html> 

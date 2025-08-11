@@ -15,6 +15,10 @@
     <link href="https://fonts.googleapis.com/css2?family=Poppins:wght@300;400;500;600;700&display=swap" rel="stylesheet">
     <link rel="stylesheet" href="https://cdnjs.cloudflare.com/ajax/libs/font-awesome/6.4.0/css/all.min.css">
     <script src="https://code.jquery.com/jquery-3.6.4.min.js"></script>
+    <!-- FullCalendar (jQuery v3) via jsDelivr to avoid ORB on cdnjs -->
+    <link rel="stylesheet" href="https://cdn.jsdelivr.net/npm/fullcalendar@3.10.5/dist/fullcalendar.min.css" />
+    <script src="https://cdn.jsdelivr.net/npm/moment@2.29.4/min/moment.min.js"></script>
+    <script src="https://cdn.jsdelivr.net/npm/fullcalendar@3.10.5/dist/fullcalendar.min.js"></script>
     
     <!-- Flatpickr CSS and JS -->
     <link rel="stylesheet" href="https://cdn.jsdelivr.net/npm/flatpickr/dist/flatpickr.min.css">
@@ -127,9 +131,28 @@
             color: #2c3e50;
         }
         
-        .appointment-time {
+        .patient-mobile {
+            font-family: 'Courier New', monospace;
+            font-weight: 500;
             color: #7f8c8d;
             font-size: 0.9rem;
+        }
+        
+        .appointment-datetime {
+            display: flex;
+            flex-direction: column;
+            gap: 3px;
+        }
+        
+        .appointment-date {
+            font-weight: 500;
+            color: #2c3e50;
+            font-size: 0.9rem;
+        }
+        
+        .appointment-time {
+            color: #7f8c8d;
+            font-size: 0.85rem;
             display: flex;
             align-items: center;
             gap: 5px;
@@ -179,6 +202,37 @@
         .status-completed { background-color: #e3f2fd; color: #1976d2; }
         .status-cancelled { background-color: #ffebee; color: #c62828; }
         
+        /* Calendar view styles */
+        .calendar-toolbar { display:flex; flex-direction: column; gap:10px; margin-bottom: 16px; }
+        .calendar-toolbar .btn { padding: 8px 12px; border-radius: 8px; cursor: pointer; border: none; }
+        .toolbar-row { display:flex; justify-content: space-between; align-items:center; gap:8px; flex-wrap:wrap; }
+        .nav-row { display:flex; justify-content: space-between; align-items: center; gap:10px; flex-wrap: nowrap; width:100%; }
+        .view-toggle { display:inline-flex; gap:8px; align-items:center; flex-wrap:nowrap; }
+        .view-toggle .btn { white-space: nowrap; }
+        .doctor-filter { display:inline-flex; align-items:center; gap:8px; }
+        .doctor-filter select { padding: 6px 10px; border: 1px solid #dee2e6; border-radius: 8px; font-size: 14px; }
+        .date-label { flex: 1 1 auto; text-align:center; font-weight:600; white-space: nowrap; }
+        .nav-row .btn { padding: 4px 8px; line-height: 1.1; }
+        .nav-row .btn i { margin: 0; }
+        /* Bold current time marker in FullCalendar agenda view */
+        .fc-unthemed .fc-time-grid .fc-now-indicator-line { border-top: 3px solid #e74c3c; }
+        .fc-unthemed .fc-time-grid .fc-now-indicator-arrow { border-width: 8px; border-top-color: #e74c3c; }
+        .calendar-container { position: relative; height: 900px; overflow: auto; border: 1px solid #e0e0e0; border-radius: 8px; background: #fff; }
+        .calendar-time-axis { position: absolute; left: 0; top: 0; width: 70px; background: #f8f9fa; border-right: 1px solid #e0e0e0; height: 1440px; }
+        .calendar-time-label { position: absolute; left: 0; width: 100%; text-align: right; padding-right: 8px; color: #7f8c8d; font-size: 12px; }
+        .calendar-day-column { margin-left: 70px; position: relative; height: 1440px; background: linear-gradient(#ffffff 49px, #f8f9fa 50px); background-size: 100% 60px; }
+        .calendar-hour-line { position: absolute; left: 0; right: 0; height: 1px; background: #eaecee; }
+        .calendar-event { position: absolute; left: 8px; right: 8px; background: #e3f2fd; border-left: 4px solid #1976d2; color: #2c3e50; border-radius: 8px; padding: 8px 10px; font-size: 13px; box-shadow: 0 2px 6px rgba(0,0,0,0.06); overflow: hidden; }
+        .calendar-event .title { font-weight: 600; }
+        .calendar-event .meta { font-size: 12px; color: #607d8b; margin-top: 2px; }
+        .calendar-legend { display:flex; gap:10px; align-items:center; margin-top: 8px; color: #7f8c8d; font-size: 0.85rem; }
+        .legend-dot { display:inline-block; width:10px; height:10px; border-radius:50%; margin-right:6px; }
+        .legend-scheduled { background:#1976d2; }
+        .legend-checked-in { background:#2e7d32; }
+        .legend-in-progress { background:#f57c00; }
+        .legend-completed { background:#6c63ff; }
+        .legend-cancelled { background:#c62828; }
+
         .create-appointment-btn {
             background: linear-gradient(135deg, #3498db, #2980b9);
             color: white;
@@ -377,6 +431,105 @@
             color: #dc3545;
             font-size: 0.85rem;
             margin-top: 0.25rem;
+        }
+        
+        /* Reschedule styles */
+        .appointment-actions {
+            display: flex;
+            flex-direction: column;
+            gap: 8px;
+        }
+        
+        .btn-outline-warning {
+            background: transparent;
+            color: #ffc107;
+            border: 1px solid #ffc107;
+            border-radius: 6px;
+            padding: 8px 16px;
+            font-size: 0.85rem;
+            font-weight: 500;
+            cursor: pointer;
+            transition: all 0.3s;
+        }
+        
+        .btn-outline-warning:hover:not(:disabled) {
+            background: #ffc107;
+            color: #212529;
+        }
+        
+        .btn-outline-warning:disabled {
+            background: #f5f5f5;
+            color: #999;
+            border-color: #ddd;
+            cursor: not-allowed;
+            opacity: 0.7;
+        }
+        
+        .btn-outline-info {
+            background: transparent;
+            color: #17a2b8;
+            border: 1px solid #17a2b8;
+            border-radius: 6px;
+            padding: 6px 12px;
+            font-size: 0.8rem;
+            font-weight: 500;
+            cursor: pointer;
+            transition: all 0.3s;
+        }
+        
+        .btn-outline-info:hover {
+            background: #17a2b8;
+            color: white;
+        }
+        
+        .reschedule-count {
+            font-size: 0.75rem;
+            font-weight: 600;
+            margin-left: 4px;
+        }
+        
+        .reschedule-status {
+            margin-top: 8px;
+        }
+        
+        .reschedule-badge {
+            background: #fff3cd;
+            color: #856404;
+            padding: 4px 8px;
+            border-radius: 4px;
+            font-size: 0.75rem;
+            font-weight: 500;
+            display: inline-flex;
+            align-items: center;
+            gap: 4px;
+        }
+        
+        .reschedule-history-list {
+            list-style: none;
+            padding: 0;
+            margin: 0;
+        }
+        
+        .reschedule-history-list li {
+            background: #f8f9fa;
+            border: 1px solid #dee2e6;
+            border-radius: 8px;
+            padding: 15px;
+            margin-bottom: 10px;
+        }
+        
+        .reschedule-history-list li:last-child {
+            margin-bottom: 0;
+        }
+        
+        .reschedule-history-list strong {
+            color: #495057;
+            font-size: 1rem;
+        }
+        
+        .reschedule-history-list span {
+            color: #6c757d;
+            font-size: 0.9rem;
         }
         
         @media (max-width: 768px) {
@@ -714,6 +867,32 @@
                     </h5>
                 </div>
                 <div class="card-body">
+                    <!-- Calendar/List Toggle and Navigation -->
+                    <div class="calendar-toolbar">
+                        <div class="toolbar-row">
+                            <div class="view-toggle">
+                                <button id="calendarViewBtn" class="btn btn-primary" type="button"><i class="fas fa-calendar-week"></i> Calendar</button>
+                                <button id="listViewBtn" class="btn btn-secondary" type="button"><i class="fas fa-list"></i> List</button>
+                            </div>
+                            <div class="doctor-filter" id="doctorFilterContainer">
+                                <label for="doctorFilter" style="color:#7f8c8d; font-size: 0.9rem;">Sort by doctor:</label>
+                                <select id="doctorFilter">
+                                    <option value="">All</option>
+                                </select>
+                            </div>
+                            <button id="todayBtn" class="btn btn-secondary" type="button">Today</button>
+                        </div>
+                        <div class="toolbar-row nav-row">
+                            <button id="prevDayBtn" class="btn btn-secondary" type="button" title="Previous Day"><i class="fas fa-chevron-left"></i></button>
+                            <div id="calendarDateLabel" class="date-label"></div>
+                            <button id="nextDayBtn" class="btn btn-secondary" type="button" title="Next Day"><i class="fas fa-chevron-right"></i></button>
+                        </div>
+                    </div>
+
+                    <!-- Calendar View (FullCalendar) -->
+                    <div id="calendarView" style="display:block;">
+                        <div id="appointmentsCalendar"></div>
+                    </div>
                     <c:if test="${not empty successMessage}">
                         <div class="alert alert-success">
                             <i class="fas fa-check-circle"></i> ${successMessage}
@@ -726,6 +905,7 @@
                         </div>
                     </c:if>
 
+                    <div id="listView" style="display:none;">
                     <c:choose>
                         <c:when test="${empty appointments}">
                             <div class="text-center py-5">
@@ -748,9 +928,9 @@
                                 <thead>
                                     <tr>
                                         <th>Patient</th>
+                                        <th>Mobile</th>
                                         <th>Registration ID</th>
-                                        <th>Appointment Date</th>
-                                        <th>Time</th>
+                                        <th>Date & Time</th>
                                         <th>Doctor</th>
                                         <th>Status</th>
                                         <th>Notes</th>
@@ -764,6 +944,13 @@
                                                 <div class="appointment-info">
                                                     <span class="patient-name">
                                                         ${appointment.patientName != null ? appointment.patientName : appointment.patientMobile}
+                                                    </span>
+                                                </div>
+                                            </td>
+                                            <td>
+                                                <div class="appointment-info">
+                                                    <span class="patient-mobile">
+                                                        ${appointment.patientMobile != null ? appointment.patientMobile : '-'}
                                                     </span>
                                                 </div>
                                             </td>
@@ -788,16 +975,15 @@
                                                 </c:choose>
                                             </td>
                                             <td>
-                                                <div class="appointment-date">
+                                                <div class="appointment-datetime">
                                                     <fmt:parseDate value="${appointment.appointmentDateTime}" pattern="yyyy-MM-dd'T'HH:mm" var="parsedDate" type="both"/>
-                                                    <fmt:formatDate value="${parsedDate}" pattern="dd/MM/yyyy"/>
-                                                </div>
-                                            </td>
-                                            <td>
-                                                <div class="appointment-time">
-                                                    <i class="fas fa-clock"></i>
-                                                    <fmt:parseDate value="${appointment.appointmentDateTime}" pattern="yyyy-MM-dd'T'HH:mm" var="parsedDate" type="both"/>
-                                                    <fmt:formatDate value="${parsedDate}" pattern="hh:mm a"/>
+                                                    <div class="appointment-date">
+                                                        <fmt:formatDate value="${parsedDate}" pattern="dd/MM/yyyy"/>
+                                                    </div>
+                                                    <div class="appointment-time">
+                                                        <i class="fas fa-clock"></i>
+                                                        <fmt:formatDate value="${parsedDate}" pattern="hh:mm a"/>
+                                                    </div>
                                                 </div>
                                             </td>
                                             <td>
@@ -832,20 +1018,56 @@
                                                 </div>
                                             </td>
                                             <td>
-                                                <sec:authorize access="hasAnyRole('RECEPTIONIST', 'ADMIN')">
-                                                    <button class="btn-outline-primary" 
-                                                            onclick="showAppointmentDetails('${appointment.id}')"
-                                                            ${appointment.status == 'CANCELLED' || appointment.status == 'NO_SHOW' || appointment.status == 'COMPLETED' ? 'disabled' : ''}
-                                                            data-bs-toggle="tooltip"
-                                                            data-bs-placement="top"
-                                                            data-bs-custom-class="custom-tooltip"
-                                                            title="${appointment.status == 'CANCELLED' || appointment.status == 'NO_SHOW' || appointment.status == 'COMPLETED' ? 'Cannot transition from terminal status' : 'Update appointment status'}">
-                                                        <i class="fas fa-eye"></i> Details
-                                                    </button>
-                                                </sec:authorize>
-                                                <sec:authorize access="hasRole('DOCTOR')">
-                                                    <span style="color: #6c757d; font-style: italic; font-size: 0.9em;">Status updates disabled for Doctor Role</span>
-                                                </sec:authorize>
+                                                <div class="appointment-actions">
+                                                    <sec:authorize access="hasAnyRole('RECEPTIONIST', 'ADMIN')">
+                                                        <button class="btn-outline-primary" 
+                                                                onclick="showAppointmentDetails('${appointment.id}')"
+                                                                ${appointment.status == 'CANCELLED' || appointment.status == 'NO_SHOW' || appointment.status == 'COMPLETED' ? 'disabled' : ''}
+                                                                data-bs-toggle="tooltip"
+                                                                data-bs-placement="top"
+                                                                data-bs-custom-class="custom-tooltip"
+                                                                title="${appointment.status == 'CANCELLED' || appointment.status == 'NO_SHOW' || appointment.status == 'COMPLETED' ? 'Cannot transition from terminal status' : 'Update appointment status'}">
+                                                            <i class="fas fa-eye"></i> Details
+                                                        </button>
+                                                        
+                                                        <!-- Reschedule button -->
+                                                        <fmt:parseDate value="${appointment.appointmentDateTime}" pattern="yyyy-MM-dd'T'HH:mm" var="parsedDate" type="both"/>
+                                                        <fmt:formatDate value="${parsedDate}" pattern="dd/MM/yyyy" var="formattedDate"/>
+                                                        <fmt:formatDate value="${parsedDate}" pattern="hh:mm a" var="formattedTime"/>
+                                                        <button class="btn-outline-warning" 
+                                                                onclick="showRescheduleModal('${appointment.id}', '${formattedDate} ${formattedTime}', '${appointment.appointmentDateTime}')"
+                                                                ${appointment.status == 'CANCELLED' || appointment.status == 'NO_SHOW' || appointment.status == 'COMPLETED' ? 'disabled' : ''}
+                                                                data-bs-toggle="tooltip"
+                                                                title="Reschedule appointment">
+                                                            <i class="fas fa-calendar-alt"></i> Reschedule
+                                                            <c:if test="${appointment.rescheduledCount > 0}">
+                                                                <span class="reschedule-count">(${appointment.rescheduledCount}/3)</span>
+                                                            </c:if>
+                                                        </button>
+                                                        
+                                                        <!-- Reschedule history button -->
+                                                        <c:if test="${appointment.rescheduledCount > 0}">
+                                                            <button class="btn-outline-info btn-sm" 
+                                                                    onclick="showRescheduleHistory('${appointment.id}')"
+                                                                    data-bs-toggle="tooltip"
+                                                                    title="View reschedule history">
+                                                                <i class="fas fa-history"></i> History
+                                                            </button>
+                                                        </c:if>
+                                                    </sec:authorize>
+                                                    <sec:authorize access="hasRole('DOCTOR')">
+                                                        <span style="color: #6c757d; font-style: italic; font-size: 0.9em;">Status updates disabled for Doctor Role</span>
+                                                    </sec:authorize>
+                                                    
+                                                    <!-- Reschedule status indicator -->
+                                                    <c:if test="${appointment.rescheduledCount > 0}">
+                                                        <div class="reschedule-status">
+                                                            <span class="reschedule-badge">
+                                                                <i class="fas fa-history"></i> Rescheduled ${appointment.rescheduledCount}x
+                                                            </span>
+                                                        </div>
+                                                    </c:if>
+                                                </div>
                                             </td>
                                         </tr>
                                     </c:forEach>
@@ -853,8 +1075,9 @@
                             </table>
                         </c:otherwise>
                     </c:choose>
+                    </div>
                     
-                    <!-- Pagination Controls -->
+                    <!-- Pagination Controls (List view only) -->
                     <c:if test="${totalPages > 1 or not empty appointments}">
                         <div class="pagination-container">
                             <div class="pagination-info">
@@ -873,8 +1096,8 @@
                                     </select>
                                 </div>
                                 
-                                <!-- Sort Controls -->
-                                <div class="sort-controls">
+                                <!-- Sort Controls (only in list view) -->
+                                <div class="sort-controls" id="listSortControls">
                                     <label for="sort">Sort by:</label>
                                     <select id="sort" onchange="changeSort(this.value)">
                                         <option value="appointmentDateTime" ${sort == 'appointmentDateTime' ? 'selected' : ''}>Appointment Time</option>
@@ -1014,6 +1237,9 @@
 
     <script src="https://cdn.jsdelivr.net/npm/bootstrap@5.1.3/dist/js/bootstrap.bundle.min.js"></script>
     <script>
+        // Appointments for calendar view
+        const appointmentsData = ${appointmentsJson};
+
         // Global variable for the modal
         let createAppointmentModal = null;
         
@@ -1028,6 +1254,8 @@
         
         document.addEventListener('DOMContentLoaded', function() {
             console.log('DOM Content Loaded');
+            initCalendarToggle();
+            initFullCalendar();
             
             // Initialize Bootstrap modal only if element exists
             const createAppointmentModalElement = document.getElementById('createAppointmentModal');
@@ -1217,6 +1445,144 @@
             const modal = new bootstrap.Modal(document.getElementById('statusUpdateModal'));
             modal.show();
         }
+
+        function initCalendarToggle() {
+            const calendarViewBtn = document.getElementById('calendarViewBtn');
+            const listViewBtn = document.getElementById('listViewBtn');
+            const calendarView = document.getElementById('calendarView');
+            const listView = document.getElementById('listView');
+            const listSortControls = document.getElementById('listSortControls');
+            const doctorFilterContainer = document.getElementById('doctorFilterContainer');
+            const myAppointmentsEffective = (document.getElementById('myAppointmentsState')?.value === 'true');
+            if (doctorFilterContainer) {
+                doctorFilterContainer.style.display = myAppointmentsEffective ? 'none' : '';
+            }
+            if (!calendarViewBtn || !listViewBtn || !calendarView || !listView) return;
+            calendarViewBtn.addEventListener('click', () => {
+                calendarView.style.display = 'block';
+                listView.style.display = 'none';
+                if (listSortControls) listSortControls.style.display = 'none';
+                renderDayCalendar && renderDayCalendar();
+            });
+            listViewBtn.addEventListener('click', () => {
+                calendarView.style.display = 'none';
+                listView.style.display = 'block';
+                if (listSortControls) listSortControls.style.display = '';
+            });
+        }
+
+        function initFullCalendar() {
+            const calendarEl = $('#appointmentsCalendar');
+            const label = document.getElementById('calendarDateLabel');
+            if (!calendarEl.length) return;
+            // Map server events to FullCalendar v3
+            const allEvents = (appointmentsData || []).map(function(e){
+                return {
+                    id: e.id,
+                    title: (e.patientName ? ('Patient: ' + e.patientName) : 'Patient: -') + (e.doctorName ? (' \u2022 Doctor: ' + e.doctorName) : ''),
+                    start: e.start,
+                    allDay: false,
+                    className: ['appt-' + String(e.status || 'SCHEDULED').toLowerCase()],
+                    notes: e.notes || '',
+                    patientName: e.patientName || '',
+                    doctorName: e.doctorName || ''
+                };
+            });
+            let events = allEvents.slice();
+            // Determine time window based on events (fallback to 08:00–22:00)
+            var minHour = 8;
+            var maxHour = 22;
+            if (events.length > 0) {
+                try {
+                    var hours = events.map(function(ev){ var d = new Date(ev.start); return d.getHours(); });
+                    var minEv = Math.min.apply(null, hours);
+                    var maxEv = Math.max.apply(null, hours) + 1;
+                    if (!isNaN(minEv)) minHour = Math.min(8, Math.max(0, minEv));
+                    if (!isNaN(maxEv)) maxHour = Math.max(22, Math.min(24, maxEv));
+                } catch(e) {}
+            }
+            calendarEl.fullCalendar({
+                header: { left: '', center: '', right: '' },
+                defaultView: 'agendaDay',
+                allDaySlot: false,
+                slotDuration: '00:30:00',
+                slotLabelFormat: 'h(:mm)a',
+                timeFormat: 'h:mma',
+                minTime: (minHour < 10 ? '0' + minHour : '' + minHour) + ':00:00',
+                maxTime: (maxHour < 10 ? '0' + maxHour : '' + maxHour) + ':00:00',
+                height: 'auto',
+                contentHeight: 'auto',
+                nowIndicator: true,
+                events: events,
+                eventRender: function(event, element) {
+                    // Color by status
+                    const status = (event.className && event.className[0] || '').replace('appt-','');
+                    const colors = { 'scheduled':'#1976d2', 'checked_in':'#2e7d32', 'in_progress':'#f57c00', 'completed':'#6c63ff', 'cancelled':'#c62828' };
+                    element.css({ borderLeft: '4px solid ' + (colors[status] || '#1976d2') });
+                    // Deterministic background color per appointment for visual distinction
+                    try {
+                        var palette = ['#e3f2fd','#e8f5e9','#fff3e0','#ede7f6','#e0f7fa','#f3e5f5','#f1f8e9','#fffde7','#e8eaf6','#fce4ec'];
+                        function strHash(s){ var h=0,i=0; for(i=0;i<s.length;i++){ h=((h<<5)-h)+s.charCodeAt(i); h|=0; } return Math.abs(h); }
+                        var key = (event.id!=null? String(event.id) : (event.patientName||'') + '|' + (event.start||''));
+                        var idx = strHash(key) % palette.length;
+                        element.css('background-color', palette[idx]);
+                        element.css('color', '#2c3e50');
+                    } catch(e) {}
+                    // Tooltip with labels and notes (native title)
+                    var timeStr = (window.moment ? window.moment(event.start).format('h:mm A') : '');
+                    var tip = (timeStr ? ('Time: ' + timeStr + '\n') : '') + 'Patient: ' + (event.patientName || '-') + '\n' + 'Doctor: ' + (event.doctorName || '-');
+                    if (event.notes) { tip += '\nNotes: ' + event.notes; }
+                    element.attr('title', tip);
+                }
+                ,eventClick: function(event) {
+                    try {
+                        if (!event) return;
+                        showAppointmentDetailsView(event);
+                    } catch(e) { console.warn('Failed to open details modal:', e); }
+                }
+            });
+            // Set date label from selectedDate (dd-MM-yyyy)
+            try {
+                const parts = '${selectedDate}'.split('-');
+                const dd = parts[0];
+                const mm = parts[1];
+                const yyyy = parts[2];
+                const iso = yyyy + '-' + mm + '-' + dd;
+                calendarEl.fullCalendar('gotoDate', iso);
+                if (label) label.textContent = new Date(iso).toDateString();
+            } catch(e) {}
+            // Nav buttons
+            $('#prevDayBtn').on('click', function(){ calendarEl.fullCalendar('prev'); syncUrlWithCalendar(); });
+            $('#nextDayBtn').on('click', function(){ calendarEl.fullCalendar('next'); syncUrlWithCalendar(); });
+            $('#todayBtn').on('click', function(){ calendarEl.fullCalendar('today'); syncUrlWithCalendar(); });
+            // Populate doctor filter
+            try {
+                var uniqueDoctors = Array.from(new Set(allEvents.map(function(e){ return e.doctorName || ''; }))).filter(Boolean).sort();
+                var sel = document.getElementById('doctorFilter');
+                if (sel) {
+                    uniqueDoctors.forEach(function(name){
+                        var opt = document.createElement('option');
+                        opt.value = name;
+                        opt.textContent = name;
+                        sel.appendChild(opt);
+                    });
+                    sel.addEventListener('change', function(){
+                        var selected = sel.value;
+                        var filtered = selected ? allEvents.filter(function(e){ return e.doctorName === selected; }) : allEvents.slice();
+                        calendarEl.fullCalendar('removeEvents');
+                        calendarEl.fullCalendar('addEventSource', filtered);
+                        calendarEl.fullCalendar('rerenderEvents');
+                    });
+                }
+            } catch(e) { console.warn('Doctor filter setup failed:', e); }
+            function syncUrlWithCalendar(){
+                const m = calendarEl.fullCalendar('getDate');
+                const y = m.year();
+                const mo = String(m.month()+1).padStart(2,'0');
+                const d = String(m.date()).padStart(2,'0');
+                window.location.href = '${pageContext.request.contextPath}/appointments/management?date=' + y + '-' + mo + '-' + d;
+            }
+        }
         
         function handleStatusChange() {
             const status = document.getElementById('statusSelect').value;
@@ -1353,18 +1719,17 @@
         
         function toggleMyAppointments() {
             const url = new URL(window.location.href);
-            const currentMyAppointments = url.searchParams.get('myAppointments') === 'true';
-            const newMyAppointments = !currentMyAppointments;
-            
+            const stateEl = document.getElementById('myAppointmentsState');
+            const currentEffective = stateEl ? (stateEl.value === 'true') : (url.searchParams.get('myAppointments') === 'true');
+            const newMyAppointments = !currentEffective;
             if (newMyAppointments) {
                 url.searchParams.set('myAppointments', 'true');
-                // Remove date parameter when showing my appointments
                 url.searchParams.delete('date');
             } else {
-                url.searchParams.delete('myAppointments');
+                // Explicitly set to false so we override the server's default for doctors
+                url.searchParams.set('myAppointments', 'false');
             }
-            
-            window.location.href = url.toString();
+            window.location.href = url.pathname + '?' + url.searchParams.toString();
         }
         
         // Pagination functions
@@ -1394,6 +1759,188 @@
             urlParams.set('page', '0'); // Reset to first page when changing direction
             window.location.href = window.location.pathname + '?' + urlParams.toString();
         }
+        
+        // Reschedule functions
+        function showRescheduleModal(appointmentId, formattedDateTime, rawDateTime) {
+            document.getElementById('rescheduleAppointmentId').value = appointmentId;
+            document.getElementById('currentDateTime').textContent = formattedDateTime;
+            document.getElementById('rescheduleModal').style.display = 'block';
+            
+            // Initialize flatpickr for new date/time
+            flatpickr("#newAppointmentDateTime", {
+                enableTime: true,
+                dateFormat: "Y-m-d H:i:S",
+                time_24hr: false,
+                minDate: "today",
+                minTime: "00:00",
+                maxTime: "23:59",
+                defaultHour: new Date().getHours(),
+                defaultMinute: new Date().getMinutes(),
+                defaultSeconds: 0
+            });
+        }
+        
+        function closeRescheduleModal() {
+            document.getElementById('rescheduleModal').style.display = 'none';
+            document.getElementById('rescheduleForm').reset();
+            document.getElementById('rescheduleError').style.display = 'none';
+        }
+        
+        function submitReschedule() {
+            const appointmentId = document.getElementById('rescheduleAppointmentId').value;
+            const newDateTime = document.getElementById('newAppointmentDateTime').value;
+            const reason = document.getElementById('rescheduleReason').value;
+            const additionalNotes = document.getElementById('additionalNotes').value;
+            
+            if (!newDateTime || !reason) {
+                document.getElementById('rescheduleError').textContent = 'Please fill in all required fields';
+                document.getElementById('rescheduleError').style.display = 'block';
+                return;
+            }
+            
+            // Convert the date/time format from "YYYY-MM-DD HH:mm:SS" to "YYYY-MM-DDTHH:mm:SS" for LocalDateTime
+            const formattedDateTime = newDateTime.replace(' ', 'T');
+            
+            const data = {
+                appointmentId: parseInt(appointmentId),
+                newAppointmentDateTime: formattedDateTime,
+                reason: reason,
+                additionalNotes: additionalNotes
+            };
+            
+            fetch('${pageContext.request.contextPath}/appointments/reschedule', {
+                method: 'POST',
+                headers: {
+                    'Content-Type': 'application/json',
+                    '${_csrf.headerName}': '${_csrf.token}'
+                },
+                body: JSON.stringify(data)
+            })
+            .then(response => response.json())
+            .then(data => {
+                if (data.success) {
+                    closeRescheduleModal();
+                    window.location.reload();
+                } else {
+                    document.getElementById('rescheduleError').textContent = data.message;
+                    document.getElementById('rescheduleError').style.display = 'block';
+                }
+            })
+            .catch(error => {
+                console.error('Error rescheduling appointment:', error);
+                document.getElementById('rescheduleError').textContent = 'An error occurred while rescheduling the appointment';
+                document.getElementById('rescheduleError').style.display = 'block';
+            });
+        }
+        
+        function showRescheduleHistory(appointmentId) {
+            console.log('Fetching history for appointment:', appointmentId);
+            fetch('${pageContext.request.contextPath}/appointments/' + appointmentId + '/history')
+                .then(res => {
+                    console.log('Response status:', res.status);
+                    if (!res.ok) {
+                        throw new Error('HTTP error! status: ' + res.status);
+                    }
+                    return res.json();
+                })
+                .then(history => {
+                    console.log('Received history:', history);
+                    let html = '<ul class="reschedule-history-list">';
+                    history.filter(h => h.action === 'RESCHEDULED').forEach(item => {
+                        html += '<li>' +
+                            '<strong>Reschedule #' + item.rescheduleNumber + ':</strong>' +
+                            '<br>From: <span>' + item.oldValue + '</span>' +
+                            '<br>To: <span>' + item.newValue + '</span>' +
+                            '<br>By: <span>' + (item.changedBy ? item.changedBy.firstName + ' ' + item.changedBy.lastName : 'Unknown') + '</span>' +
+                            '<br>At: <span>' + item.changedAt + '</span>' +
+                            '<br>Reason: <span>' + item.notes + '</span>' +
+                            '</li>';
+                    });
+                    html += '</ul>';
+                    document.getElementById('rescheduleHistoryContent').innerHTML = html;
+                    document.getElementById('rescheduleHistoryModal').style.display = 'block';
+                })
+                .catch(error => {
+                    console.error('Error fetching reschedule history:', error);
+                    alert('Failed to load reschedule history');
+                });
+        }
+        
+        function closeRescheduleHistoryModal() {
+            document.getElementById('rescheduleHistoryModal').style.display = 'none';
+        }
     </script>
+    
+    <!-- Reschedule Modal -->
+    <div id="rescheduleModal" class="modal" style="display: none;">
+        <div class="modal-dialog modal-dialog-centered">
+            <div class="modal-content">
+                <div class="modal-header">
+                    <h5 class="modal-title">Reschedule Appointment</h5>
+                    <button type="button" class="btn-close" onclick="closeRescheduleModal()"></button>
+                </div>
+                <div class="modal-body">
+                    <form id="rescheduleForm">
+                        <input type="hidden" id="rescheduleAppointmentId">
+                        
+                        <div class="form-group">
+                            <label>Current Date & Time:</label>
+                            <div id="currentDateTime" class="form-control" style="background-color: #f8f9fa;"></div>
+                        </div>
+                        
+                        <div class="form-group">
+                            <label for="newAppointmentDateTime">New Date & Time: <span class="text-danger">*</span></label>
+                            <input type="text" id="newAppointmentDateTime" class="form-control" required>
+                        </div>
+                        
+                        <div class="form-group">
+                            <label for="rescheduleReason">Reason for Reschedule: <span class="text-danger">*</span></label>
+                            <select id="rescheduleReason" class="form-control" required>
+                                <option value="">Select a reason</option>
+                                <option value="Patient Request">Patient Request</option>
+                                <option value="Doctor Unavailable">Doctor Unavailable</option>
+                                <option value="Emergency">Emergency</option>
+                                <option value="Clinic Schedule Conflict">Clinic Schedule Conflict</option>
+                                <option value="Weather">Weather</option>
+                                <option value="Technical Issues">Technical Issues</option>
+                                <option value="Other">Other</option>
+                            </select>
+                        </div>
+                        
+                        <div class="form-group">
+                            <label for="additionalNotes">Additional Notes:</label>
+                            <textarea id="additionalNotes" class="form-control" rows="3" placeholder="Optional additional details..."></textarea>
+                        </div>
+                        
+                        <div id="rescheduleError" class="text-danger" style="display: none;"></div>
+                    </form>
+                </div>
+                <div class="modal-footer">
+                    <button type="button" class="btn btn-secondary" onclick="closeRescheduleModal()">Cancel</button>
+                    <button type="button" class="btn btn-warning" onclick="submitReschedule()">Reschedule</button>
+                </div>
+            </div>
+        </div>
+    </div>
+    
+    <!-- Reschedule History Modal -->
+    <div id="rescheduleHistoryModal" class="modal" style="display: none;">
+        <div class="modal-dialog modal-lg modal-dialog-centered">
+            <div class="modal-content">
+                <div class="modal-header">
+                    <h5 class="modal-title">Reschedule History</h5>
+                    <button type="button" class="btn-close" onclick="closeRescheduleHistoryModal()"></button>
+                </div>
+                <div class="modal-body">
+                    <div id="rescheduleHistoryContent">
+                        <!-- Content will be loaded dynamically -->
+                    </div>
+                </div>
+                <div class="modal-footer">
+                    <button type="button" class="btn btn-secondary" onclick="closeRescheduleHistoryModal()">Close</button>
+                </div>
+            </div>
+        </div>
+    </div>
 </body>
 </html> 

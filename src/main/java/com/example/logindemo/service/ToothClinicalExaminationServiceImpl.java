@@ -241,9 +241,6 @@ public class ToothClinicalExaminationServiceImpl implements ToothClinicalExamina
     @Override
     public ToothClinicalExaminationDTO updateExamination(ToothClinicalExaminationDTO examinationDTO) {
         // Validate required fields
-        if (examinationDTO.getToothSurface() == null) {
-            throw new IllegalArgumentException("Tooth surface is required");
-        }
         if (examinationDTO.getToothCondition() == null) {
             throw new IllegalArgumentException("Tooth condition is required");
         }
@@ -255,7 +252,6 @@ public class ToothClinicalExaminationServiceImpl implements ToothClinicalExamina
             .orElseThrow(() -> new RuntimeException("Examination not found"));
             
         // Update only the fields that can be changed
-        examination.setToothSurface(examinationDTO.getToothSurface());
         examination.setToothCondition(examinationDTO.getToothCondition());
         examination.setExistingRestoration(examinationDTO.getExistingRestoration());
         examination.setToothMobility(examinationDTO.getToothMobility());

@@ -12,11 +12,17 @@
     <meta name="_csrf_header" content="${_csrf.headerName}"/>
     <meta name="viewport" content="width=device-width, initial-scale=1.0">
     <link rel="stylesheet" href="${pageContext.request.contextPath}/css/style.css">
+    <link rel="stylesheet" href="${pageContext.request.contextPath}/css/color-code-component.css">
+    <link rel="stylesheet" href="${pageContext.request.contextPath}/css/chairside-note-component.css">
     <link href="https://fonts.googleapis.com/css2?family=Poppins:wght@300;400;500;600;700&display=swap" rel="stylesheet">
     <link rel="stylesheet" href="https://cdnjs.cloudflare.com/ajax/libs/font-awesome/6.4.0/css/all.min.css">
     <link rel="stylesheet" href="https://cdn.jsdelivr.net/npm/flatpickr/dist/flatpickr.min.css">
     <script src="https://code.jquery.com/jquery-3.6.4.min.js"></script>
     <script src="https://cdn.jsdelivr.net/npm/flatpickr"></script>
+    <script src="${pageContext.request.contextPath}/js/imageCompression.js"></script>
+    <script src="${pageContext.request.contextPath}/js/imagePerformanceMonitor.js"></script>
+    <script src="${pageContext.request.contextPath}/js/color-code-component.js"></script>
+    <script src="${pageContext.request.contextPath}/js/chairside-note-component.js"></script>
     
     <!-- Include common menu styles -->
     <jsp:include page="/WEB-INF/views/common/menuStyles.jsp" />
@@ -108,6 +114,44 @@
             border: none;
         }
         
+        /* Image loading optimization styles */
+        .image-loading {
+            opacity: 0;
+            transition: opacity 0.3s ease-in-out;
+        }
+        
+        .image-loaded {
+            opacity: 1;
+        }
+        
+        .image-error {
+            display: flex;
+            align-items: center;
+            justify-content: center;
+            height: 100%;
+            color: #e74c3c;
+            background: #f8f9fa;
+            border: 1px dashed #dee2e6;
+            border-radius: 8px;
+            padding: 20px;
+        }
+        
+        .image-loading-spinner {
+            display: inline-block;
+            width: 20px;
+            height: 20px;
+            border: 2px solid #f3f3f3;
+            border-top: 2px solid #3498db;
+            border-radius: 50%;
+            animation: spin 1s linear infinite;
+            margin-right: 10px;
+        }
+        
+        @keyframes spin {
+            0% { transform: rotate(0deg); }
+            100% { transform: rotate(360deg); }
+        }
+        
         .btn-primary {
             background: linear-gradient(135deg, #3498db, #2980b9);
             color: white;
@@ -117,6 +161,67 @@
             background: linear-gradient(135deg, #2980b9, #1c6ea4);
             transform: translateY(-2px);
             box-shadow: 0 4px 12px rgba(52, 152, 219, 0.2);
+        }
+        
+        /* Ensure button styling is not overridden */
+        .welcome-header .btn,
+        .action-buttons .btn,
+        .procedure-actions .btn {
+            display: inline-flex !important;
+            align-items: center !important;
+            justify-content: center !important;
+            gap: 8px !important;
+            padding: 10px 20px !important;
+            border-radius: 8px !important;
+            cursor: pointer !important;
+            transition: all 0.3s ease !important;
+            font-family: 'Poppins', sans-serif !important;
+            font-weight: 500 !important;
+            font-size: 0.9rem !important;
+            text-decoration: none !important;
+            text-align: center !important;
+            border: none !important;
+        }
+        
+        .welcome-header .btn-primary,
+        .action-buttons .btn-primary,
+        .procedure-actions .btn-primary {
+            background: linear-gradient(135deg, #3498db, #2980b9) !important;
+            color: white !important;
+        }
+        
+        .welcome-header .btn-primary:hover,
+        .action-buttons .btn-primary:hover,
+        .procedure-actions .btn-primary:hover {
+            background: linear-gradient(135deg, #2980b9, #1c6ea4) !important;
+            transform: translateY(-2px) !important;
+            box-shadow: 0 4px 12px rgba(52, 152, 219, 0.2) !important;
+        }
+        
+        .welcome-header .btn-secondary,
+        .action-buttons .btn-secondary,
+        .procedure-actions .btn-secondary {
+            background: #95a5a6 !important;
+            color: white !important;
+        }
+        
+        .welcome-header .btn-secondary:hover,
+        .action-buttons .btn-secondary:hover,
+        .procedure-actions .btn-secondary:hover {
+            background: #7f8c8d !important;
+            transform: translateY(-2px) !important;
+            box-shadow: 0 4px 12px rgba(127, 140, 141, 0.2) !important;
+        }
+        
+        .welcome-header .btn-secondary.disabled,
+        .action-buttons .btn-secondary.disabled,
+        .procedure-actions .btn-secondary.disabled {
+            background: #bdc3c7 !important;
+            color: #7f8c8d !important;
+            cursor: not-allowed !important;
+            opacity: 0.6 !important;
+            transform: none !important;
+            box-shadow: none !important;
         }
         
         .btn-secondary {
@@ -727,6 +832,204 @@
             margin-top: 15px;
         }
         
+        /* Denture Upload Section Styles */
+        .denture-upload-section {
+            background: white;
+            border-radius: 12px;
+            box-shadow: 0 5px 15px rgba(0, 0, 0, 0.03);
+            padding: 25px;
+            margin-bottom: 25px;
+            border: 2px solid #e8f5e9;
+        }
+        
+        .denture-upload-section h3 {
+            color: #2c3e50;
+            font-size: 1.3rem;
+            margin-bottom: 10px;
+            display: flex;
+            align-items: center;
+            gap: 10px;
+        }
+        
+        .denture-upload-section h3 i {
+            color: #3498db;
+        }
+        
+        .upload-description {
+            color: #7f8c8d;
+            font-size: 0.9rem;
+            margin-bottom: 20px;
+            line-height: 1.5;
+        }
+        
+        .denture-upload-container {
+            display: grid;
+            grid-template-columns: 1fr 1fr;
+            gap: 25px;
+            margin-bottom: 20px;
+        }
+        
+        .denture-upload-item {
+            display: flex;
+            flex-direction: column;
+            gap: 10px;
+        }
+        
+        .upload-label {
+            display: flex;
+            align-items: center;
+            gap: 8px;
+            font-weight: 500;
+            color: #2c3e50;
+            font-size: 0.95rem;
+        }
+        
+        .upload-label i {
+            color: #3498db;
+        }
+        
+        .required-indicator {
+            color: #e74c3c;
+            font-weight: bold;
+        }
+        
+        .denture-file-input {
+            display: none;
+        }
+        
+        .denture-preview {
+            border: 2px dashed #bdc3c7;
+            border-radius: 8px;
+            padding: 20px;
+            text-align: center;
+            background: #f8f9fa;
+            cursor: pointer;
+            transition: all 0.3s ease;
+            min-height: 120px;
+            display: flex;
+            flex-direction: column;
+            align-items: center;
+            justify-content: center;
+            gap: 8px;
+        }
+        
+        .denture-preview:hover {
+            border-color: #3498db;
+            background: #f0f7ff;
+        }
+        
+        .denture-preview i {
+            font-size: 2rem;
+            color: #bdc3c7;
+        }
+        
+        .denture-preview span {
+            color: #7f8c8d;
+            font-size: 0.9rem;
+        }
+        
+        .denture-preview img {
+            max-width: 100%;
+            max-height: 100px;
+            border-radius: 4px;
+            object-fit: cover;
+        }
+        
+        .upload-status {
+            font-size: 0.85rem;
+            padding: 5px 0;
+        }
+        
+        .upload-status.success {
+            color: #27ae60;
+        }
+        
+        .upload-status.error {
+            color: #e74c3c;
+        }
+        
+        .upload-status.loading {
+            color: #f39c12;
+        }
+        
+        .upload-validation {
+            background: #fff3cd;
+            border: 1px solid #ffeaa7;
+            border-radius: 6px;
+            padding: 12px;
+            display: flex;
+            align-items: center;
+            gap: 8px;
+            font-size: 0.9rem;
+            color: #856404;
+        }
+        
+        .upload-validation.success {
+            background: #d4edda;
+            border-color: #c3e6cb;
+            color: #155724;
+        }
+        
+        .upload-validation.error {
+            color: #e74c3c;
+            background-color: #fdf2f2;
+            border: 1px solid #fecaca;
+        }
+        
+        .upload-validation.info {
+            color: #3498db;
+            background-color: #f0f8ff;
+            border: 1px solid #bee3f8;
+        }
+        
+        .upload-validation i {
+            font-size: 1rem;
+        }
+        
+        @media (max-width: 768px) {
+            .denture-upload-container {
+                grid-template-columns: 1fr;
+                gap: 20px;
+            }
+        }
+        
+        /* Disabled field styles */
+        .disabled-field {
+            opacity: 0.6;
+            position: relative;
+        }
+        
+        .disabled-field::after {
+                            content: "Upload arch pictures first";
+            position: absolute;
+            top: -25px;
+            left: 0;
+            background: #f8d7da;
+            color: #721c24;
+            padding: 4px 8px;
+            border-radius: 4px;
+            font-size: 0.8rem;
+            white-space: nowrap;
+            z-index: 10;
+            opacity: 0;
+            transition: opacity 0.3s ease;
+        }
+        
+        .disabled-field:hover::after {
+            opacity: 1;
+        }
+        
+        .disabled-field .meta-label {
+            color: #6c757d;
+        }
+        
+        .disabled-field select {
+            background-color: #f8f9fa !important;
+            color: #6c757d !important;
+            cursor: not-allowed !important;
+            border-color: #dee2e6 !important;
+        }
+        
         .denture-photo-item {
             background: #f8f9fa;
             border-radius: 8px;
@@ -806,144 +1109,636 @@
         .image-modal {
             display: none;
             position: fixed;
-            z-index: 1000;
+            z-index: 2000;
             left: 0;
             top: 0;
             width: 100%;
             height: 100%;
             background-color: rgba(0, 0, 0, 0.8);
-            backdrop-filter: blur(5px);
         }
         
         .image-modal-content {
             position: relative;
-            margin: auto;
-            display: flex;
-            flex-direction: column;
-            align-items: center;
-            justify-content: center;
-            height: 100%;
-            max-width: 90%;
-            max-height: 90%;
+            margin: 2% auto;
+            padding: 0;
+            width: 90%;
+            max-width: 800px;
+            background: white;
+            border-radius: 12px;
+            box-shadow: 0 10px 30px rgba(0, 0, 0, 0.5);
         }
         
-        .modal-image {
-            max-width: 100%;
-            max-height: 80vh;
-            object-fit: contain;
-            border-radius: 8px;
-            box-shadow: 0 10px 30px rgba(0, 0, 0, 0.3);
-        }
-        
-        .modal-header {
-            position: absolute;
-            top: 20px;
-            left: 50%;
-            transform: translateX(-50%);
-            background: rgba(0, 0, 0, 0.7);
-            color: white;
-            padding: 10px 20px;
-            border-radius: 25px;
+        .image-modal .modal-header {
+            padding: 15px 20px;
+            background: #f8f9fa;
+            border-bottom: 1px solid #e9ecef;
+            border-radius: 12px 12px 0 0;
             font-weight: 500;
-            z-index: 1001;
+            color: #2c3e50;
         }
         
         .modal-close {
             position: absolute;
-            top: 20px;
-            right: 30px;
-            color: white;
-            font-size: 35px;
+            top: 15px;
+            right: 20px;
+            color: #aaa;
+            font-size: 28px;
             font-weight: bold;
             cursor: pointer;
-            z-index: 1001;
-            background: rgba(0, 0, 0, 0.5);
-            border-radius: 50%;
-            width: 50px;
-            height: 50px;
-            display: flex;
-            align-items: center;
-            justify-content: center;
-            transition: all 0.3s ease;
+            line-height: 1;
         }
         
         .modal-close:hover {
-            background: rgba(0, 0, 0, 0.8);
-            transform: scale(1.1);
+            color: #000;
+        }
+        
+        .modal-image {
+            width: 100%;
+            max-height: 70vh;
+            object-fit: contain;
+            display: block;
         }
         
         .modal-actions {
-            position: absolute;
-            bottom: 20px;
-            left: 50%;
-            transform: translateX(-50%);
+            padding: 15px 20px;
+            background: #f8f9fa;
+            border-top: 1px solid #e9ecef;
+            border-radius: 0 0 12px 12px;
             display: flex;
             gap: 10px;
-            z-index: 1001;
+            justify-content: flex-end;
         }
         
         .modal-btn {
-            background: rgba(52, 152, 219, 0.9);
-            color: white;
+            padding: 8px 16px;
             border: none;
-            padding: 10px 20px;
-            border-radius: 25px;
+            border-radius: 6px;
             cursor: pointer;
-            font-weight: 500;
-            transition: all 0.3s ease;
-            text-decoration: none;
-            display: inline-flex;
+            font-size: 14px;
+            display: flex;
             align-items: center;
+            gap: 5px;
+            transition: all 0.3s ease;
+        }
+        
+        .modal-btn:first-child {
+            background: #007bff;
+            color: white;
+        }
+        
+        .modal-btn:first-child:hover {
+            background: #0056b3;
+        }
+        
+        .modal-btn:last-child {
+            background: #6c757d;
+            color: white;
+        }
+        
+        .modal-btn:last-child:hover {
+            background: #545b62;
+        }
+        
+        /* Arch Upload Section Styles */
+        .arch-upload-section {
+            background: white;
+            border-radius: 12px;
+            box-shadow: 0 5px 15px rgba(0, 0, 0, 0.03);
+            padding: 25px;
+            margin-bottom: 25px;
+            border: 2px solid #e8f5e9;
+        }
+        
+        .arch-upload-section h3 {
+            color: #2c3e50;
+            font-size: 1.3rem;
+            margin-bottom: 10px;
+            display: flex;
+            align-items: center;
+            gap: 10px;
+        }
+        
+        .arch-upload-section h3 i {
+            color: #3498db;
+        }
+        
+        .upload-description {
+            color: #7f8c8d;
+            font-size: 0.9rem;
+            margin-bottom: 20px;
+            line-height: 1.5;
+        }
+        
+        .arch-upload-container {
+            display: grid;
+            grid-template-columns: 1fr 1fr;
+            gap: 25px;
+            margin-bottom: 20px;
+        }
+        
+        .arch-upload-item {
+            display: flex;
+            flex-direction: column;
+            gap: 10px;
+        }
+        
+        .upload-label {
+            display: flex;
+            align-items: center;
+            gap: 8px;
+            font-weight: 500;
+            color: #2c3e50;
+            font-size: 0.95rem;
+        }
+        
+        .upload-label i {
+            color: #3498db;
+        }
+        
+        .required-indicator {
+            color: #e74c3c;
+            font-weight: bold;
+        }
+        
+        .arch-file-input {
+            display: none;
+        }
+        
+        .arch-preview {
+            border: 2px dashed #bdc3c7;
+            border-radius: 8px;
+            padding: 20px;
+            text-align: center;
+            background: #f8f9fa;
+            cursor: pointer;
+            transition: all 0.3s ease;
+            min-height: 120px;
+            display: flex;
+            flex-direction: column;
+            align-items: center;
+            justify-content: center;
             gap: 8px;
         }
         
-        .modal-btn:hover {
-            background: rgba(52, 152, 219, 1);
-            transform: translateY(-2px);
-            box-shadow: 0 4px 12px rgba(52, 152, 219, 0.3);
+        .arch-preview:hover {
+            border-color: #3498db;
+            background: #f0f7ff;
         }
         
-        .modal-btn.download {
-            background: rgba(46, 204, 113, 0.9);
+        .arch-preview i {
+            font-size: 2rem;
+            color: #bdc3c7;
         }
         
-        .modal-btn.download:hover {
-            background: rgba(46, 204, 113, 1);
-            box-shadow: 0 4px 12px rgba(46, 204, 113, 0.3);
+        .arch-preview span {
+            color: #7f8c8d;
+            font-size: 0.9rem;
+        }
+        
+        .arch-thumbnail {
+            max-width: 100%;
+            max-height: 100px;
+            border-radius: 4px;
+            object-fit: cover;
+        }
+        
+        .upload-status {
+            font-size: 0.85rem;
+            padding: 5px 0;
+        }
+        
+        .upload-status.success {
+            color: #27ae60;
+        }
+        
+        .upload-status.error {
+            color: #e74c3c;
+        }
+        
+        .upload-status.loading {
+            color: #f39c12;
+        }
+        
+        .upload-validation {
+            background: #fff3cd;
+            border: 1px solid #ffeaa7;
+            border-radius: 6px;
+            padding: 12px;
+            display: flex;
+            align-items: center;
+            gap: 8px;
+            font-size: 0.9rem;
+            color: #856404;
+        }
+        
+        .upload-validation.success {
+            background: #d4edda;
+            border-color: #c3e6cb;
+            color: #155724;
+        }
+        
+        .upload-validation.error {
+            color: #e74c3c;
+            background-color: #fdf2f2;
+            border: 1px solid #fecaca;
+        }
+        
+        .upload-validation.info {
+            color: #3498db;
+            background-color: #f0f8ff;
+            border: 1px solid #bee3f8;
+        }
+        
+        .upload-validation i {
+            font-size: 1rem;
+        }
+        
+        @media (max-width: 768px) {
+            .arch-upload-container {
+                grid-template-columns: 1fr;
+                gap: 20px;
+            }
+        }
+        
+        /* Image Upload Modal Styles */
+        .modal {
+            display: none;
+            position: fixed;
+            z-index: 9999;
+            left: 0;
+            top: 0;
+            width: 100%;
+            height: 100%;
+            background-color: rgba(0, 0, 0, 0.5);
+        }
+        
+        .modal-content {
+            background-color: white;
+            margin: 5% auto;
+            padding: 0;
+            border-radius: 12px;
+            width: 90%;
+            max-width: 500px;
+            box-shadow: 0 10px 30px rgba(0, 0, 0, 0.3);
+        }
+        
+        .modal-header {
+            padding: 20px;
+            border-bottom: 1px solid #e9ecef;
+            display: flex;
+            justify-content: space-between;
+            align-items: center;
+        }
+        
+        .modal-header h3 {
+            margin: 0;
+            color: #2c3e50;
+            font-size: 1.2rem;
+        }
+        
+        .modal-header .close {
+            color: #aaa;
+            font-size: 28px;
+            font-weight: bold;
+            cursor: pointer;
+            line-height: 1;
+        }
+        
+        .modal-header .close:hover {
+            color: #000;
+        }
+        
+        .modal-body {
+            padding: 20px;
+        }
+        
+        .modal-footer {
+            padding: 20px;
+            border-top: 1px solid #e9ecef;
+            display: flex;
+            justify-content: flex-end;
+            gap: 10px;
+        }
+        
+        .image-preview {
+            margin-top: 10px;
+            text-align: center;
+            min-height: 100px;
+            border: 2px dashed #ddd;
+            border-radius: 8px;
+            display: flex;
+            align-items: center;
+            justify-content: center;
+            background: #f8f9fa;
+        }
+        
+        .image-preview img {
+            max-width: 100%;
+            max-height: 200px;
+            border-radius: 4px;
+        }
+        
+        /* Existing Images Grid */
+        .existing-images-section {
+            margin-top: 20px;
+        }
+        
+        .existing-images-section h4 {
+            color: #2c3e50;
+            margin-bottom: 15px;
+            font-size: 1.1rem;
+        }
+        
+        .images-grid {
+            display: grid;
+            grid-template-columns: repeat(auto-fill, minmax(250px, 1fr));
+            gap: 20px;
+            margin-bottom: 20px;
+        }
+        
+        .image-card {
+            background: white;
+            border: 1px solid #e9ecef;
+            border-radius: 12px;
+            padding: 20px;
+            text-align: center;
+            transition: all 0.3s ease;
+            box-shadow: 0 2px 8px rgba(0, 0, 0, 0.05);
+            min-height: 280px;
+            display: flex;
+            flex-direction: column;
+            justify-content: space-between;
+        }
+        
+        .image-card:hover {
+            box-shadow: 0 6px 20px rgba(0, 0, 0, 0.15);
+            transform: translateY(-3px);
+        }
+        
+        .image-card img {
+            width: 100%;
+            height: 160px;
+            object-fit: cover;
+            border-radius: 8px;
+            margin-bottom: 15px;
+            cursor: pointer;
+            border: 1px solid #f0f0f0;
+        }
+        
+        .image-card .image-type {
+            font-weight: 600;
+            color: #2c3e50;
+            margin-bottom: 15px;
+            font-size: 14px;
+            text-transform: uppercase;
+            letter-spacing: 0.5px;
+        }
+        
+        .image-card .image-actions {
+            display: flex;
+            gap: 8px;
+            justify-content: center;
+            flex-wrap: wrap;
+            margin-top: auto;
+        }
+        
+        .image-card .btn-sm {
+            padding: 6px 12px;
+            font-size: 0.85rem;
+            border-radius: 6px;
+            font-weight: 500;
+        }
+        
+        .no-images-message {
+            text-align: center;
+            color: #6c757d;
+            font-style: italic;
+            padding: 30px;
+            background: #f8f9fa;
+            border-radius: 12px;
+            border: 2px dashed #dee2e6;
+        }
+        
+        .pdf-preview {
+            display: flex;
+            align-items: center;
+            gap: 15px;
+            padding: 15px;
+            border: 2px dashed #dc3545;
+            border-radius: 8px;
+            background-color: #fff5f5;
+        }
+        
+        .pdf-info {
+            flex: 1;
+        }
+        
+        .pdf-card {
+            border: 2px solid #dc3545;
+            background: linear-gradient(135deg, #fff5f5 0%, #ffffff 100%);
+        }
+        
+        .pdf-card:hover {
+            border-color: #c82333;
+            background: linear-gradient(135deg, #ffe6e6 0%, #ffffff 100%);
+        }
+        
+        .pdf-thumbnail {
+            display: flex;
+            flex-direction: column;
+            align-items: center;
+            justify-content: center;
+            height: 160px;
+            background: linear-gradient(135deg, #fff5f5 0%, #ffe6e6 100%);
+            border-radius: 8px;
+            cursor: pointer;
+            transition: all 0.3s ease;
+            border: 1px solid #ffcccc;
+            margin-bottom: 15px;
+        }
+        
+        .pdf-thumbnail:hover {
+            background: linear-gradient(135deg, #ffe6e6 0%, #ffcccc 100%);
+            transform: scale(1.02);
+        }
+        
+        .pdf-thumbnail i {
+            font-size: 48px;
+            color: #dc3545;
+            margin-bottom: 10px;
+        }
+        
+        .pdf-filename {
+            margin-top: 8px;
+            font-size: 12px;
+            color: #666;
+            text-align: center;
+            word-break: break-word;
+            max-width: 120px;
+            font-weight: 500;
         }
         
         /* Responsive adjustments */
         @media (max-width: 768px) {
-            .denture-photos-grid {
+            .images-grid {
+                grid-template-columns: repeat(auto-fill, minmax(200px, 1fr));
+                gap: 15px;
+            }
+            
+            .image-card {
+                min-height: 250px;
+                padding: 15px;
+            }
+            
+            .image-card img,
+            .pdf-thumbnail {
+                height: 140px;
+            }
+            
+            .image-card .image-actions {
+                flex-direction: column;
+                gap: 5px;
+            }
+            
+            .image-card .btn-sm {
+                width: 100%;
+                margin-bottom: 5px;
+            }
+        }
+        
+        /* Button styling improvements */
+        .image-card .btn-primary {
+            background-color: #007bff;
+            border-color: #007bff;
+        }
+        
+        .image-card .btn-primary:hover {
+            background-color: #0056b3;
+            border-color: #0056b3;
+        }
+        
+        .image-card .btn-success {
+            background-color: #28a745;
+            border-color: #28a745;
+        }
+        
+        .image-card .btn-success:hover {
+            background-color: #1e7e34;
+            border-color: #1e7e34;
+        }
+        
+        .image-card .btn-danger {
+            background-color: #dc3545;
+            border-color: #dc3545;
+        }
+        
+        .image-card .btn-danger:hover {
+            background-color: #c82333;
+            border-color: #c82333;
+        }
+        
+        /* Compact Examination Details Styles */
+        .examination-details-compact {
+            background: #f8f9fa;
+            border-radius: 8px;
+            padding: 20px;
+            margin-top: 20px;
+        }
+        
+        .examination-details-compact .compact {
+            margin-bottom: 15px;
+        }
+        
+        .examination-details-compact h4 {
+            color: #2c3e50;
+            font-size: 16px;
+            font-weight: 600;
+            margin-bottom: 10px;
+            border-bottom: 2px solid #e9ecef;
+            padding-bottom: 5px;
+        }
+        
+        .examination-details-compact .form-grid.compact {
+            display: grid;
+            grid-template-columns: 1fr 1fr;
+            gap: 20px;
+            margin-bottom: 20px;
+        }
+        
+        .examination-details-compact .form-section.compact {
+            background: white;
+            border-radius: 6px;
+            padding: 15px;
+            border: 1px solid #e9ecef;
+        }
+        
+        .examination-details-compact .form-group.compact {
+            margin-bottom: 12px;
+        }
+        
+        .examination-details-compact .form-group.compact label {
+            font-size: 12px;
+            font-weight: 600;
+            color: #495057;
+            margin-bottom: 4px;
+            display: block;
+        }
+        
+        .examination-details-compact .form-control {
+            font-size: 13px;
+            padding: 6px 10px;
+            border: 1px solid #ced4da;
+            border-radius: 4px;
+            background-color: #f8f9fa;
+            color: #495057;
+        }
+        
+        .examination-details-compact .form-control:read-only {
+            background-color: #e9ecef;
+            color: #495057;
+            cursor: default;
+        }
+        
+        .examination-details-compact .chief-complaints-section.compact {
+            background: white;
+            border-radius: 6px;
+            padding: 15px;
+            border: 1px solid #e9ecef;
+            margin-bottom: 20px;
+        }
+        
+        .examination-details-compact .notes-section.compact {
+            background: white;
+            border-radius: 6px;
+            padding: 15px;
+            border: 1px solid #e9ecef;
+            margin-bottom: 20px;
+        }
+        
+        .examination-details-compact .form-actions.compact {
+            text-align: center;
+            padding-top: 15px;
+            border-top: 1px solid #e9ecef;
+        }
+        
+        .examination-details-compact .form-actions.compact .btn {
+            padding: 8px 20px;
+            font-size: 14px;
+        }
+        
+        /* Responsive adjustments for compact form */
+        @media (max-width: 768px) {
+            .examination-details-compact .form-grid.compact {
                 grid-template-columns: 1fr;
+                gap: 15px;
             }
             
-            .action-buttons {
-                flex-direction: column;
+            .examination-details-compact {
+                padding: 15px;
             }
             
-            .modal-image {
-                max-height: 70vh;
-            }
-            
-            .modal-close {
-                top: 10px;
-                right: 15px;
-                width: 40px;
-                height: 40px;
-                font-size: 25px;
-            }
-            
-            .modal-header {
-                top: 10px;
-                padding: 8px 16px;
-                font-size: 0.9rem;
-            }
-            
-            .modal-actions {
-                bottom: 10px;
-                flex-direction: column;
-                gap: 8px;
+            .examination-details-compact .form-section.compact {
+                padding: 12px;
             }
         }
     </style>
@@ -969,7 +1764,10 @@
                 </div>
             </c:if>
             
-            <div class="examination-container">
+            <div class="examination-container" data-patient-id="${patient.id}">
+                <!-- Color Code Strip -->
+                <jsp:include page="/WEB-INF/views/common/color-code-component.jsp" />
+                
                 <div class="examination-header">
                     <h2>Tooth ${examination.toothNumber} Examination</h2>
                     <div class="header-actions">
@@ -977,20 +1775,20 @@
                         <c:if test="${currentUserRole != 'RECEPTIONIST'}">
                         <div class="tooltip-container">
                             <c:choose>
-                                <c:when test="${examination.assignedDoctorId == null}">
-                                    <a href="#" class="btn btn-primary disabled" disabled>
-                                        <i class="fas fa-play"></i> Start Procedure
-                                    </a>
-                                    <span class="tooltip-text">Please assign a doctor first</span>
-                                </c:when>
                                 <c:when test="${not empty examination.procedure}">
-                                    <a href="#" class="btn btn-secondary disabled" disabled>
+                                    <a id="startProcedureBtn" href="#" class="btn btn-secondary disabled" disabled>
                                         <i class="fas fa-play"></i> Start Procedure
                                     </a>
                                     <span class="tooltip-text">Procedure is already started</span>
                                 </c:when>
+                                <c:when test="${empty examination.upperDenturePicturePath or empty examination.lowerDenturePicturePath}">
+                                    <a id="startProcedureBtn" href="#" class="btn btn-primary disabled" disabled>
+                                        <i class="fas fa-play"></i> Start Procedure
+                                    </a>
+                                    <span class="tooltip-text">Please upload both upper and lower arch pictures to start</span>
+                                </c:when>
                                 <c:otherwise>
-                                    <a href="${pageContext.request.contextPath}/patients/examination/${examination.id}/procedures" class="btn btn-primary">
+                                    <a id="startProcedureBtn" href="${pageContext.request.contextPath}/patients/examination/${examination.id}/procedures" class="btn btn-primary">
                                         <i class="fas fa-play"></i> Start Procedure
                                     </a>
                                 </c:otherwise>
@@ -1050,45 +1848,20 @@
                             </c:if>
                         </span>
                     </div>
+
                     <div class="meta-item">
                         <span class="meta-label">Assigned Doctor</span>
                         <span class="meta-value">
                             <c:choose>
-                                <c:when test="${currentUserRole == 'RECEPTIONIST'}">
-                                    <!-- Show as read-only text for receptionists -->
-                                    <c:choose>
-                                        <c:when test="${examination.assignedDoctorId != null}">
-                                            <c:forEach items="${doctors}" var="doctor">
-                                                <c:if test="${doctor.id == examination.assignedDoctorId}">
-                                                    <span class="read-only-doctor">${doctor.firstName} ${doctor.lastName}</span>
-                                                </c:if>
-                                            </c:forEach>
-                                        </c:when>
-                                        <c:otherwise>
-                                            <span class="read-only-doctor not-assigned">Not Assigned</span>
-                                        </c:otherwise>
-                                    </c:choose>
+                                <c:when test="${examination.assignedDoctorId != null}">
+                                    <c:forEach items="${doctors}" var="doctor">
+                                        <c:if test="${doctor.id == examination.assignedDoctorId}">
+                                            <span class="read-only-doctor">${doctor.firstName} ${doctor.lastName}</span>
+                                        </c:if>
+                                    </c:forEach>
                                 </c:when>
                                 <c:otherwise>
-                                    <!-- Show as dropdown for other roles -->
-                                    <!-- Debug: assignedDoctorId = ${examination.assignedDoctorId} -->
-                                    <!-- Debug: doctors count = ${fn:length(doctors)} -->
-                                    <select id="doctorSelect" class="form-control" 
-                                            <c:if test="${examination.assignedDoctorId != null}">disabled</c:if>>
-                                        <option value="">Select Doctor</option>
-                                        <c:forEach items="${doctors}" var="doctor">
-                                            <!-- Debug: doctor.id = ${doctor.id}, assignedDoctorId = ${examination.assignedDoctorId} -->
-                                            <option value="${doctor.id}" 
-                                                    <c:if test="${examination.assignedDoctorId != null and doctor.id == examination.assignedDoctorId}">selected</c:if>>
-                                                ${doctor.firstName} ${doctor.lastName}
-                                            </option>
-                                        </c:forEach>
-                                    </select>
-                                    <c:if test="${examination.assignedDoctorId != null}">
-                                        <small class="doctor-assignment-info">
-                                            <i class="fas fa-info-circle"></i> Doctor assignment cannot be changed once set
-                                        </small>
-                                    </c:if>
+                                    <span class="read-only-doctor not-assigned">Not Assigned</span>
                                 </c:otherwise>
                             </c:choose>
                         </span>
@@ -1108,7 +1881,7 @@
                                      onclick="openImageModal('${pageContext.request.contextPath}/uploads/${examination.upperDenturePicturePath}', 'Upper Denture')">
                             </div>
                             <div class="photo-actions">
-                                <span class="photo-label">Upper Denture</span>
+                                <span class="photo-label">Upper Arch</span>
                                 <div class="action-buttons">
                                     <button type="button" class="btn btn-sm btn-primary" 
                                             onclick="openImageModal('${pageContext.request.contextPath}/uploads/${examination.upperDenturePicturePath}', 'Upper Denture')">
@@ -1131,7 +1904,7 @@
                                      onclick="openImageModal('${pageContext.request.contextPath}/uploads/${examination.lowerDenturePicturePath}', 'Lower Denture')">
                             </div>
                             <div class="photo-actions">
-                                <span class="photo-label">Lower Denture</span>
+                                <span class="photo-label">Lower Arch</span>
                                 <div class="action-buttons">
                                     <button type="button" class="btn btn-sm btn-primary" 
                                             onclick="openImageModal('${pageContext.request.contextPath}/uploads/${examination.lowerDenturePicturePath}', 'Lower Denture')">
@@ -1172,17 +1945,32 @@
                 </div>
                 </c:if>
                 
-                <!-- No Photos Message -->
-                <c:if test="${empty examination.upperDenturePicturePath and empty examination.lowerDenturePicturePath and empty examination.xrayPicturePath}">
+
+                
+                <!-- ARCH PICTURE UPLOAD SECTION - START -->
+                <c:if test="${currentUserRole != 'RECEPTIONIST'}">
                 <div class="examination-container">
-                    <h3><i class="fas fa-images"></i> Dental Photos</h3>
-                    <div style="text-align: center; padding: 40px; color: #7f8c8d;">
-                        <i class="fas fa-camera" style="font-size: 3rem; margin-bottom: 15px; opacity: 0.5;"></i>
-                        <p style="font-size: 1.1rem; margin: 0;">No dental photos have been uploaded for this examination.</p>
-                        <p style="font-size: 0.9rem; margin: 10px 0 0 0; opacity: 0.7;">Photos will appear here once uploaded during the procedure selection process.</p>
+                    <div class="arch-upload-section">
+                        <h3><i class="fas fa-camera"></i> Dental Images Upload</h3>
+                        <p class="upload-description">Upload dental images including upper arch, lower arch, and X-ray images.</p>
+                        
+                        <!-- Display existing images -->
+                        <div class="existing-images-section">
+                            <h4>Existing Images</h4>
+                            <div class="images-grid" id="existing-images-grid">
+                                <!-- Images will be loaded here via JavaScript -->
+                            </div>
+                        </div>
+                        
+                        <div class="form-actions" style="margin-top: 20px;">
+                            <button type="button" id="add-image-btn" class="btn btn-primary">
+                                <i class="fas fa-plus"></i> Add New File
+                            </button>
+                        </div>
                     </div>
                 </div>
                 </c:if>
+                <!-- ARCH PICTURE UPLOAD SECTION - END -->
                 
                 <form id="examinationForm" method="post" class="examination-details-compact">
                     <input type="hidden" id="examinationId" value="${examination.id}">
@@ -1190,183 +1978,92 @@
                     <input type="hidden" id="toothNumber" value="${examination.toothNumber}">
                     
                     <!-- Chief Complaints Section -->
-                    <div class="chief-complaints-section">
-                        <h3>Chief Complaints</h3>
-                        <div class="form-group">
-                            <label for="chiefComplaints">Patient's Chief Complaints</label>
-                            <textarea name="chiefComplaints" id="chiefComplaints" rows="6" class="form-control"
-                                      <c:if test="${currentUserRole == 'RECEPTIONIST'}">disabled</c:if>>${examination.chiefComplaints}</textarea>
+                    <div class="chief-complaints-section compact">
+                        <h4>Chief Complaints</h4>
+                        <div class="form-group compact">
+                            <textarea name="chiefComplaints" id="chiefComplaints" rows="3" class="form-control" readonly>${examination.chiefComplaints}</textarea>
                         </div>
                     </div>
                     
-                    <div class="form-grid">
+                    <div class="form-grid compact">
                         <!-- Left Column -->
                         <div class="form-column">
-                            <div class="form-section">
-                                <h3>Basic Assessment</h3>
-                                <div class="form-group">
-                                    <label for="toothSurface">Surface</label>
-                                    <select name="toothSurface" id="toothSurface" class="form-control"
-                                            <c:if test="${currentUserRole == 'RECEPTIONIST'}">disabled</c:if>>
-                                        <option value="">Select</option>
-                                        <c:forEach items="${toothSurfaces}" var="surface">
-                                            <option value="${surface}" ${examination.toothSurface == surface ? 'selected' : ''}>${surface}</option>
-                                        </c:forEach>
-                                    </select>
-                                </div>
-                                <div class="form-group">
+                            <div class="form-section compact">
+                                <h4>Basic Assessment</h4>
+                                <div class="form-group compact">
                                     <label for="toothCondition">Condition</label>
-                                    <select name="toothCondition" id="toothCondition" class="form-control"
-                                            <c:if test="${currentUserRole == 'RECEPTIONIST'}">disabled</c:if>>
-                                        <option value="">Select</option>
-                                        <c:forEach items="${toothConditions}" var="condition">
-                                            <option value="${condition}" ${examination.toothCondition == condition ? 'selected' : ''}>${condition}</option>
-                                        </c:forEach>
-                                    </select>
+                                    <input type="text" value="${examination.toothCondition}" class="form-control" readonly>
                                 </div>
-                                <div class="form-group">
+                                <div class="form-group compact">
                                     <label for="existingRestoration">Restoration</label>
-                                    <select name="existingRestoration" id="existingRestoration" class="form-control"
-                                            <c:if test="${currentUserRole == 'RECEPTIONIST'}">disabled</c:if>>
-                                        <option value="">Select</option>
-                                        <c:forEach items="${existingRestorations}" var="restoration">
-                                            <option value="${restoration}" ${examination.existingRestoration == restoration ? 'selected' : ''}>${restoration}</option>
-                                        </c:forEach>
-                                    </select>
+                                    <input type="text" value="${examination.existingRestoration}" class="form-control" readonly>
                                 </div>
                             </div>
 
-                            <div class="form-section">
-                                <h3>Periodontal Assessment</h3>
-                                <div class="form-group">
+                            <div class="form-section compact">
+                                <h4>Periodontal Assessment</h4>
+                                <div class="form-group compact">
                                     <label for="pocketDepth">Pocket Depth</label>
-                                    <select name="pocketDepth" id="pocketDepth" class="form-control"
-                                            <c:if test="${currentUserRole == 'RECEPTIONIST'}">disabled</c:if>>
-                                        <option value="">Select</option>
-                                        <c:forEach items="${pocketDepths}" var="depth">
-                                            <option value="${depth}" ${examination.pocketDepth == depth ? 'selected' : ''}>${depth}</option>
-                                        </c:forEach>
-                                    </select>
+                                    <input type="text" value="${examination.pocketDepth}" class="form-control" readonly>
                                 </div>
-                                <div class="form-group">
+                                <div class="form-group compact">
                                     <label for="bleedingOnProbing">Bleeding on Probing</label>
-                                    <select name="bleedingOnProbing" id="bleedingOnProbing" class="form-control"
-                                            <c:if test="${currentUserRole == 'RECEPTIONIST'}">disabled</c:if>>
-                                        <option value="">Select</option>
-                                        <c:forEach items="${bleedingOnProbings}" var="bleeding">
-                                            <option value="${bleeding}" ${examination.bleedingOnProbing == bleeding ? 'selected' : ''}>${bleeding}</option>
-                                        </c:forEach>
-                                    </select>
+                                    <input type="text" value="${examination.bleedingOnProbing}" class="form-control" readonly>
                                 </div>
-                                <div class="form-group">
+                                <div class="form-group compact">
                                     <label for="plaqueScore">Plaque Score</label>
-                                    <select name="plaqueScore" id="plaqueScore" class="form-control"
-                                            <c:if test="${currentUserRole == 'RECEPTIONIST'}">disabled</c:if>>
-                                        <option value="">Select</option>
-                                        <c:forEach items="${plaqueScores}" var="score">
-                                            <option value="${score}" ${examination.plaqueScore == score ? 'selected' : ''}>${score}</option>
-                                        </c:forEach>
-                                    </select>
+                                    <input type="text" value="${examination.plaqueScore}" class="form-control" readonly>
                                 </div>
-                                <div class="form-group">
+                                <div class="form-group compact">
                                     <label for="gingivalRecession">Gingival Recession</label>
-                                    <select name="gingivalRecession" id="gingivalRecession" class="form-control"
-                                            <c:if test="${currentUserRole == 'RECEPTIONIST'}">disabled</c:if>>
-                                        <option value="">Select</option>
-                                        <c:forEach items="${gingivalRecessions}" var="recession">
-                                            <option value="${recession}" ${examination.gingivalRecession == recession ? 'selected' : ''}>${recession}</option>
-                                        </c:forEach>
-                                    </select>
+                                    <input type="text" value="${examination.gingivalRecession}" class="form-control" readonly>
                                 </div>
                             </div>
                         </div>
 
                         <!-- Right Column -->
                         <div class="form-column">
-                            <div class="form-section">
-                                <h3>Clinical Assessment</h3>
-                                <div class="form-group">
+                            <div class="form-section compact">
+                                <h4>Clinical Assessment</h4>
+                                <div class="form-group compact">
                                     <label for="toothMobility">Mobility</label>
-                                    <select name="toothMobility" id="toothMobility" class="form-control"
-                                            <c:if test="${currentUserRole == 'RECEPTIONIST'}">disabled</c:if>>
-                                        <option value="">Select</option>
-                                        <c:forEach items="${toothMobilities}" var="mobility">
-                                            <option value="${mobility}" ${examination.toothMobility == mobility ? 'selected' : ''}>${mobility}</option>
-                                        </c:forEach>
-                                    </select>
+                                    <input type="text" value="${examination.toothMobility}" class="form-control" readonly>
                                 </div>
-                                <div class="form-group">
+                                <div class="form-group compact">
                                     <label for="toothVitality">Vitality</label>
-                                    <select name="toothVitality" id="toothVitality" class="form-control"
-                                            <c:if test="${currentUserRole == 'RECEPTIONIST'}">disabled</c:if>>
-                                        <option value="">Select</option>
-                                        <c:forEach items="${toothVitalities}" var="vitality">
-                                            <option value="${vitality}" ${examination.toothVitality == vitality ? 'selected' : ''}>${vitality}</option>
-                                        </c:forEach>
-                                    </select>
+                                    <input type="text" value="${examination.toothVitality}" class="form-control" readonly>
                                 </div>
-                                <div class="form-group">
+                                <div class="form-group compact">
                                     <label for="toothSensitivity">Sensitivity</label>
-                                    <select name="toothSensitivity" id="toothSensitivity" class="form-control"
-                                            <c:if test="${currentUserRole == 'RECEPTIONIST'}">disabled</c:if>>
-                                        <option value="">Select</option>
-                                        <c:forEach items="${toothSensitivities}" var="sensitivity">
-                                            <option value="${sensitivity}" ${examination.toothSensitivity == sensitivity ? 'selected' : ''}>${sensitivity}</option>
-                                        </c:forEach>
-                                    </select>
+                                    <input type="text" value="${examination.toothSensitivity}" class="form-control" readonly>
                                 </div>
-                                <div class="form-group">
+                                <div class="form-group compact">
                                     <label for="furcationInvolvement">Furcation</label>
-                                    <select name="furcationInvolvement" id="furcationInvolvement" class="form-control"
-                                            <c:if test="${currentUserRole == 'RECEPTIONIST'}">disabled</c:if>>
-                                        <option value="">Select</option>
-                                        <c:forEach items="${furcationInvolvements}" var="furcation">
-                                            <option value="${furcation}" ${examination.furcationInvolvement == furcation ? 'selected' : ''}>${furcation}</option>
-                                        </c:forEach>
-                                    </select>
+                                    <input type="text" value="${examination.furcationInvolvement}" class="form-control" readonly>
                                 </div>
                             </div>
                         </div>
                     </div>
 
                     <!-- Advised Section -->
-                    <div class="form-section notes-section">
-                        <h3>Treatment Advised</h3>
-                        <div class="form-group">
-                            <label for="advised">Treatment/Procedure Advised</label>
-                            <textarea name="advised" id="advised" rows="3" class="form-control"
-                                      <c:if test="${currentUserRole == 'RECEPTIONIST'}">disabled</c:if>>${examination.advised}</textarea>
+                    <div class="form-section notes-section compact">
+                        <h4>Treatment Advised</h4>
+                        <div class="form-group compact">
+                            <textarea name="advised" id="advised" rows="2" class="form-control" readonly>${examination.advised}</textarea>
                         </div>
                     </div>
 
                     <!-- Notes Section -->
-                    <div class="form-section notes-section">
-                        <h3>Clinical Notes</h3>
-                        <div class="form-group">
-                            <label for="examinationNotes">Notes</label>
-                            <textarea name="examinationNotes" id="examinationNotes" rows="4" class="form-control"
-                                      <c:if test="${currentUserRole == 'RECEPTIONIST'}">disabled</c:if>>${examination.examinationNotes}</textarea>
+                    <div class="form-section notes-section compact">
+                        <h4>Clinical Notes</h4>
+                        <div class="form-group compact">
+                            <textarea name="examinationNotes" id="examinationNotes" rows="3" class="form-control" readonly>${examination.examinationNotes}</textarea>
                         </div>
                     </div>
 
                     <!-- Form Actions -->
-                    <div class="form-actions">
-                        <button type="button" onclick="window.location.href='${pageContext.request.contextPath}/patients/details/${patient.id}'" class="btn btn-secondary">Cancel</button>
-                        
-                        <!-- Only show Update button to doctors and admins -->
-                        <c:if test="${currentUserRole != 'RECEPTIONIST'}">
-                        <sec:authorize access="hasAnyRole('DOCTOR', 'ADMIN')">
-                            <button type="submit" id="updateExaminationBtn" class="btn btn-primary disabled" disabled>Update Examination</button>
-                        </sec:authorize>
-                        
-                        <!-- Show message for other roles -->
-                        <sec:authorize access="!hasAnyRole('DOCTOR', 'ADMIN')">
-                            <div class="tooltip-container">
-                                <button type="button" class="btn btn-primary disabled" disabled>Update Examination</button>
-                                <span class="tooltip-text">Only doctors and administrators can update examinations</span>
-                            </div>
-                        </sec:authorize>
-                        </c:if>
+                    <div class="form-actions compact">
+                        <button type="button" onclick="window.location.href='${pageContext.request.contextPath}/patients/details/${patient.id}'" class="btn btn-secondary">Back to Patient</button>
                     </div>
                 </form>
             </div>
@@ -1381,16 +2078,6 @@
                 <!-- Basic Information Section -->
                 <div class="form-section">
                     <h3>Basic Information</h3>
-                    <div class="form-group">
-                        <label for="toothSurface" class="required">Surface</label>
-                        <select name="toothSurface" id="toothSurface" class="form-control" required>
-                            <option value="">Select</option>
-                            <c:forEach items="${toothSurfaces}" var="surface">
-                                <option value="${surface}" ${examination.toothSurface == surface ? 'selected' : ''}>${surface}</option>
-                            </c:forEach>
-                        </select>
-                        <div class="error-message">Please select a surface</div>
-                    </div>
                     <div class="form-group">
                         <label for="toothCondition" class="required">Condition</label>
                         <select name="toothCondition" id="toothCondition" class="form-control" required>
@@ -1529,83 +2216,84 @@
         const contextPath = '${pageContext.request.contextPath}';
 
         document.addEventListener('DOMContentLoaded', function() {
+            console.log('DOMContentLoaded event fired - starting initialization...');
+            
+            // Initialize color code component
+            initializeColorCodeComponent();
+            
+            // Initialize chairside note component
+            initializeChairsideNoteComponent();
+            
             const form = document.getElementById('examinationForm');
             const notification = document.getElementById('notification');
             const csrfToken = document.querySelector('meta[name="_csrf"]').content;
-            const updateButton = document.getElementById('updateExaminationBtn');
-
-            // Enable update button when any form field changes
-            const formFields = form.querySelectorAll('select, textarea');
-            formFields.forEach(field => {
-                field.addEventListener('change', function() {
-                    updateButton.classList.remove('disabled');
-                    updateButton.disabled = false;
-                });
-            });
 
             // Handle doctor selection change
-            document.getElementById('doctorSelect').addEventListener('change', function() {
-                const selectedValue = this.value;
-                const examinationId = '${examination.id}';
-                const currentDoctorId = '${examination.assignedDoctorId}';
-                
-                // If no doctor is currently assigned, show confirmation popup
-                if (!currentDoctorId && selectedValue) {
-                    const confirmed = confirm('Are you sure you want to assign this doctor? Once assigned, the doctor cannot be changed.');
-                    if (!confirmed) {
-                        // Reset to empty selection
-                        this.value = '';
+            const doctorSelect = document.getElementById('doctorSelect');
+            if (doctorSelect) {
+                doctorSelect.addEventListener('change', function() {
+                    const selectedValue = this.value;
+                    const examinationId = '${examination.id}';
+                    const currentDoctorId = '${examination.assignedDoctorId}';
+                    
+                    // If no doctor is currently assigned, show confirmation popup
+                    if (!currentDoctorId && selectedValue) {
+                        const confirmed = confirm('Are you sure you want to assign this doctor? Once assigned, the doctor cannot be changed.');
+                        if (!confirmed) {
+                            // Reset to empty selection
+                            this.value = '';
+                            return;
+                        }
+                    }
+                    
+                    // If a doctor is already assigned, prevent changes
+                    if (currentDoctorId && selectedValue !== currentDoctorId) {
+                        alert('Doctor assignment cannot be changed once set. Please contact an administrator if you need to make changes.');
+                        // Reset to current doctor
+                        this.value = currentDoctorId;
                         return;
                     }
-                }
-                
-                // If a doctor is already assigned, prevent changes
-                if (currentDoctorId && selectedValue !== currentDoctorId) {
-                    alert('Doctor assignment cannot be changed once set. Please contact an administrator if you need to make changes.');
-                    // Reset to current doctor
-                    this.value = currentDoctorId;
-                    return;
-                }
-                
-                // Get CSRF token
-                const token = $("meta[name='_csrf']").attr("content");
-                const header = $("meta[name='_csrf_header']").attr("content");
-                
-                $.ajax({
-                    url: contextPath + '/patients/tooth-examination/assign-doctor',
-                    type: 'POST',
-                    contentType: 'application/json',
-                    headers: {
-                        [header]: token
-                    },
-                    data: JSON.stringify({
-                        examinationId: examinationId,
-                        doctorId: selectedValue
-                    }),
-                    success: function(response) {
-                        if (response.success) {
-                            // Show success message
-                            showNotification('Doctor assigned successfully! The assignment cannot be changed.', false);
-                            // Disable the dropdown after successful assignment
-                            document.getElementById('doctorSelect').disabled = true;
-                            // Add the info message
-                            const infoMessage = document.createElement('small');
-                            infoMessage.className = 'doctor-assignment-info';
-                            infoMessage.innerHTML = '<i class="fas fa-info-circle"></i> Doctor assignment cannot be changed once set';
-                            document.getElementById('doctorSelect').parentNode.appendChild(infoMessage);
-                            // Reload the page after a short delay to show updated state
-                            setTimeout(() => {
-                            window.location.reload();
-                            }, 2000);
-                        } else {
-                            alert('Error: ' + (response.message || 'Failed to update doctor assignment'));
+                    
+                    // Get CSRF token
+                    const token = $("meta[name='_csrf']").attr("content");
+                    const header = $("meta[name='_csrf_header']").attr("content");
+                    
+                    $.ajax({
+                        url: contextPath + '/patients/tooth-examination/assign-doctor',
+                        type: 'POST',
+                        contentType: 'application/json',
+                        headers: {
+                            [header]: token
+                        },
+                        data: JSON.stringify({
+                            examinationId: examinationId,
+                            doctorId: selectedValue
+                        }),
+                        success: function(response) {
+                            if (response.success) {
+                                // Show success message
+                                showNotification('Doctor assigned successfully! The assignment cannot be changed.', false);
+                                // Disable the dropdown after successful assignment
+                                document.getElementById('doctorSelect').disabled = true;
+                                // Add the info message
+                                const infoMessage = document.createElement('small');
+                                infoMessage.className = 'doctor-assignment-info';
+                                infoMessage.innerHTML = '<i class="fas fa-info-circle"></i> Doctor assignment cannot be changed once set';
+                                document.getElementById('doctorSelect').parentNode.appendChild(infoMessage);
+                                // Reload the page after a short delay to show updated state
+                                setTimeout(() => {
+                                window.location.reload();
+                                }, 2000);
+                            } else {
+                                alert('Error: ' + (response.message || 'Failed to update doctor assignment'));
+                            }
+                        },
+                        error: function(xhr, status, error) {
+                            alert('Error: ' + error);
                         }
-                    },
-                    error: function(xhr, status, error) {
-                        alert('Error: ' + error);
-                    }
+                    });
                 });
-            });
+            }
 
             // Function to show notification
             function showNotification(message, isError = false) {
@@ -1614,6 +2302,18 @@
                 notification.style.display = 'block';
             }
 
+            // Initialize Start Procedure state based on arch images and existing procedure
+            updateStartProcedureState();
+            
+            // Initialize dental images upload functionality
+            console.log('About to call initializeArchUpload...');
+            console.log('Debug - examination.id from JSP:', '${examination.id}');
+            console.log('Debug - examination object:', '${examination}');
+            initializeArchUpload();
+            console.log('initializeArchUpload called');
+
+            // Form submission removed - form is now read-only
+            /*
             // Handle form submission
             form.addEventListener('submit', function(e) {
                 e.preventDefault();
@@ -1665,46 +2365,80 @@
                     showNotification('An error occurred while updating the examination', true);
                 });
             });
+            */
         });
 
         // Image Modal Functions
         let currentImageUrl = '';
         let currentImageTitle = '';
         
+        function getImageTypeDisplayName(fileType) {
+            switch (fileType) {
+                case 'upper_arch':
+                    return 'Upper Arch';
+                case 'lower_arch':
+                    return 'Lower Arch';
+                case 'xray':
+                    return 'X-Ray';
+                case 'blood_report':
+                    return 'Blood Report';
+                case 'medical_report':
+                    return 'Medical Report';
+                case 'prescription':
+                    return 'Prescription';
+                case 'other_document':
+                    return 'Other Document';
+                default:
+                    return fileType;
+            }
+        }
+        
+        function openPdfModal(pdfUrl, title) {
+            // Open PDF in a new tab/window
+            window.open(pdfUrl, '_blank');
+        }
+        
+        function downloadPdf(pdfUrl, filename) {
+            const link = document.createElement('a');
+            link.href = pdfUrl;
+            link.download = filename;
+            document.body.appendChild(link);
+            link.click();
+            document.body.removeChild(link);
+        }
+        
         function openImageModal(imageUrl, title) {
-            currentImageUrl = imageUrl;
-            currentImageTitle = title;
+            // Handle both parameter types: (imageUrl, title) and (imageSrc, imageType)
+            let finalImageUrl = imageUrl;
+            let finalTitle = title;
             
-            document.getElementById('modalImage').src = imageUrl;
-            document.getElementById('modalHeader').textContent = title;
+            // If the second parameter looks like a file type, convert it to display name
+            if (title && (title === 'upper_arch' || title === 'lower_arch' || title === 'xray')) {
+                finalTitle = getImageTypeDisplayName(title);
+            }
+            
+            currentImageUrl = finalImageUrl;
+            currentImageTitle = finalTitle;
+            
+            document.getElementById('modalImage').src = finalImageUrl;
+            document.getElementById('modalHeader').textContent = finalTitle;
             document.getElementById('imageModal').style.display = 'block';
             
             // Prevent body scroll when modal is open
             document.body.style.overflow = 'hidden';
         }
         
-        function closeImageModal() {
-            document.getElementById('imageModal').style.display = 'none';
-            document.body.style.overflow = 'auto';
-        }
         
-        function downloadImage() {
-            if (currentImageUrl) {
-                const link = document.createElement('a');
-                link.href = currentImageUrl;
-                link.download = currentImageTitle.toLowerCase().replace(/\s+/g, '_') + '_' + '${examination.id}' + '.jpg';
-                document.body.appendChild(link);
-                link.click();
-                document.body.removeChild(link);
-            }
-        }
         
         // Close modal when clicking outside the image
-        document.getElementById('imageModal').addEventListener('click', function(e) {
-            if (e.target === this) {
-                closeImageModal();
-            }
-        });
+        const imageModal = document.getElementById('imageModal');
+        if (imageModal) {
+            imageModal.addEventListener('click', function(e) {
+                if (e.target === this) {
+                    closeImageModal();
+                }
+            });
+        }
         
         // Close modal with Escape key
         document.addEventListener('keydown', function(e) {
@@ -1713,27 +2447,664 @@
             }
         });
         
-        // Handle image loading errors
-        document.addEventListener('DOMContentLoaded', function() {
-            const images = document.querySelectorAll('.denture-thumbnail');
-            images.forEach(function(img) {
-                img.addEventListener('error', function() {
-                    console.error('Failed to load image:', this.src);
-                    this.classList.add('error');
-                    this.alt = 'Image failed to load';
+        // Dental Images Upload Functionality
+        let selectedImageFile = null;
+        
+        // Update assigned doctor dropdown state based on arch uploads
+        function updateAssignedDoctorState() {
+            // Also update Start Procedure button state here to keep in sync
+            updateStartProcedureState();
+            
+            // Check if arch images are uploaded using the new MediaFile system
+            const existingImagesGrid = document.getElementById('existing-images-grid');
+            let hasUpperArch = false;
+            let hasLowerArch = false;
+            
+            if (existingImagesGrid) {
+                // Check if there are images in the grid
+                const imageCards = existingImagesGrid.querySelectorAll('.image-card');
+                imageCards.forEach(card => {
+                    const imageType = card.querySelector('img') ? card.querySelector('img').alt : null;
+                    // Only consider actual arch images, not PDFs
+                    if (imageType === 'upper_arch') {
+                        hasUpperArch = true;
+                    } else if (imageType === 'lower_arch') {
+                        hasLowerArch = true;
+                    }
+                });
+            }
+            
+            // Fallback to old system if no images found in grid
+            if (!hasUpperArch && !hasLowerArch) {
+                hasUpperArch = '${not empty examination.upperDenturePicturePath}' === 'true';
+                hasLowerArch = '${not empty examination.lowerDenturePicturePath}' === 'true';
+            }
+            
+            const hasBothArchs = hasUpperArch && hasLowerArch;
+            
+            // Check if doctor is already assigned
+            const isDoctorAssigned = '${examination.assignedDoctorId != null}' === 'true';
+            
+            // Enable if both arches are uploaded AND doctor is not already assigned
+            const shouldEnable = hasBothArchs && !isDoctorAssigned;
+            
+            console.log('Doctor assignment state check:', {
+                hasUpperArch,
+                hasLowerArch,
+                hasBothArchs,
+                isDoctorAssigned,
+                shouldEnable
+            });
+            
+            // doctor assignment UI is removed from this page
+            
+            // Update info message visibility
+            updateDoctorAssignmentInfo();
+        }
+        
+        // Update doctor assignment info message
+        function updateDoctorAssignmentInfo() {
+            // Check if arch images are uploaded using the new MediaFile system
+            const existingImagesGrid = document.getElementById('existing-images-grid');
+            let hasUpperArch = false;
+            let hasLowerArch = false;
+            
+            if (existingImagesGrid) {
+                // Check if there are images in the grid
+                const imageCards = existingImagesGrid.querySelectorAll('.image-card');
+                imageCards.forEach(card => {
+                    const imageType = card.querySelector('img').alt;
+                    if (imageType === 'upper_arch') {
+                        hasUpperArch = true;
+                    } else if (imageType === 'lower_arch') {
+                        hasLowerArch = true;
+                    }
+                });
+            }
+            
+            // Fallback to old system if no images found in grid
+            if (!hasUpperArch && !hasLowerArch) {
+                hasUpperArch = '${not empty examination.upperDenturePicturePath}' === 'true';
+                hasLowerArch = '${not empty examination.lowerDenturePicturePath}' === 'true';
+            }
+            
+            const hasBothArchs = hasUpperArch && hasLowerArch;
+            const isDoctorAssigned = '${examination.assignedDoctorId != null}' === 'true';
+            
+            // Hide all info messages first
+            const infoMessages = document.querySelectorAll('.doctor-assignment-info');
+            infoMessages.forEach(msg => msg.style.display = 'none');
+            
+            // No doctor assignment messaging here anymore
+        }
+
+        // Enable/disable Start Procedure button when both arches are uploaded and no procedure started
+        function updateStartProcedureState() {
+            const btn = document.getElementById('startProcedureBtn');
+            if (!btn) return;
+            // Already started? do nothing
+            const procedureAlreadyStarted = '${not empty examination.procedure}' === 'true';
+            if (procedureAlreadyStarted) return;
+
+            const existingImagesGrid = document.getElementById('existing-images-grid');
+            let hasUpperArch = false;
+            let hasLowerArch = false;
+
+            if (existingImagesGrid) {
+                const imageCards = existingImagesGrid.querySelectorAll('.image-card');
+                imageCards.forEach(card => {
+                    const img = card.querySelector('img');
+                    const imageType = img ? img.getAttribute('alt') : '';
+                    if (imageType === 'upper_arch') hasUpperArch = true;
+                    if (imageType === 'lower_arch') hasLowerArch = true;
+                });
+            }
+
+            if (!hasUpperArch || !hasLowerArch) {
+                hasUpperArch = '${not empty examination.upperDenturePicturePath}' === 'true' || hasUpperArch;
+                hasLowerArch = '${not empty examination.lowerDenturePicturePath}' === 'true' || hasLowerArch;
+            }
+
+            const canStart = hasUpperArch && hasLowerArch;
+            if (canStart) {
+                btn.classList.remove('disabled');
+                btn.removeAttribute('disabled');
+                btn.setAttribute('href', '${pageContext.request.contextPath}/patients/examination/${examination.id}/procedures');
+            } else {
+                btn.classList.add('disabled');
+                btn.setAttribute('disabled', 'disabled');
+                btn.setAttribute('href', '#');
+            }
+        }
+        
+        function initializeArchUpload() {
+            console.log('=== initializeArchUpload function called ===');
+            console.log('Current user role:', '${currentUserRole}');
+            console.log('Is receptionist?', '${currentUserRole}' === 'RECEPTIONIST');
+            console.log('Initializing dental images upload functionality...');
+            
+            // Check if user is receptionist
+            if ('${currentUserRole}' === 'RECEPTIONIST') {
+                console.log('User is receptionist - image upload not available');
+                return;
+            }
+            
+            // Get elements
+            const addImageBtn = document.getElementById('add-image-btn');
+            const imageFileInput = document.getElementById('imageFile');
+            const imageTypeSelect = document.getElementById('imageType');
+            const modal = document.getElementById('imageUploadModal');
+            
+            console.log('Elements found:', {
+                addImageBtn: addImageBtn,
+                imageFileInput: imageFileInput,
+                imageTypeSelect: imageTypeSelect,
+                modal: modal
+            });
+            
+            if (!addImageBtn || !imageFileInput || !imageTypeSelect) {
+                console.error('Image upload elements not found');
+                console.error('This might be because the user is a receptionist or the elements are not rendered');
+                return;
+            }
+            
+            // Add click handler to add image button
+            console.log('About to add click handler to addImageBtn:', addImageBtn);
+            if (addImageBtn) {
+                console.log('addImageBtn found, adding click handler...');
+                addImageBtn.addEventListener('click', function() {
+                    console.log('Add image button clicked!');
+                    openImageUploadModal();
+                });
+                console.log('Click handler added successfully');
+            } else {
+                console.error('addImageBtn element not found!');
+            }
+            
+            // Add change handler to file input
+            imageFileInput.addEventListener('change', handleImageFileSelect);
+            
+            // Load existing images
+            loadExistingImages();
+            
+            console.log('Dental images upload functionality initialized successfully');
+        }
+        
+        function openImageUploadModal() {
+            console.log('openImageUploadModal called');
+            const modal = document.getElementById('imageUploadModal');
+            console.log('Modal element:', modal);
+            console.log('Modal display style before:', modal ? modal.style.display : 'modal not found');
+            
+            if (modal) {
+                console.log('Setting modal display to block');
+                modal.style.display = 'block';
+                console.log('Modal display style after:', modal.style.display);
+                
+                // Reset form
+                const form = document.getElementById('imageUploadForm');
+                const preview = document.getElementById('imagePreview');
+                
+                if (form) {
+                    form.reset();
+                    console.log('Form reset successfully');
+                } else {
+                    console.error('Form element not found');
+                }
+                
+                if (preview) {
+                    preview.innerHTML = '';
+                    console.log('Preview cleared successfully');
+                } else {
+                    console.error('Preview element not found');
+                }
+                
+                selectedImageFile = null;
+                console.log('Modal opened successfully');
+            } else {
+                console.error('Modal element not found!');
+            }
+        }
+        
+        function closeImageUploadModal() {
+            const modal = document.getElementById('imageUploadModal');
+            if (modal) {
+                modal.style.display = 'none';
+            }
+        }
+        
+        // Update file input accept attribute based on selected file type
+        function updateFileInputAccept() {
+            const fileTypeSelect = document.getElementById('imageType');
+            const fileInput = document.getElementById('imageFile');
+            const fileTypeInfo = document.getElementById('fileTypeInfo');
+            
+            if (!fileTypeSelect || !fileInput || !fileTypeInfo) return;
+            
+            const selectedType = fileTypeSelect.value;
+            
+            // Determine if it's an image or PDF type
+            const imageTypes = ['upper_arch', 'lower_arch', 'xray'];
+            const isImageType = imageTypes.includes(selectedType);
+            
+            if (isImageType) {
+                fileInput.accept = 'image/*';
+                fileTypeInfo.textContent = 'Accepted formats: JPG, PNG, GIF, BMP (Max 5MB)';
+            } else if (selectedType) {
+                fileInput.accept = '.pdf';
+                fileTypeInfo.textContent = 'Accepted format: PDF (Max 10MB)';
+            } else {
+                fileInput.accept = '';
+                fileTypeInfo.textContent = 'Select a file type first';
+            }
+            
+            // Clear any existing file selection
+            fileInput.value = '';
+            selectedImageFile = null;
+            const previewElement = document.getElementById('imagePreview');
+            if (previewElement) {
+                previewElement.innerHTML = '';
+            }
+        }
+        
+        async function handleImageFileSelect(event) {
+            const file = event.target.files[0];
+            if (!file) return;
+            
+            const fileTypeSelect = document.getElementById('imageType');
+            const selectedType = fileTypeSelect.value;
+            
+            // Determine if it's an image or PDF type
+            const imageTypes = ['upper_arch', 'lower_arch', 'xray'];
+            const isImageType = imageTypes.includes(selectedType);
+            
+            // Validate file type
+            const isImage = file.type.startsWith('image/');
+            const isPdf = file.type === 'application/pdf';
+            
+            if (isImageType && !isImage) {
+                alert('Please select an image file for this file type');
+                event.target.value = '';
+                return;
+            }
+            
+            if (!isImageType && !isPdf) {
+                alert('Please select a PDF file for this file type');
+                event.target.value = '';
+                return;
+            }
+            
+            // Validate file size
+            const maxSize = isPdf ? 10 * 1024 * 1024 : 5 * 1024 * 1024;
+            if (file.size > maxSize) {
+                const maxSizeMB = isPdf ? '10MB' : '5MB';
+                alert(`File size must be less than ${maxSizeMB}`);
+                event.target.value = '';
+                return;
+            }
+            
+            const previewElement = document.getElementById('imagePreview');
+            
+            try {
+                if (isImage) {
+                    // Show loading state for images (compression)
+                    ImageCompression.showLoading(previewElement, 'Compressing image...');
                     
-                    // Add error message below the image
-                    const errorMsg = document.createElement('div');
-                    errorMsg.className = 'image-error-message';
-                    errorMsg.textContent = 'Image failed to load: ' + this.src;
-                    this.parentNode.appendChild(errorMsg);
+                    // Compress the image
+                    const compressedFile = await ImageCompression.compressImage(file, {
+                        maxSizeKB: 150,      // Max 150KB
+                        maxDimension: 800,   // Max 800px width/height
+                        quality: 0.9         // Initial quality 90%
+                    });
+                    
+                    console.log('Original file size:', file.size, 'bytes');
+                    console.log('Compressed file size:', compressedFile.size, 'bytes');
+                    console.log('Compression ratio:', ((file.size - compressedFile.size) / file.size * 100).toFixed(1) + '%');
+                    
+                    // Store the compressed file
+                    selectedImageFile = compressedFile;
+                    
+                    // Show preview of compressed image
+                    ImageCompression.createPreview(compressedFile, previewElement);
+                } else {
+                    // For PDFs, just store the file and show a preview
+                    selectedImageFile = file;
+                    
+                    // Show PDF preview
+                    const fileSizeMB = (file.size / 1024 / 1024).toFixed(2);
+                    previewElement.innerHTML = 
+                        '<div class="pdf-preview">' +
+                            '<i class="fas fa-file-pdf" style="font-size: 48px; color: #dc3545;"></i>' +
+                            '<div class="pdf-info">' +
+                                '<strong>' + file.name + '</strong><br>' +
+                                '<small>Size: ' + fileSizeMB + ' MB</small>' +
+                            '</div>' +
+                        '</div>';
+                }
+                
+            } catch (error) {
+                console.error('File processing error:', error);
+                alert('Error processing file. Please try again.');
+                previewElement.innerHTML = '<span style="color: red;">Error processing file</span>';
+            }
+        }
+        
+        async function uploadImage() {
+            const fileType = document.getElementById('imageType').value;
+            const file = selectedImageFile;
+            
+            if (!fileType) {
+                alert('Please select a file type');
+                return;
+            }
+            
+            if (!file) {
+                alert('Please select a file');
+                return;
+            }
+            
+            // Try to get examinationId from hidden input first, then from URL
+            let examinationId = document.getElementById('examinationId').value;
+            
+            // If hidden input is empty, extract from URL
+            if (!examinationId) {
+                const urlPath = window.location.pathname;
+                const match = urlPath.match(/\/examination\/(\d+)/);
+                if (match) {
+                    examinationId = match[1];
+                    console.log('Extracted examinationId from URL for upload:', examinationId);
+                }
+            }
+            
+            if (!examinationId) {
+                alert('Examination ID not found');
+                return;
+            }
+            
+            const uploadBtn = document.getElementById('uploadImageBtn');
+            
+            try {
+                // Show loading
+                uploadBtn.disabled = true;
+                uploadBtn.innerHTML = '<i class="fas fa-spinner fa-spin"></i> Uploading...';
+                
+                console.log('Uploading file:', {
+                    name: file.name,
+                    size: file.size + ' bytes',
+                    type: file.type
                 });
                 
-                img.addEventListener('load', function() {
-                    console.log('Successfully loaded image:', this.src);
+                // Create FormData
+                const formData = new FormData();
+                formData.append('examinationId', examinationId);
+                formData.append('file', file);
+                formData.append('fileType', fileType);
+                
+                // Upload
+                const response = await fetch('/patients/examination/upload-media-file', {
+                    method: 'POST',
+                    headers: {
+                        'X-CSRF-TOKEN': document.querySelector('meta[name="_csrf"]').content
+                    },
+                    body: formData
                 });
-            });
-        });
+                
+                const result = await response.json();
+                
+                if (result.success) {
+                    alert('File uploaded successfully!');
+                    closeImageUploadModal();
+                    loadExistingImages(); // Reload files
+                } else {
+                    alert('Upload failed: ' + (result.message || 'Unknown error'));
+                }
+                
+            } catch (error) {
+                console.error('Upload error:', error);
+                alert('Upload failed: ' + error.message);
+            } finally {
+                // Reset button
+                uploadBtn.disabled = false;
+                uploadBtn.innerHTML = '<i class="fas fa-upload"></i> Upload File';
+            }
+        }
+        
+        async function loadExistingImages() {
+            // Try to get examinationId from hidden input first, then from URL
+            let examinationId = document.getElementById('examinationId').value;
+            
+            console.log('loadExistingImages - examinationId from hidden input:', examinationId);
+            
+            // If hidden input is empty, extract from URL
+            if (!examinationId) {
+                const urlPath = window.location.pathname;
+                const match = urlPath.match(/\/examination\/(\d+)/);
+                if (match) {
+                    examinationId = match[1];
+                    console.log('Extracted examinationId from URL:', examinationId);
+                }
+            }
+            
+            const imagesGrid = document.getElementById('existing-images-grid');
+            
+            console.log('loadExistingImages - final examinationId:', examinationId);
+            console.log('loadExistingImages - examinationId element:', document.getElementById('examinationId'));
+            
+            if (!imagesGrid) return;
+            
+            // Check if examinationId exists
+            if (!examinationId) {
+                console.error('Examination ID not found');
+                return;
+            }
+            
+            try {
+                console.log('loadExistingImages - examinationId before URL construction:', examinationId);
+                console.log('loadExistingImages - examinationId type:', typeof examinationId);
+                console.log('loadExistingImages - examinationId length:', examinationId ? examinationId.length : 'null');
+                
+                const url = `/patients/examination/${examinationId}/media-files`;
+                console.log('loadExistingImages - making request to:', url);
+                
+                // Alternative URL construction for debugging
+                const url2 = '/patients/examination/' + examinationId + '/media-files';
+                console.log('loadExistingImages - alternative URL:', url2);
+                
+                // Get CSRF token
+                const csrfToken = document.querySelector('meta[name="_csrf"]').content;
+                const csrfHeader = document.querySelector('meta[name="_csrf_header"]').content;
+                
+                const response = await fetch(url2, {
+                    method: 'GET',
+                    headers: {
+                        'Content-Type': 'application/json',
+                        [csrfHeader]: csrfToken
+                    },
+                    credentials: 'same-origin' // Include cookies for session
+                });
+                
+                if (!response.ok) {
+                    console.error('Response not ok:', response.status, response.statusText);
+                    return;
+                }
+                
+                const result = await response.json();
+                
+                console.log('loadExistingImages - API response:', result);
+                
+                if (result.success) {
+                    console.log('loadExistingImages - mediaFiles from API:', result.mediaFiles);
+                    displayImages(result.mediaFiles);
+                } else {
+                    console.error('Failed to load images:', result.message);
+                }
+            } catch (error) {
+                console.error('Error loading images:', error);
+            }
+        }
+        
+        function displayImages(mediaFiles) {
+            const imagesGrid = document.getElementById('existing-images-grid');
+            
+            console.log('displayImages - mediaFiles:', mediaFiles);
+            
+            if (!mediaFiles || mediaFiles.length === 0) {
+                imagesGrid.innerHTML = '<div class="no-images-message">No files uploaded yet</div>';
+                // Update doctor assignment state even when no images
+                updateAssignedDoctorState();
+                return;
+            }
+            
+            const imagesHtml = mediaFiles.map(file => {
+                const displayName = getImageTypeDisplayName(file.fileType);
+                const filePath = file.filePath;
+                const fileType = file.fileType;
+                const fileId = file.id;
+                
+                console.log('displayImages - file:', file);
+                console.log('displayImages - filePath:', filePath);
+                console.log('displayImages - fileType:', fileType);
+                console.log('displayImages - fileId:', fileId);
+                console.log('displayImages - fileId type:', typeof fileId);
+                console.log('displayImages - fileId is null/undefined:', fileId === null || fileId === undefined);
+                
+                // Determine if it's an image or PDF
+                const imageTypes = ['upper_arch', 'lower_arch', 'xray'];
+                const isImage = imageTypes.includes(fileType);
+                
+                if (isImage) {
+                    // Handle image files
+                    const imageSrc = '/uploads/' + filePath;
+                    
+                    // Use string concatenation instead of template literals
+                    const imageCard = '<div class="image-card">' +
+                        '<img src="' + imageSrc + '" ' +
+                        'alt="' + fileType + '" ' +
+                        'onclick="openImageModal(\'' + imageSrc + '\', \'' + fileType + '\')">' +
+                        '<div class="image-type">' + displayName + '</div>' +
+                        '<div class="image-actions">' +
+                        '<button type="button" class="btn btn-sm btn-primary" ' +
+                        'onclick="openImageModal(\'' + imageSrc + '\', \'' + fileType + '\')">' +
+                        '<i class="fas fa-search-plus"></i> View</button>' +
+                        '<button type="button" class="btn btn-sm btn-danger" ' +
+                        'onclick="deleteImage(' + fileId + ')">' +
+                        '<i class="fas fa-trash"></i> Delete</button>' +
+                        '</div>' +
+                        '</div>';
+                    
+                    return imageCard;
+                } else {
+                    // Handle PDF files
+                    const pdfSrc = '/uploads/' + filePath;
+                    const fileName = filePath.split('/').pop();
+                    
+                    // Use string concatenation instead of template literals
+                    const pdfCard = '<div class="image-card pdf-card">' +
+                        '<div class="pdf-thumbnail" onclick="openPdfModal(\'' + pdfSrc + '\', \'' + displayName + '\')">' +
+                        '<i class="fas fa-file-pdf"></i>' +
+                        '<div class="pdf-filename">' + fileName + '</div>' +
+                        '</div>' +
+                        '<div class="image-type">' + displayName + '</div>' +
+                        '<div class="image-actions">' +
+                        '<button type="button" class="btn btn-sm btn-primary" ' +
+                        'onclick="openPdfModal(\'' + pdfSrc + '\', \'' + displayName + '\')">' +
+                        '<i class="fas fa-eye"></i> View</button>' +
+                        '<button type="button" class="btn btn-sm btn-success" ' +
+                        'onclick="downloadPdf(\'' + pdfSrc + '\', \'' + fileName + '\')">' +
+                        '<i class="fas fa-download"></i> Download</button>' +
+                        '<button type="button" class="btn btn-sm btn-danger" ' +
+                        'onclick="deleteImage(' + fileId + ')">' +
+                        '<i class="fas fa-trash"></i> Delete</button>' +
+                        '</div>' +
+                        '</div>';
+                    
+                    return pdfCard;
+                }
+            }).join('');
+            
+            console.log('displayImages - imagesHtml:', imagesHtml);
+            imagesGrid.innerHTML = imagesHtml;
+            
+            // Update doctor assignment state after displaying images
+            updateAssignedDoctorState();
+        }
+        
+        
+        async function deleteImage(imageId) {
+            console.log('deleteImage called with imageId:', imageId);
+            console.log('deleteImage imageId type:', typeof imageId);
+            
+            if (!imageId) {
+                alert('Error: Image ID is missing');
+                return;
+            }
+            
+            if (!confirm('Are you sure you want to delete this image?')) {
+                return;
+            }
+            
+            try {
+                const url = '/patients/examination/delete-media-file/' + imageId;
+                console.log('deleteImage - imageId value:', imageId);
+                console.log('deleteImage - imageId stringified:', String(imageId));
+                console.log('deleteImage - making request to:', url);
+                console.log('deleteImage - URL length:', url.length);
+                console.log('deleteImage - URL includes imageId:', url.includes(String(imageId)));
+                
+                const csrfToken = document.querySelector('meta[name="_csrf"]').content;
+                console.log('deleteImage - CSRF token:', csrfToken);
+                
+                const response = await fetch(url, {
+                    method: 'POST',
+                    headers: {
+                        'X-CSRF-TOKEN': csrfToken,
+                        'Content-Type': 'application/json'
+                    }
+                });
+                
+                console.log('deleteImage - response status:', response.status);
+                console.log('deleteImage - response ok:', response.ok);
+                
+                if (!response.ok) {
+                    const errorText = await response.text();
+                    console.error('deleteImage - error response:', errorText);
+                    throw new Error(`HTTP ${response.status}: ${errorText}`);
+                }
+                
+                const result = await response.json();
+                console.log('deleteImage - result:', result);
+                
+                if (result.success) {
+                    alert('Image deleted successfully!');
+                    loadExistingImages(); // Reload images
+                } else {
+                    alert('Delete failed: ' + (result.message || 'Unknown error'));
+                }
+                
+            } catch (error) {
+                console.error('Delete error:', error);
+                alert('Delete failed: ' + error.message);
+            }
+        }
+        
+        function closeImageModal() {
+            const modal = document.getElementById('imageModal');
+            if (modal) {
+                modal.style.display = 'none';
+            }
+        }
+        
+        function downloadImage() {
+            const modalImage = document.getElementById('modalImage');
+            if (modalImage && modalImage.src) {
+                const link = document.createElement('a');
+                link.href = modalImage.src;
+                link.download = 'dental-image.jpg';
+                document.body.appendChild(link);
+                link.click();
+                document.body.removeChild(link);
+            }
+        }
     </script>
     
     <!-- Image Modal -->
@@ -1752,5 +3123,129 @@
             </div>
         </div>
     </div>
+    
+    <!-- File Upload Modal -->
+    <div id="imageUploadModal" class="modal">
+        <div class="modal-content">
+            <div class="modal-header">
+                <h3><i class="fas fa-upload"></i> Upload File</h3>
+                <span class="close" onclick="closeImageUploadModal()">&times;</span>
+            </div>
+            <div class="modal-body">
+                <form id="imageUploadForm">
+                    <div class="form-group">
+                        <label for="imageType">File Type</label>
+                        <select id="imageType" name="imageType" class="form-control" required onchange="updateFileInputAccept()">
+                            <option value="">Select File Type</option>
+                            <option value="upper_arch">Upper Arch (Image)</option>
+                            <option value="lower_arch">Lower Arch (Image)</option>
+                            <option value="xray">X-Ray (Image)</option>
+                            <option value="blood_report">Blood Report (PDF)</option>
+                            <option value="medical_report">Medical Report (PDF)</option>
+                            <option value="prescription">Prescription (PDF)</option>
+                            <option value="other_document">Other Document (PDF)</option>
+                        </select>
+                    </div>
+                    
+                    <div class="form-group">
+                        <label for="imageFile">Select File</label>
+                        <input type="file" id="imageFile" name="imageFile" class="form-control" required>
+                        <small class="form-text text-muted">
+                            <span id="fileTypeInfo">Select a file type first</span>
+                        </small>
+                        <div id="imagePreview" class="image-preview"></div>
+                    </div>
+                </form>
+            </div>
+            <div class="modal-footer">
+                <button type="button" class="btn btn-secondary" onclick="closeImageUploadModal()">Cancel</button>
+                <button type="button" class="btn btn-primary" id="uploadImageBtn" onclick="uploadImage()">
+                    <i class="fas fa-upload"></i> Upload File
+                </button>
+            </div>
+        </div>
+    </div>
+    
+    <!-- Chairside Note Component -->
+    <jsp:include page="/WEB-INF/views/common/chairside-note-component.jsp" />
+    
+    <!-- Image optimization and performance monitoring script -->
+    <script>
+        // Image optimization for examination details page
+        document.addEventListener('DOMContentLoaded', function() {
+            // Add lazy loading to all images
+            const images = document.querySelectorAll('img[src*="/uploads/"]');
+            images.forEach(img => {
+                if (!img.hasAttribute('loading')) {
+                    img.setAttribute('loading', 'lazy');
+                }
+                
+                // Add error handling for images
+                img.onerror = function() {
+                    this.style.display = 'none';
+                    this.parentElement.innerHTML = '<div style="display: flex; align-items: center; justify-content: center; height: 100%; color: #e74c3c;"><i class="fas fa-exclamation-triangle"></i> Image not found</div>';
+                };
+                
+                // Add loading indicator
+                img.onload = function() {
+                    this.style.opacity = '1';
+                };
+                
+                // Set initial opacity for fade-in effect
+                img.style.opacity = '0';
+                img.style.transition = 'opacity 0.3s ease-in-out';
+            });
+            
+            // Preload critical images
+            const criticalImages = [
+                '${pageContext.request.contextPath}/images/tooth-repair.svg',
+                '${pageContext.request.contextPath}/images/default-profile.png'
+            ];
+            
+            criticalImages.forEach(src => {
+                const img = new Image();
+                img.src = src;
+            });
+            
+            // Monitor image loading performance
+            if (window.ImagePerformanceMonitor) {
+                console.log('Image Performance Monitor initialized on examination details page');
+            }
+        });
+        
+        // Optimize image modal loading
+        function openImageModal(imageSrc, imageType) {
+            const modal = document.getElementById('imageModal');
+            const modalImage = document.getElementById('modalImage');
+            const modalHeader = document.getElementById('modalHeader');
+            
+            if (modal && modalImage && modalHeader) {
+                modalHeader.textContent = imageType || 'Dental Image';
+                
+                // Show loading state
+                modalImage.style.opacity = '0';
+                modal.style.display = 'block';
+                
+                // Load image with performance tracking
+                const startTime = performance.now();
+                modalImage.onload = function() {
+                    const loadTime = performance.now() - startTime;
+                    console.log(`Image loaded in ${loadTime.toFixed(2)}ms: ${imageSrc}`);
+                    
+                    // Fade in the image
+                    this.style.opacity = '1';
+                    this.style.transition = 'opacity 0.3s ease-in-out';
+                };
+                
+                modalImage.onerror = function() {
+                    console.error(`Failed to load image: ${imageSrc}`);
+                    this.style.display = 'none';
+                    this.parentElement.innerHTML = '<div style="display: flex; align-items: center; justify-content: center; height: 100%; color: #e74c3c;"><i class="fas fa-exclamation-triangle"></i> Image not found</div>';
+                };
+                
+                modalImage.src = imageSrc;
+            }
+        }
+    </script>
 </body>
 </html> 

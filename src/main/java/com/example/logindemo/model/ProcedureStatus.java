@@ -29,7 +29,10 @@ public enum ProcedureStatus {
     FOLLOW_UP_COMPLETED("Follow-Up Completed", "Follow-up has been completed"),
 
     // Closure
-    CLOSED("Closed", "Procedure and follow-ups are fully completed, case closed");
+    CLOSED("Closed", "Procedure and follow-ups are fully completed, case closed"),
+    
+    // Reopening
+    REOPEN("Reopen", "Case has been reopened for further treatment");
 
     private final String label;
     private final String description;
@@ -56,9 +59,9 @@ public enum ProcedureStatus {
             case COMPLETED -> Set.of(FOLLOW_UP_SCHEDULED, CLOSED);
             case FOLLOW_UP_SCHEDULED -> Set.of(FOLLOW_UP_COMPLETED, CLOSED);
             case FOLLOW_UP_COMPLETED -> Set.of(CLOSED);
-            case CANCELLED, CLOSED -> Set.of();
-
-            default -> throw new IllegalStateException("Unhandled status: " + this);
+            case CLOSED -> Set.of(REOPEN);
+            case REOPEN -> Set.of(IN_PROGRESS);
+            case CANCELLED -> Set.of();
         };
     }
 }

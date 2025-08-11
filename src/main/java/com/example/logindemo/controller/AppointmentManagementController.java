@@ -49,7 +49,7 @@ public class AppointmentManagementController {
     @PreAuthorize("hasAnyRole('RECEPTIONIST', 'DOCTOR')")
     public String appointmentManagement(
             @RequestParam(required = false) String date,
-            @RequestParam(required = false, defaultValue = "false") boolean myAppointments,
+            @RequestParam(required = false) Boolean myAppointments,
             @RequestParam(defaultValue = "0") int page,
             @RequestParam(defaultValue = "20") int size,
             @RequestParam(defaultValue = "20") int pageSize,
@@ -61,8 +61,13 @@ public class AppointmentManagementController {
         // Use pageSize if provided, otherwise use size (for backward compatibility)
         int actualSize = pageSize != 20 ? pageSize : size;
         
-        logger.info("Received request for appointment management. Date parameter: {}, My appointments: {}, page: {}, size: {}", 
-            date, myAppointments, page, actualSize);
+        // Determine default for myAppointments: doctors default to true when not specified
+        User currentUser = userRepository.findByUsername(authentication.getName())
+                .orElseThrow(() -> new IllegalStateException("Current user not found"));
+        boolean myAppointmentsEffective = (myAppointments != null) ? myAppointments.booleanValue() :
+                (currentUser.getRole() != null && currentUser.getRole().name().equals("DOCTOR"));
+        logger.info("Received request for appointment management. Date: {}, My appointments (effective): {}, page: {}, size: {}", 
+            date, myAppointmentsEffective, page, actualSize);
         
         LocalDateTime startOfDay;
         LocalDateTime endOfDay;
@@ -93,9 +98,7 @@ public class AppointmentManagementController {
             formattedDate = today.format(DATE_FORMATTER);
         }
         
-        // Get current user
-        User currentUser = userRepository.findByUsername(authentication.getName())
-                .orElseThrow(() -> new IllegalStateException("Current user not found"));
+        // currentUser already resolved above
         
         // Get user's clinic
         ClinicModel userClinic = currentUser.getClinic();
@@ -117,7 +120,7 @@ public class AppointmentManagementController {
                 )
             );
             
-            if (myAppointments) {
+            if (myAppointmentsEffective) {
                 // Get user's upcoming appointments within their clinic with pagination
                 appointmentsPage = appointmentService.getUpcomingAppointmentsForUserInClinicPaginated(currentUser, userClinic, pageable);
                 logger.info("Found {} upcoming appointments for user {} in clinic {} (page {} of {})", 
@@ -136,7 +139,7 @@ public class AppointmentManagementController {
         model.addAttribute("appointments", appointmentsPage.getContent());
         model.addAttribute("statuses", AppointmentStatus.values());
         model.addAttribute("selectedDate", formattedDate);
-        model.addAttribute("myAppointments", myAppointments);
+        model.addAttribute("myAppointments", myAppointmentsEffective);
         model.addAttribute("currentPage", page);
         model.addAttribute("totalPages", appointmentsPage.getTotalPages());
         model.addAttribute("totalItems", appointmentsPage.getTotalElements());
@@ -158,6 +161,7 @@ public class AppointmentManagementController {
                     event.put("doctorName", appointment.getDoctor() != null ? 
                         appointment.getDoctor().getFirstName() + " " + appointment.getDoctor().getLastName() : 
                         "Unassigned");
+                    event.put("notes", appointment.getNotes());
                     return event;
                 })
                 .collect(Collectors.toList());

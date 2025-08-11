@@ -1,10 +1,14 @@
 package com.example.logindemo.service.impl;
 
+import com.example.logindemo.dto.RescheduleAppointmentDTO;
+import com.example.logindemo.exception.EntityNotFoundException;
 import com.example.logindemo.model.Appointment;
+import com.example.logindemo.model.AppointmentHistory;
 import com.example.logindemo.model.AppointmentStatus;
 import com.example.logindemo.model.ClinicModel;
 import com.example.logindemo.model.Patient;
 import com.example.logindemo.model.User;
+import com.example.logindemo.repository.AppointmentHistoryRepository;
 import com.example.logindemo.repository.AppointmentRepository;
 import com.example.logindemo.repository.PatientRepository;
 import com.example.logindemo.repository.UserRepository;
@@ -21,7 +25,9 @@ import org.springframework.stereotype.Service;
 import org.springframework.transaction.annotation.Transactional;
 
 import java.time.LocalDateTime;
+import java.util.HashMap;
 import java.util.List;
+import java.util.Map;
 
 @Service
 public class AppointmentServiceImpl implements AppointmentService {
@@ -36,6 +42,9 @@ public class AppointmentServiceImpl implements AppointmentService {
 
     @Autowired
     private UserRepository userRepository;
+
+    @Autowired
+    private AppointmentHistoryRepository appointmentHistoryRepository;
 
     @Override
     public List<Appointment> getTodayAppointments() {
@@ -246,5 +255,124 @@ public class AppointmentServiceImpl implements AppointmentService {
     @Transactional(readOnly = true)
     public Page<Appointment> getAppointmentsByDateRangeAndClinicAndStatusPaginated(LocalDateTime startDate, LocalDateTime endDate, ClinicModel clinic, AppointmentStatus status, Pageable pageable) {
         return appointmentRepository.findByClinicAndAppointmentDateTimeBetweenAndStatusOrderByAppointmentDateTimeDesc(clinic, startDate, endDate, status, pageable);
+    }
+    
+    // Enhanced reschedule methods
+    @Override
+    @Transactional
+    public Appointment rescheduleAppointment(RescheduleAppointmentDTO dto, User currentUser) {
+        // 1. Validate request
+        validateRescheduleRequest(dto);
+        
+        // 2. Get appointment
+        Appointment appointment = appointmentRepository.findById(dto.getAppointmentId())
+            .orElseThrow(() -> new EntityNotFoundException("Appointment not found"));
+        
+        // 3. Check if can be rescheduled
+        if (!canReschedule(appointment)) {
+            throw new IllegalStateException("Appointment cannot be rescheduled. " + 
+                "Max reschedules reached or invalid status.");
+        }
+        
+        // 4. Store original date if first reschedule
+        if (appointment.getOriginalAppointmentDateTime() == null) {
+            appointment.setOriginalAppointmentDateTime(appointment.getAppointmentDateTime());
+        }
+        
+        // 5. Calculate reschedule number
+        int rescheduleNumber = (appointment.getRescheduledCount() != null ? appointment.getRescheduledCount() : 0) + 1;
+        
+        // 6. Update appointment
+        LocalDateTime oldDateTime = appointment.getAppointmentDateTime();
+        appointment.setAppointmentDateTime(dto.getNewAppointmentDateTime());
+        appointment.setRescheduledCount(rescheduleNumber);
+        appointment.setLastRescheduledBy(currentUser);
+        appointment.setLastRescheduledAt(LocalDateTime.now());
+        appointment.setRescheduleReason(dto.getReason());
+        
+        // 7. Save appointment
+        appointment = appointmentRepository.save(appointment);
+        
+        // 8. Create history record with reschedule number
+        AppointmentHistory history = new AppointmentHistory(
+            appointment, "RESCHEDULED", 
+            oldDateTime.toString(), dto.getNewAppointmentDateTime().toString(),
+            currentUser, 
+            String.format("Reschedule #%d: %s%s", rescheduleNumber, dto.getReason(), 
+                         dto.getAdditionalNotes() != null ? " - " + dto.getAdditionalNotes() : ""),
+            rescheduleNumber
+        );
+        appointmentHistoryRepository.save(history);
+        
+        logger.info("Appointment {} rescheduled for the {} time by user {}", 
+                   appointment.getId(), rescheduleNumber, currentUser.getUsername());
+        
+        return appointment;
+    }
+    
+    @Override
+    @Transactional(readOnly = true)
+    public boolean canReschedule(Appointment appointment) {
+        return appointment.canBeRescheduled();
+    }
+    
+    @Override
+    @Transactional(readOnly = true)
+    public List<AppointmentHistory> getAppointmentHistory(Long appointmentId) {
+        return appointmentHistoryRepository.findByAppointmentIdOrderByChangedAtDesc(appointmentId);
+    }
+    
+    @Override
+    @Transactional(readOnly = true)
+    public List<AppointmentHistory> getRescheduleHistory(Long appointmentId) {
+        return appointmentHistoryRepository.findByAppointmentIdAndActionOrderByChangedAtDesc(appointmentId, "RESCHEDULED");
+    }
+    
+    @Override
+    @Transactional(readOnly = true)
+    public int getRemainingReschedules(Long appointmentId) {
+        Appointment appointment = appointmentRepository.findById(appointmentId)
+            .orElseThrow(() -> new EntityNotFoundException("Appointment not found"));
+        return appointment.getRemainingReschedules();
+    }
+    
+    @Override
+    @Transactional(readOnly = true)
+    public Map<String, Object> getRescheduleSummary(Long appointmentId) {
+        Appointment appointment = appointmentRepository.findById(appointmentId)
+            .orElseThrow(() -> new EntityNotFoundException("Appointment not found"));
+        
+        List<AppointmentHistory> rescheduleHistory = getRescheduleHistory(appointmentId);
+        
+        Map<String, Object> summary = new HashMap<>();
+        summary.put("totalReschedules", appointment.getRescheduledCount());
+        summary.put("remainingReschedules", appointment.getRemainingReschedules());
+        summary.put("canReschedule", appointment.canBeRescheduled());
+        summary.put("originalDateTime", appointment.getOriginalAppointmentDateTime());
+        summary.put("currentDateTime", appointment.getAppointmentDateTime());
+        summary.put("rescheduleHistory", rescheduleHistory);
+        summary.put("lastRescheduledBy", appointment.getLastRescheduledBy());
+        summary.put("lastRescheduledAt", appointment.getLastRescheduledAt());
+        
+        return summary;
+    }
+    
+    @Override
+    public void validateRescheduleRequest(RescheduleAppointmentDTO dto) {
+        if (dto.getAppointmentId() == null) {
+            throw new IllegalArgumentException("Appointment ID is required");
+        }
+        
+        if (dto.getNewAppointmentDateTime() == null) {
+            throw new IllegalArgumentException("New appointment date/time is required");
+        }
+        
+        if (dto.getNewAppointmentDateTime().isBefore(LocalDateTime.now())) {
+            throw new IllegalArgumentException("New appointment date/time cannot be in the past");
+        }
+        
+        if (dto.getReason() == null || dto.getReason().trim().isEmpty()) {
+            throw new IllegalArgumentException("Reschedule reason is required");
+        }
     }
 } 

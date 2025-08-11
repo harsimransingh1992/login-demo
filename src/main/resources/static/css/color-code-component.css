@@ -1,0 +1,125 @@
+/* Color Code Component Styles */
+
+/* Patient Color Code Badge Styles */
+.patient-code-badge {
+    display: inline-block;
+    padding: 2px 8px;
+    border-radius: 12px;
+    font-size: 0.75rem;
+    font-weight: 600;
+    color: white;
+    text-transform: uppercase;
+    letter-spacing: 0.5px;
+}
+
+.patient-code-badge.code-blue {
+    background-color: #0066CC;
+    color: white;
+}
+
+.patient-code-badge.code-yellow {
+    background-color: #FFD700;
+    color: #333;
+}
+
+.patient-code-badge.no-code {
+    background-color: #E0E0E0;
+    color: #666;
+}
+
+/* Clickable Code Badge Styles */
+.clickable-code {
+    cursor: pointer;
+    transition: all 0.3s ease;
+    position: relative;
+}
+
+.clickable-code:hover {
+    transform: translateY(-1px);
+    box-shadow: 0 2px 8px rgba(0, 0, 0, 0.15);
+}
+
+/* Color Code Strip Styles */
+.color-code-strip {
+    width: 100%;
+    height: 8px;
+    border-radius: 4px 4px 0 0;
+    margin-bottom: 0;
+    position: relative;
+}
+
+.color-code-strip.clickable-code {
+    cursor: pointer;
+    transition: all 0.3s ease;
+}
+
+.color-code-strip.clickable-code:hover {
+    height: 12px;
+    box-shadow: 0 2px 8px rgba(0, 0, 0, 0.15);
+}
+
+.color-code-strip.updating {
+    opacity: 0.7;
+    pointer-events: none;
+}
+
+.color-code-strip.code-blue {
+    background: linear-gradient(90deg, #0066CC, #0052a3);
+}
+
+.color-code-strip.code-yellow {
+    background: linear-gradient(90deg, #FFD700, #FFC107);
+}
+
+.color-code-strip.no-code {
+    background: linear-gradient(90deg, #E0E0E0, #BDBDBD);
+}
+
+/* Color Code Dropdown Styles */
+.color-code-dropdown {
+    position: absolute;
+    top: 100%;
+    left: 0;
+    background: white;
+    border: 1px solid #ddd;
+    border-radius: 8px;
+    box-shadow: 0 4px 12px rgba(0, 0, 0, 0.15);
+    z-index: 1000;
+    min-width: 200px;
+    display: none;
+}
+
+.color-code-dropdown.show {
+    display: block;
+}
+
+.color-code-option {
+    padding: 10px 15px;
+    cursor: pointer;
+    border-bottom: 1px solid #f0f0f0;
+    display: flex;
+    align-items: center;
+    gap: 10px;
+    transition: background-color 0.2s ease;
+}
+
+.color-code-option:last-child {
+    border-bottom: none;
+}
+
+.color-code-option:hover {
+    background-color: #f8f9fa;
+}
+
+.color-code-option.selected {
+    background-color: #e3f2fd;
+    font-weight: 600;
+}
+
+.color-code-preview {
+    width: 16px;
+    height: 16px;
+    border-radius: 50%;
+    border: 2px solid #fff;
+    box-shadow: 0 1px 3px rgba(0, 0, 0, 0.2);
+} 

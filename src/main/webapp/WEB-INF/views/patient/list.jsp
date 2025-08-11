@@ -311,13 +311,13 @@
                                 <td>
                                     <sec:authorize access="hasAnyRole('RECEPTIONIST', 'ADMIN')">
                                         <div class="action-buttons">
-                                            <button onclick="editPatient('${patient.id}')" class="btn-edit"><i class="fas fa-edit"></i> Edit</button>
+                                            <button onclick="scheduleAppointment('${patient.id}', '${patient.firstName} ${patient.lastName}')" class="btn-appointment"><i class="fas fa-calendar-plus"></i> Schedule Appointment</button>
                                         <c:choose>
                                             <c:when test="${!patient.checkedIn}">
-                                                    <button onclick="checkIn('${patient.id}')" class="btn-primary"><i class="fas fa-user-check"></i> Check In</button>
+                                                    <button onclick="checkIn('${patient.id}')" class="btn-checkin"><i class="fas fa-user-check"></i> Check In</button>
                                             </c:when>
                                             <c:otherwise>
-                                                    <button onclick="uncheck('${patient.id}')" class="btn-danger"><i class="fas fa-user-times"></i> Check Out</button>
+                                                    <button onclick="uncheck('${patient.id}')" class="btn-checkout"><i class="fas fa-user-times"></i> Check Out</button>
                                             </c:otherwise>
                                         </c:choose>
                                         </div>
@@ -406,12 +406,149 @@
             </c:if>
         </div>
     </div>
+    
+    <!-- Appointment Scheduling Modal -->
+    <div id="appointmentModal" class="modal" style="display: none; position: fixed; z-index: 1000; left: 0; top: 0; width: 100%; height: 100%; background-color: rgba(0,0,0,0.5);">
+        <div class="modal-content" style="background-color: white; margin: 5% auto; padding: 0; border-radius: 12px; width: 90%; max-width: 500px; box-shadow: 0 8px 32px rgba(0,0,0,0.3);">
+            <div class="modal-header" style="background: linear-gradient(135deg, #3498db, #2980b9); color: white; padding: 20px; border-radius: 12px 12px 0 0;">
+                <h3 style="margin: 0; font-size: 1.3rem; display: flex; align-items: center; gap: 10px;">
+                    <i class="fas fa-calendar-plus"></i> Schedule Appointment
+                </h3>
+                <span class="close-modal" onclick="closeAppointmentModal()" style="position: absolute; right: 20px; top: 20px; font-size: 28px; font-weight: bold; cursor: pointer; color: white;">&times;</span>
+            </div>
+            <div class="modal-body" style="padding: 25px;">
+                <form id="appointmentForm">
+                    <input type="hidden" id="patientId" name="patientId">
+                    <input type="hidden" name="${_csrf.parameterName}" value="${_csrf.token}" />
+                    
+                    <div class="form-group" style="margin-bottom: 20px;">
+                        <label style="display: block; margin-bottom: 8px; font-weight: 600; color: #2c3e50;">Patient Name</label>
+                        <input type="text" id="patientName" readonly style="width: 100%; padding: 12px; border: 1px solid #ddd; border-radius: 6px; background-color: #f8f9fa; color: #6c757d;">
+                    </div>
+                    
+                    <div class="form-group" style="margin-bottom: 20px;">
+                        <label for="appointmentDate" style="display: block; margin-bottom: 8px; font-weight: 600; color: #2c3e50;">Appointment Date</label>
+                        <input type="date" id="appointmentDate" name="appointmentDate" required style="width: 100%; padding: 12px; border: 1px solid #ddd; border-radius: 6px;">
+                    </div>
+                    
+                    <div class="form-group" style="margin-bottom: 20px;">
+                        <label for="appointmentTime" style="display: block; margin-bottom: 8px; font-weight: 600; color: #2c3e50;">Appointment Time</label>
+                        <input type="time" id="appointmentTime" name="appointmentTime" required style="width: 100%; padding: 12px; border: 1px solid #ddd; border-radius: 6px;">
+                    </div>
+                    
+                    <div class="form-group" style="margin-bottom: 20px;">
+                        <label for="appointmentNotes" style="display: block; margin-bottom: 8px; font-weight: 600; color: #2c3e50;">Notes (Optional)</label>
+                        <textarea id="appointmentNotes" name="appointmentNotes" rows="3" placeholder="Enter any additional notes for this appointment..." style="width: 100%; padding: 12px; border: 1px solid #ddd; border-radius: 6px; resize: vertical;"></textarea>
+                    </div>
+                    
+                    <div class="modal-footer" style="display: flex; justify-content: flex-end; gap: 12px; padding: 20px 0 0 0; border-top: 1px solid #eee; margin-top: 20px;">
+                        <button type="button" class="btn btn-secondary" onclick="closeAppointmentModal()" style="background: #95a5a6; color: white; border: none; padding: 10px 20px; border-radius: 6px; cursor: pointer;">Cancel</button>
+                        <button type="button" id="saveAppointment" class="btn btn-primary" style="background: linear-gradient(135deg, #3498db, #2980b9); color: white; border: none; padding: 10px 20px; border-radius: 6px; cursor: pointer; font-weight: 600;">
+                            <i class="fas fa-save"></i> Schedule Appointment
+                        </button>
+                    </div>
+                </form>
+            </div>
+        </div>
+    </div>
+    
     <script>
-        function editPatient(patientId) {
-            window.location.href = "${pageContext.request.contextPath}/patients/edit/" + patientId;
+        // Appointment scheduling functions
+        function scheduleAppointment(patientId, patientName) {
+            document.getElementById('patientId').value = patientId;
+            document.getElementById('patientName').value = patientName;
+            
+            // Set default date to today
+            const today = new Date().toISOString().split('T')[0];
+            document.getElementById('appointmentDate').value = today;
+            
+            // Set default time to next hour
+            const nextHour = new Date();
+            nextHour.setHours(nextHour.getHours() + 1);
+            const timeString = nextHour.toTimeString().slice(0, 5);
+            document.getElementById('appointmentTime').value = timeString;
+            
+            document.getElementById('appointmentModal').style.display = 'block';
+        }
+        
+        function closeAppointmentModal() {
+            document.getElementById('appointmentModal').style.display = 'none';
+            // Clear form
+            document.getElementById('appointmentForm').reset();
+        }
+        
+        // Save appointment
+        document.getElementById('saveAppointment').addEventListener('click', async function() {
+            const patientId = document.getElementById('patientId').value;
+            const appointmentDate = document.getElementById('appointmentDate').value;
+            const appointmentTime = document.getElementById('appointmentTime').value;
+            const appointmentNotes = document.getElementById('appointmentNotes').value;
+            
+            if (!appointmentDate || !appointmentTime) {
+                alert('Please select both date and time for the appointment.');
+                return;
+            }
+            
+            try {
+                const response = await fetch('${pageContext.request.contextPath}/patients/schedule-appointment', {
+                    method: 'POST',
+                    headers: {
+                        'Content-Type': 'application/json',
+                        'X-CSRF-TOKEN': document.querySelector('meta[name="_csrf"]').content
+                    },
+                    body: JSON.stringify({
+                        patientId: patientId,
+                        appointmentDate: appointmentDate,
+                        appointmentTime: appointmentTime,
+                        notes: appointmentNotes
+                    })
+                });
+                
+                if (response.ok) {
+                    const result = await response.json();
+                    if (result.success) {
+                        alert('Appointment scheduled successfully!');
+                        closeAppointmentModal();
+                    } else {
+                        alert('Error: ' + (result.message || 'Failed to schedule appointment'));
+                    }
+                } else {
+                    alert('Error: Failed to schedule appointment');
+                }
+            } catch (error) {
+                console.error('Error scheduling appointment:', error);
+                alert('Error: Failed to schedule appointment');
+            }
+        });
+        
+        // Close modal when clicking outside
+        window.onclick = function(event) {
+            const modal = document.getElementById('appointmentModal');
+            if (event.target === modal) {
+                closeAppointmentModal();
+            }
         }
         
         async function checkIn(patientId) {
+            // Find the button that was clicked
+            const button = event.target.closest('button');
+            if (!button) return;
+            
+            // Prevent multiple clicks
+            if (button.disabled) {
+                console.log('Check-in already in progress, ignoring click');
+                return;
+            }
+            
+            // Store original button content
+            const originalContent = button.innerHTML;
+            const originalDisabled = button.disabled;
+            
+            // Show loading state
+            button.innerHTML = '<i class="fas fa-spinner fa-spin"></i> Checking In...';
+            button.disabled = true;
+            button.classList.add('btn-loading');
+            
             try {
                 const url = "${pageContext.request.contextPath}/patients/checkin/" + patientId;
                 const response = await fetch(url, {
@@ -427,13 +564,42 @@
                     window.location.reload(); // Reload page on successful check-in
                 } else {
                     console.error('Error response:', response.status, response.statusText);
+                    // Restore button state on error
+                    button.innerHTML = originalContent;
+                    button.disabled = originalDisabled;
+                    button.classList.remove('btn-loading');
+                    alert('Failed to check in patient. Please try again.');
                 }
             } catch (error) {
                 console.error('Request failed:', error);
+                // Restore button state on error
+                button.innerHTML = originalContent;
+                button.disabled = originalDisabled;
+                button.classList.remove('btn-loading');
+                alert('Network error. Please try again.');
             }
         }
 
         async function uncheck(patientId) {
+            // Find the button that was clicked
+            const button = event.target.closest('button');
+            if (!button) return;
+            
+            // Prevent multiple clicks
+            if (button.disabled) {
+                console.log('Check-out already in progress, ignoring click');
+                return;
+            }
+            
+            // Store original button content
+            const originalContent = button.innerHTML;
+            const originalDisabled = button.disabled;
+            
+            // Show loading state
+            button.innerHTML = '<i class="fas fa-spinner fa-spin"></i> Checking Out...';
+            button.disabled = true;
+            button.classList.add('btn-loading');
+            
             try {
                 const url = "${pageContext.request.contextPath}/patients/uncheck/" + patientId;
                 const response = await fetch(url, {
@@ -449,9 +615,19 @@
                     window.location.reload(); // Reload page on successful check-out
                 } else {
                     console.error('Error response:', response.status, response.statusText);
+                    // Restore button state on error
+                    button.innerHTML = originalContent;
+                    button.disabled = originalDisabled;
+                    button.classList.remove('btn-loading');
+                    alert('Failed to check out patient. Please try again.');
                 }
             } catch (error) {
                 console.error('Request failed:', error);
+                // Restore button state on error
+                button.innerHTML = originalContent;
+                button.disabled = originalDisabled;
+                button.classList.remove('btn-loading');
+                alert('Network error. Please try again.');
             }
         }
         

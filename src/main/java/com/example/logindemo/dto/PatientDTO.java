@@ -1,6 +1,7 @@
 package com.example.logindemo.dto;
 
 import com.example.logindemo.model.ReferralModel;
+import com.example.logindemo.model.PatientColorCode;
 import lombok.Getter;
 import lombok.Setter;
 import org.springframework.format.annotation.DateTimeFormat;
@@ -71,6 +72,10 @@ public class PatientDTO {
     private String createdBy;
     private String registeredClinic;
     private Date createdAt;
+    
+    private PatientColorCode colorCode;
+
+    private String chairsideNote;
 
     public Integer getAge() {
         if (dateOfBirth == null) {

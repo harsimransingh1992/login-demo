@@ -34,12 +34,15 @@ import java.time.LocalDateTime;
 import java.time.format.DateTimeFormatter;
 import java.util.*;
 import java.util.stream.Collectors;
+import java.util.Date;
+import java.time.ZoneId;
 import javax.servlet.http.HttpSession;
 import org.springframework.http.HttpStatus;
 import java.util.Optional;
 import com.fasterxml.jackson.databind.ObjectMapper;
 import com.example.logindemo.model.MediaFile;
 import com.example.logindemo.model.ProcedureLifecycleTransition;
+import com.example.logindemo.model.ReopeningRecord;
 
 @Controller
 @RequestMapping("/patients")
@@ -100,6 +103,9 @@ public class PatientController {
     @Autowired
     private MediaFileRepository mediaFileRepository;
 
+    @Autowired
+    private ReopeningRecordRepository reopeningRecordRepository;
+
     @InitBinder
     public void initBinder(WebDataBinder binder) {
         // Register custom date editor for dateOfBirth
@@ -155,11 +161,6 @@ public class PatientController {
         return ToothNumber.values();
     }
 
-    @ModelAttribute("toothSurfaces")
-    public ToothSurface[] toothSurfaces() {
-        return ToothSurface.values();
-    }
-
     @ModelAttribute("toothConditions")
     public ToothCondition[] toothConditions() {
         return ToothCondition.values();
@@ -213,6 +214,11 @@ public class PatientController {
     @ModelAttribute("existingRestorations")
     public ExistingRestoration[] existingRestorations() {
         return ExistingRestoration.values();
+    }
+    
+    @ModelAttribute("patientColorCodes")
+    public PatientColorCode[] patientColorCodes() {
+        return PatientColorCode.values();
     }
 
     @ModelAttribute("occupations")
@@ -503,6 +509,34 @@ public class PatientController {
             // Get doctors from the same clinic
             List<UserDTO> doctors = userService.getUsersByRoleAndClinic(UserRole.DOCTOR, currentUser.getClinic());
             model.addAttribute("doctorDetails", doctors);
+
+            // Prepare duplicate permissions map keyed by exam id for easy lookup in JSP
+            try {
+                List<ToothClinicalExaminationDTO> exams = toothClinicalExaminationService.getToothClinicalExaminationForPatientId(patient.get().getId());
+                Map<Long, Boolean> duplicateAllowed = new java.util.HashMap<>();
+                for (ToothClinicalExaminationDTO examDto : exams) {
+                    boolean sameClinic = examDto.getExaminationClinic() != null && currentUser.getClinic() != null
+                        && java.util.Objects.equals(examDto.getExaminationClinic().getId(), currentUser.getClinic().getId());
+                    boolean sameDate = false;
+                    if (examDto.getExaminationDate() != null) {
+                        try {
+                            sameDate = java.time.LocalDate.now().equals(examDto.getExaminationDate().toLocalDate());
+                        } catch (Exception ignore) { /* keep false */ }
+                    }
+                    boolean isOpdDoctor = false;
+                    try {
+                        // Attempt to fetch model for OPD doctor comparison
+                        java.util.Optional<ToothClinicalExamination> examModelOpt = toothClinicalExaminationRepository.findById(examDto.getId());
+                        if (examModelOpt.isPresent() && examModelOpt.get().getOpdDoctor() != null) {
+                            isOpdDoctor = java.util.Objects.equals(examModelOpt.get().getOpdDoctor().getId(), currentUser.getId());
+                        }
+                    } catch (Exception ignore) { /* keep false */ }
+                    duplicateAllowed.put(examDto.getId(), sameClinic && sameDate && isOpdDoctor);
+                }
+                model.addAttribute("duplicateAllowed", duplicateAllowed);
+            } catch (Exception e) {
+                log.warn("Could not prepare duplicate permissions: {}", e.getMessage());
+            }
         }
         return "patient/patientDetails"; // Return the name of the patient details view
     }
@@ -744,9 +778,6 @@ public class PatientController {
             ToothClinicalExamination existingExamination = existingExaminationOpt.get();
             
             // Update only the fields that can be changed
-            if (examinationDTO.getToothSurface() != null) {
-                existingExamination.setToothSurface(examinationDTO.getToothSurface());
-            }
             if (examinationDTO.getToothCondition() != null) {
                 existingExamination.setToothCondition(examinationDTO.getToothCondition());
             }
@@ -838,10 +869,25 @@ public class PatientController {
                 examination.setAssignedDoctorId(examinationModel.get().getAssignedDoctor().getId());
             }
 
-            // Check if a doctor is assigned to the examination
-            if (examination.getAssignedDoctorId() == null) {
-                log.warn("Attempt to access procedures for examination {} without an assigned doctor", id);
-                return "redirect:/patients/examination/" + id + "?error=Please assign a doctor before starting a procedure";
+            // Gate by arch images instead of doctor assignment
+            boolean hasUpperArch = false;
+            boolean hasLowerArch = false;
+            // Check legacy fields
+            if (examinationModel.isPresent()) {
+                ToothClinicalExamination exEntity = examinationModel.get();
+                hasUpperArch = exEntity.getUpperDenturePicturePath() != null && !exEntity.getUpperDenturePicturePath().isEmpty();
+                hasLowerArch = exEntity.getLowerDenturePicturePath() != null && !exEntity.getLowerDenturePicturePath().isEmpty();
+            }
+            // Also check media files repository
+            if (!hasUpperArch) {
+                hasUpperArch = !mediaFileRepository.findByExaminationIdAndFileType(id, "upper_arch").isEmpty();
+            }
+            if (!hasLowerArch) {
+                hasLowerArch = !mediaFileRepository.findByExaminationIdAndFileType(id, "lower_arch").isEmpty();
+            }
+            if (!(hasUpperArch && hasLowerArch)) {
+                log.warn("Attempt to access procedures for examination {} without both arch images uploaded (upper={}, lower={})", id, hasUpperArch, hasLowerArch);
+                return "redirect:/patients/examination/" + id + "?error=Please upload both upper and lower arch pictures before starting a procedure";
             }
             
             // Get the patient details
@@ -894,6 +940,13 @@ public class PatientController {
             model.addAttribute("patient", patient.get());
             model.addAttribute("procedures", procedures);
             model.addAttribute("existingProcedureIds", existingProcedureIds);
+            // Add doctors list and current user role for treating doctor assignment on selection page
+            if (currentUser.isPresent()) {
+                User user = currentUser.get();
+                List<UserDTO> doctors = userService.getUsersByRoleAndClinic(UserRole.DOCTOR, user.getClinic());
+                model.addAttribute("doctors", doctors);
+                model.addAttribute("currentUserRole", user.getRole());
+            }
             
             // Explicitly add dental departments for tabs
             model.addAttribute("dentalDepartments", DentalDepartment.values());
@@ -906,18 +959,17 @@ public class PatientController {
         }
     }
 
-    @PostMapping("/examination/start-procedure")
+    @PostMapping("/examination/upload-denture-pictures")
     @ResponseBody
-    public ResponseEntity<?> startProcedure(
+    public ResponseEntity<?> uploadDenturePictures(
             @RequestParam("examinationId") Long examinationId,
-            @RequestParam("procedureId") Long procedureId,
-            @RequestParam(value = "upperDenturePicture", required = false) MultipartFile upperDenturePicture,
-            @RequestParam(value = "lowerDenturePicture", required = false) MultipartFile lowerDenturePicture) {
+            @RequestParam("upperDenturePicture") MultipartFile upperDenturePicture,
+            @RequestParam("lowerDenturePicture") MultipartFile lowerDenturePicture) {
         try {
-            if (examinationId == null || procedureId == null) {
+            if (examinationId == null) {
                 return ResponseEntity.badRequest().body(Map.of(
                     "success", false,
-                    "message", "Missing examinationId or procedureId"
+                    "message", "Missing examinationId"
                 ));
             }
             
@@ -936,24 +988,7 @@ public class PatientController {
                 ));
             }
             
-            log.info("Starting procedure {} for examination {} with denture pictures", procedureId, examinationId);
-            
-            // Check if the procedure is already associated with the examination
-            if (toothClinicalExaminationService.isProcedureAlreadyAssociated(examinationId, procedureId)) {
-                // Get the procedure name for better error message
-                ProcedurePriceDTO procedure = procedurePriceService.getProcedureById(procedureId);
-                String procedureName = procedure != null ? procedure.getProcedureName() : "Procedure #" + procedureId;
-                
-                Map<String, Object> duplicateProcedureInfo = new HashMap<>();
-                duplicateProcedureInfo.put("id", procedureId);
-                duplicateProcedureInfo.put("name", procedureName);
-                
-                return ResponseEntity.badRequest().body(Map.of(
-                    "success", false,
-                    "message", "This procedure is already associated with the examination: " + procedureName,
-                    "duplicateProcedure", duplicateProcedureInfo
-                ));
-            }
+            log.info("Uploading denture pictures for examination {}", examinationId);
             
             // Save the denture pictures
             String upperDenturePath = null;
@@ -974,10 +1009,6 @@ public class PatientController {
                 ));
             }
             
-            // Associate the procedure with the examination and save denture paths
-            List<Long> procedureIdList = Collections.singletonList(procedureId);
-            toothClinicalExaminationService.associateProceduresWithExamination(examinationId, procedureIdList);
-            
             // Update the examination with denture picture paths
             ToothClinicalExamination examination = toothClinicalExaminationRepository.findById(examinationId)
                 .orElseThrow(() -> new RuntimeException("Examination not found"));
@@ -986,11 +1017,116 @@ public class PatientController {
             examination.setLowerDenturePicturePath(lowerDenturePath);
             toothClinicalExaminationRepository.save(examination);
             
+            // Return success
+            return ResponseEntity.ok(Map.of(
+                "success", true,
+                "message", "Denture pictures uploaded successfully",
+                "upperDenturePath", upperDenturePath,
+                "lowerDenturePath", lowerDenturePath
+            ));
+        } catch (Exception e) {
+            log.error("Error uploading denture pictures: {}", e.getMessage(), e);
+            return ResponseEntity.badRequest().body(Map.of(
+                "success", false,
+                "message", e.getMessage()
+            ));
+        }
+    }
+
+    @PostMapping("/examination/start-procedure")
+    @ResponseBody
+    public ResponseEntity<?> startProcedure(
+            @RequestParam("examinationId") Long examinationId,
+            @RequestParam("procedureId") Long procedureId,
+            @RequestParam(value = "upperDenturePicture", required = false) MultipartFile upperDenturePicture,
+            @RequestParam(value = "lowerDenturePicture", required = false) MultipartFile lowerDenturePicture) {
+        try {
+            if (examinationId == null || procedureId == null) {
+                return ResponseEntity.badRequest().body(Map.of(
+                    "success", false,
+                    "message", "Missing examinationId or procedureId"
+                ));
+            }
+            
+            // Validate that both denture pictures are provided - REMOVED REQUIREMENT
+            // if (upperDenturePicture == null || upperDenturePicture.isEmpty()) {
+            //     return ResponseEntity.badRequest().body(Map.of(
+            //         "success", false,
+            //         "message", "Upper denture picture is required"
+            //     ));
+            // }
+            
+            // if (lowerDenturePicture == null || lowerDenturePicture.isEmpty()) {
+            //     return ResponseEntity.badRequest().body(Map.of(
+            //         "success", false,
+            //         "message", "Lower denture picture is required"
+            //     ));
+            // }
+            
+            log.info("Starting procedure {} for examination {}", procedureId, examinationId);
+            
+            // Check if the procedure is already associated with the examination
+            if (toothClinicalExaminationService.isProcedureAlreadyAssociated(examinationId, procedureId)) {
+                // Get the procedure name for better error message
+                ProcedurePriceDTO procedure = procedurePriceService.getProcedureById(procedureId);
+                String procedureName = procedure != null ? procedure.getProcedureName() : "Procedure #" + procedureId;
+                
+                Map<String, Object> duplicateProcedureInfo = new HashMap<>();
+                duplicateProcedureInfo.put("id", procedureId);
+                duplicateProcedureInfo.put("name", procedureName);
+                
+                return ResponseEntity.badRequest().body(Map.of(
+                    "success", false,
+                    "message", "This procedure is already associated with the examination: " + procedureName,
+                    "duplicateProcedure", duplicateProcedureInfo
+                ));
+            }
+            
+            // Save the denture pictures (only if provided)
+            String upperDenturePath = null;
+            String lowerDenturePath = null;
+            
+            try {
+                // Save the files only if they are provided
+                if (upperDenturePicture != null && !upperDenturePicture.isEmpty()) {
+                    upperDenturePath = fileStorageService.storeFile(upperDenturePicture, "denture-pictures");
+                    log.info("Saved upper denture picture: {}", upperDenturePath);
+                }
+                
+                if (lowerDenturePicture != null && !lowerDenturePicture.isEmpty()) {
+                    lowerDenturePath = fileStorageService.storeFile(lowerDenturePicture, "denture-pictures");
+                    log.info("Saved lower denture picture: {}", lowerDenturePath);
+                }
+                
+            } catch (Exception e) {
+                log.error("Error saving denture pictures: {}", e.getMessage(), e);
+                return ResponseEntity.badRequest().body(Map.of(
+                    "success", false,
+                    "message", "Error saving denture pictures: " + e.getMessage()
+                ));
+            }
+            
+            // Associate the procedure with the examination
+            List<Long> procedureIdList = Collections.singletonList(procedureId);
+            toothClinicalExaminationService.associateProceduresWithExamination(examinationId, procedureIdList);
+            
+            // Update the examination with denture picture paths (only if provided)
+            ToothClinicalExamination examination = toothClinicalExaminationRepository.findById(examinationId)
+                .orElseThrow(() -> new RuntimeException("Examination not found"));
+            
+            if (upperDenturePath != null) {
+                examination.setUpperDenturePicturePath(upperDenturePath);
+            }
+            if (lowerDenturePath != null) {
+                examination.setLowerDenturePicturePath(lowerDenturePath);
+            }
+            toothClinicalExaminationRepository.save(examination);
+            
             // Return success and redirect to payment review page
             return ResponseEntity.ok(Map.of(
                 "success", true,
                 "procedureId", procedureId,
-                "message", "Procedure started successfully with denture pictures",
+                "message", "Procedure started successfully",
                 "redirect", "/patients/examination/" + examinationId + "/payment-review"
             ));
         } catch (Exception e) {
@@ -1255,6 +1391,12 @@ public class PatientController {
             User opdDoctor = examination.getOpdDoctor();
             String paymentStatus = determinePaymentStatus(examination);
 
+            // Provide doctors list and current user role similar to examination details page
+            String currentUsername = PeriDeskUtils.getCurrentClinicUserName();
+            User currentUser = userService.findByUsername(currentUsername)
+                .orElseThrow(() -> new RuntimeException("Current user not found"));
+            List<UserDTO> doctors = userService.getUsersByRoleAndClinic(UserRole.DOCTOR, currentUser.getClinic());
+
             log.info("Loading lifecycle stages for examination ID: {}", examinationId);
             // Get lifecycle stages from the service
             List<Map<String, Object>> lifecycleStages = lifecycleService.getFormattedLifecycleStages(examination);
@@ -1294,6 +1436,8 @@ public class PatientController {
             model.addAttribute("opdDoctor", opdDoctor);
             model.addAttribute("paymentStatus", paymentStatus);
             model.addAttribute("lifecycleStages", lifecycleStages);
+            model.addAttribute("doctors", doctors);
+            model.addAttribute("currentUserRole", currentUser.getRole());
 
             return "patient/procedureLifecycle";
         } catch (Exception e) {
@@ -1369,6 +1513,126 @@ public class PatientController {
         } catch (Exception e) {
             log.error("Error showing examination follow-up form: ", e);
             return "redirect:/patients/list?error=Error loading follow-up form: " + e.getMessage();
+        }
+    }
+
+    /**
+     * Duplicate an examination with minimal fields (no procedure or amount)
+     */
+    @PostMapping("/examination/{examinationId}/duplicate")
+    @ResponseBody
+    public ResponseEntity<?> duplicateExamination(@PathVariable Long examinationId) {
+        try {
+            Optional<ToothClinicalExamination> optional = toothClinicalExaminationRepository.findById(examinationId);
+            if (optional.isEmpty()) {
+                return ResponseEntity.badRequest().body(Map.of(
+                        "success", false,
+                        "message", "Examination not found"
+                ));
+            }
+
+            ToothClinicalExamination existing = optional.get();
+
+            // Authorization and validation checks
+            String currentUsername = PeriDeskUtils.getCurrentClinicUserName();
+            User currentUser = userService.findByUsername(currentUsername)
+                .orElseThrow(() -> new RuntimeException("Current user not found"));
+
+            // 1) Clinic must match
+            if (existing.getExaminationClinic() == null || currentUser.getClinic() == null
+                || !existing.getExaminationClinic().getId().equals(currentUser.getClinic().getId())) {
+                return ResponseEntity.status(HttpStatus.FORBIDDEN).body(Map.of(
+                        "success", false,
+                        "message", "Cannot duplicate: examination clinic does not match current user's clinic"
+                ));
+            }
+
+            // 2) Examination date must be today
+            LocalDate examDate = existing.getExaminationDate() != null ? existing.getExaminationDate().toLocalDate() : null;
+            if (examDate == null || !examDate.equals(LocalDate.now())) {
+                return ResponseEntity.status(HttpStatus.FORBIDDEN).body(Map.of(
+                        "success", false,
+                        "message", "Cannot duplicate: examination date must be today"
+                ));
+            }
+
+            // 3) Current user must be the OPD doctor
+            if (existing.getOpdDoctor() == null || existing.getOpdDoctor().getId() == null
+                || !existing.getOpdDoctor().getId().equals(currentUser.getId())) {
+                return ResponseEntity.status(HttpStatus.FORBIDDEN).body(Map.of(
+                        "success", false,
+                        "message", "Cannot duplicate: only the OPD doctor can duplicate this examination"
+                ));
+            }
+
+            // Create a new examination copying requested clinical details
+            ToothClinicalExamination duplicate = new ToothClinicalExamination();
+            duplicate.setPatient(existing.getPatient());
+            duplicate.setExaminationClinic(existing.getExaminationClinic());
+            duplicate.setToothNumber(existing.getToothNumber());
+            // Do not copy assigned doctor or OPD doctor as per request
+            duplicate.setAssignedDoctor(null);
+            duplicate.setOpdDoctor(null);
+
+            // Copy clinical attributes
+            duplicate.setChiefComplaints(existing.getChiefComplaints());
+            duplicate.setExaminationNotes(existing.getExaminationNotes());
+            duplicate.setBleedingOnProbing(existing.getBleedingOnProbing());
+            duplicate.setExistingRestoration(existing.getExistingRestoration());
+            duplicate.setFurcationInvolvement(existing.getFurcationInvolvement());
+            duplicate.setGingivalRecession(existing.getGingivalRecession());
+            duplicate.setPeriapicalCondition(existing.getPeriapicalCondition());
+            duplicate.setPlaqueScore(existing.getPlaqueScore());
+            duplicate.setPocketDepth(existing.getPocketDepth());
+            duplicate.setToothCondition(existing.getToothCondition());
+            duplicate.setToothMobility(existing.getToothMobility());
+            duplicate.setToothSensitivity(existing.getToothSensitivity());
+            duplicate.setToothVitality(existing.getToothVitality());
+            duplicate.setAdvised(existing.getAdvised());
+
+            // Copy images (both legacy paths)
+            duplicate.setUpperDenturePicturePath(existing.getUpperDenturePicturePath());
+            duplicate.setLowerDenturePicturePath(existing.getLowerDenturePicturePath());
+            duplicate.setXrayPicturePath(existing.getXrayPicturePath());
+
+            // Reset fields that should NOT be duplicated
+            duplicate.setProcedure(null);
+            duplicate.setTotalProcedureAmount(null);
+            duplicate.setProcedureStatus(ProcedureStatus.OPEN);
+            duplicate.setTreatmentStartingDate(null);
+
+            // Dates
+            duplicate.setExaminationDate(LocalDateTime.now());
+            duplicate.setCreatedAt(LocalDateTime.now());
+            duplicate.setUpdatedAt(LocalDateTime.now());
+
+            ToothClinicalExamination saved = toothClinicalExaminationRepository.save(duplicate);
+
+            // Copy media files (e.g., xray, upper_arch, lower_arch)
+            try {
+                List<MediaFile> mediaFiles = mediaFileRepository.findByExamination_Id(existing.getId());
+                for (MediaFile mf : mediaFiles) {
+                    MediaFile clone = new MediaFile();
+                    clone.setExamination(saved);
+                    clone.setFilePath(mf.getFilePath());
+                    clone.setFileType(mf.getFileType());
+                    clone.setUploadedAt(LocalDateTime.now());
+                    mediaFileRepository.save(clone);
+                }
+            } catch (Exception mediaEx) {
+                log.warn("Failed to copy media files for examination {} -> {}: {}", existing.getId(), saved.getId(), mediaEx.getMessage());
+            }
+
+            return ResponseEntity.ok(Map.of(
+                    "success", true,
+                    "newExaminationId", saved.getId()
+            ));
+        } catch (Exception e) {
+            log.error("Error duplicating examination {}: {}", examinationId, e.getMessage(), e);
+            return ResponseEntity.badRequest().body(Map.of(
+                    "success", false,
+                    "message", e.getMessage()
+            ));
         }
     }
     
@@ -1476,15 +1740,21 @@ public class PatientController {
         }
     }
 
-    @PostMapping("/update-examination-status")
+    @PostMapping("/update-procedure-status")
     @ResponseBody
     @Transactional
     public ResponseEntity<?> updateProcedureStatusNew(@RequestBody Map<String, Object> request) {
+        log.info("=== ENDPOINT HIT: /update-procedure-status ===");
+        log.info("Request received: {}", request);
+        log.info("Request class: {}", request.getClass().getName());
+        
         try {
             Long examinationId = Long.valueOf(request.get("examinationId").toString());
             String status = request.get("status").toString();
             
-            log.info("Updating examination {} status to {}", examinationId, status);
+            log.info("=== STATUS UPDATE REQUEST ===");
+            log.info("Examination ID: {}", examinationId);
+            log.info("Requested Status: {}", status);
             
             // Get the examination
             ToothClinicalExamination examination = toothClinicalExaminationRepository.findById(examinationId)
@@ -1493,34 +1763,66 @@ public class PatientController {
             // Validate status transition
             ProcedureStatus currentStatus = examination.getProcedureStatus();
             ProcedureStatus newStatus = ProcedureStatus.valueOf(status);
+            
+            log.info("Current Status: {}", currentStatus);
+            log.info("New Status: {}", newStatus);
+            log.info("Allowed transitions from {}: {}", currentStatus, currentStatus.getAllowedTransitions());
 
             // Check if there are any active (scheduled) follow-ups that would block transitions
             List<FollowUpRecord> followUpRecords = followUpService.getFollowUpsForExamination(examination);
             boolean hasActiveFollowUps = followUpRecords.stream()
                 .anyMatch(followUp -> followUp.getStatus() == FollowUpStatus.SCHEDULED);
+            
+            log.info("Follow-up records found: {}", followUpRecords.size());
+            log.info("Has active follow-ups: {}", hasActiveFollowUps);
+            if (hasActiveFollowUps) {
+                log.info("Active follow-ups: {}", followUpRecords.stream()
+                    .filter(followUp -> followUp.getStatus() == FollowUpStatus.SCHEDULED)
+                    .map(FollowUpRecord::getId)
+                    .collect(java.util.stream.Collectors.toList()));
+            }
 
-            // Block all transitions except FOLLOW_UP_COMPLETED if there are active follow-ups
-            if (hasActiveFollowUps && newStatus != ProcedureStatus.FOLLOW_UP_COMPLETED) {
-                return ResponseEntity.badRequest().body(Map.of(
-                    "success", false,
-                    "message", "Cannot change procedure status while follow-ups are scheduled. Please complete all scheduled follow-ups first."
-                ));
+            // Block all transitions except FOLLOW_UP_COMPLETED, REOPEN->IN_PROGRESS, and status changes for already CLOSED cases if there are active follow-ups
+            boolean isReopenToInProgress = (currentStatus == ProcedureStatus.REOPEN && newStatus == ProcedureStatus.IN_PROGRESS);
+            boolean isFollowUpCompleted = (newStatus == ProcedureStatus.FOLLOW_UP_COMPLETED);
+            boolean isAlreadyClosed = (currentStatus == ProcedureStatus.CLOSED);
+            
+            log.info("Is REOPEN->IN_PROGRESS transition: {}", isReopenToInProgress);
+            log.info("Is FOLLOW_UP_COMPLETED transition: {}", isFollowUpCompleted);
+            log.info("Is already CLOSED: {}", isAlreadyClosed);
+            
+            if (hasActiveFollowUps && !isFollowUpCompleted && !isReopenToInProgress && !isAlreadyClosed) {
+                log.warn("BLOCKED: Cannot change procedure status while follow-ups are scheduled");
+                return ResponseEntity.badRequest()
+                    .contentType(org.springframework.http.MediaType.APPLICATION_JSON)
+                    .body(Map.of(
+                        "success", false,
+                        "message", "Cannot change procedure status while follow-ups are scheduled. Please complete all scheduled follow-ups first."
+                    ));
             }
 
             // Block closing if payment is pending
             if (newStatus == ProcedureStatus.CLOSED && examination.getRemainingAmount() > 0) {
-                return ResponseEntity.badRequest().body(Map.of(
-                    "success", false,
-                    "message", "Cannot close the case because payment is still pending. Please collect the full payment before closing the case."
-                ));
+                log.warn("BLOCKED: Cannot close case with pending payment. Remaining amount: {}", examination.getRemainingAmount());
+                return ResponseEntity.badRequest()
+                    .contentType(org.springframework.http.MediaType.APPLICATION_JSON)
+                    .body(Map.of(
+                        "success", false,
+                        "message", "Cannot close the case because payment is still pending. Please collect the full payment before closing the case."
+                    ));
             }
             
             if (!currentStatus.getAllowedTransitions().contains(newStatus)) {
-                return ResponseEntity.badRequest().body(Map.of(
-                    "success", false,
-                    "message", "Invalid status transition from " + currentStatus + " to " + newStatus
-                ));
+                log.warn("BLOCKED: Invalid status transition from {} to {}", currentStatus, newStatus);
+                return ResponseEntity.badRequest()
+                    .contentType(org.springframework.http.MediaType.APPLICATION_JSON)
+                    .body(Map.of(
+                        "success", false,
+                        "message", "Invalid status transition from " + currentStatus + " to " + newStatus
+                    ));
             }
+            
+            log.info("PROCEEDING: Status transition validation passed");
             
             // Update the status
             examination.setProcedureStatus(newStatus);
@@ -1528,12 +1830,15 @@ public class PatientController {
             // Set timestamps based on status
             if (newStatus == ProcedureStatus.IN_PROGRESS) {
                 examination.setProcedureStartTime(LocalDateTime.now());
+                log.info("Set procedure start time for IN_PROGRESS status");
             } else if (newStatus == ProcedureStatus.COMPLETED) {
                 examination.setProcedureEndTime(LocalDateTime.now());
+                log.info("Set procedure end time for COMPLETED status");
             }
             
             // Save the examination
             toothClinicalExaminationRepository.save(examination);
+            log.info("Examination saved with new status: {}", newStatus);
             
             // Create a lifecycle transition record
             ProcedureLifecycleTransition transition = new ProcedureLifecycleTransition();
@@ -1545,22 +1850,28 @@ public class PatientController {
             transition.setTransitionedBy(getCurrentUser());
             procedureLifecycleTransitionRepository.save(transition);
             
+            log.info("=== STATUS UPDATE SUCCESS ===");
             log.info("Successfully updated examination {} status from {} to {}", 
                     examinationId, currentStatus, newStatus);
             
-            return ResponseEntity.ok(Map.of(
-                "success", true,
-                "message", "Status updated successfully",
-                "newStatus", newStatus.name(),
-                "newStatusLabel", newStatus.getLabel()
-            ));
+            return ResponseEntity.ok()
+                .contentType(org.springframework.http.MediaType.APPLICATION_JSON)
+                .body(Map.of(
+                    "success", true,
+                    "message", "Status updated successfully",
+                    "newStatus", newStatus.name(),
+                    "newStatusLabel", newStatus.getLabel()
+                ));
             
         } catch (Exception e) {
+            log.error("=== STATUS UPDATE ERROR ===");
             log.error("Error updating examination status: {}", e.getMessage(), e);
-            return ResponseEntity.badRequest().body(Map.of(
-                "success", false,
-                "message", e.getMessage()
-            ));
+            return ResponseEntity.badRequest()
+                .contentType(org.springframework.http.MediaType.APPLICATION_JSON)
+                .body(Map.of(
+                    "success", false,
+                    "message", e.getMessage()
+                ));
         }
     }
     
@@ -1669,7 +1980,7 @@ public class PatientController {
             @PathVariable Long examinationId,
             @RequestBody Map<String, Object> request) {
         try {
-            String notes = request.get("notes").toString();
+            String newNotes = request.get("notes").toString();
             
             Optional<ToothClinicalExamination> examinationOptional = toothClinicalExaminationRepository.findById(examinationId);
             if (examinationOptional.isEmpty()) {
@@ -1680,8 +1991,31 @@ public class PatientController {
             }
             
             ToothClinicalExamination examination = examinationOptional.get();
-            examination.setExaminationNotes(notes);
-            examination.setUpdatedAt(LocalDateTime.now());
+            
+            // Get current user and clinic information
+            User currentUser = getCurrentUser();
+            ClinicModel clinic = currentUser.getClinic();
+            
+            // Create timestamp
+            LocalDateTime now = LocalDateTime.now();
+            String timestamp = now.format(java.time.format.DateTimeFormatter.ofPattern("dd/MM/yyyy hh:mm a"));
+            
+            // Create user and clinic info
+            String userInfo = currentUser.getFirstName() + " " + currentUser.getLastName();
+            String clinicInfo = clinic != null ? clinic.getClinicName() + " (" + clinic.getClinicId() + ")" : "Unknown Clinic";
+            
+            // Format the new note entry
+            String noteEntry = String.format("\n\n--- [%s] ---\nDr. %s | %s\n%s", 
+                timestamp, userInfo, clinicInfo, newNotes);
+            
+            // Append to existing notes or create new
+            String existingNotes = examination.getExaminationNotes();
+            String updatedNotes = (existingNotes != null && !existingNotes.trim().isEmpty()) 
+                ? existingNotes + noteEntry 
+                : noteEntry;
+            
+            examination.setExaminationNotes(updatedNotes);
+            examination.setUpdatedAt(now);
             
             toothClinicalExaminationRepository.save(examination);
             
@@ -1729,6 +2063,8 @@ public class PatientController {
             case FOLLOW_UP_COMPLETED -> "Follow-up appointment completed";
             case CLOSED -> "Procedure has been closed with X-ray";
             case CANCELLED -> "Procedure has been cancelled";
+            case REOPEN -> "Case has been reopened for additional treatment";
+            default -> "Unknown status";
         };
     }
     
@@ -1822,6 +2158,120 @@ public class PatientController {
         }
     }
 
+    @PostMapping("/{patientId}/update-color-code")
+    @ResponseBody
+    @Transactional
+    public ResponseEntity<?> updatePatientColorCode(
+            @PathVariable Long patientId,
+            @RequestBody Map<String, String> request) {
+        
+        try {
+            String colorCodeStr = request.get("colorCode");
+            if (colorCodeStr == null) {
+                return ResponseEntity.badRequest().body(Map.of("success", false, "message", "Color code is required"));
+            }
+            
+            PatientColorCode colorCode;
+            try {
+                colorCode = PatientColorCode.valueOf(colorCodeStr);
+            } catch (IllegalArgumentException e) {
+                return ResponseEntity.badRequest().body(Map.of("success", false, "message", "Invalid color code"));
+            }
+            
+            Optional<Patient> patientOpt = patientRepository.findById(patientId);
+            if (patientOpt.isEmpty()) {
+                return ResponseEntity.notFound().build();
+            }
+            
+            Patient patient = patientOpt.get();
+            patient.setColorCode(colorCode);
+            patientRepository.save(patient);
+            
+            log.info("Patient {} color code updated to {}", patientId, colorCode);
+            
+            return ResponseEntity.ok(Map.of("success", true, "message", "Color code updated successfully"));
+            
+        } catch (Exception e) {
+            log.error("Error updating patient color code", e);
+            return ResponseEntity.status(HttpStatus.INTERNAL_SERVER_ERROR)
+                    .body(Map.of("success", false, "message", "Failed to update color code"));
+        }
+    }
+
+    @PostMapping("/{patientId}/update-chairside-note")
+    @ResponseBody
+    @Transactional
+    public ResponseEntity<?> updateChairsideNote(
+            @PathVariable Long patientId,
+            @RequestBody Map<String, String> request) {
+        
+        try {
+            String newNote = request.get("chairsideNote");
+            if (newNote == null) {
+                return ResponseEntity.badRequest().body(Map.of("success", false, "message", "Hand over note is required"));
+            }
+            
+            Optional<Patient> patientOpt = patientRepository.findById(patientId);
+            if (patientOpt.isEmpty()) {
+                return ResponseEntity.notFound().build();
+            }
+            
+            Patient patient = patientOpt.get();
+            
+            // Handle clearing notes (empty string)
+            if (newNote.trim().isEmpty()) {
+                patient.setChairsideNote("");
+                patientRepository.save(patient);
+                
+                log.info("Patient {} hand over note cleared", patientId);
+                
+                return ResponseEntity.ok(Map.of(
+                    "success", true, 
+                    "message", "Hand over note cleared successfully",
+                    "updatedNotes", ""
+                ));
+            }
+            
+            // Get current user and clinic information
+            User currentUser = getCurrentUser();
+            ClinicModel clinic = currentUser.getClinic();
+            
+            // Create timestamp
+            LocalDateTime now = LocalDateTime.now();
+            String timestamp = now.format(java.time.format.DateTimeFormatter.ofPattern("dd/MM/yyyy hh:mm a"));
+            
+            // Create user and clinic info
+            String userInfo = currentUser.getFirstName() + " " + currentUser.getLastName();
+            String clinicInfo = clinic != null ? clinic.getClinicName() + " (" + clinic.getClinicId() + ")" : "Unknown Clinic";
+            
+            // Format the new note entry
+            String noteEntry = String.format("\n\n--- [%s] ---\nDr. %s | %s\n%s", 
+                timestamp, userInfo, clinicInfo, newNote);
+            
+            // Append to existing notes or create new
+            String existingNotes = patient.getChairsideNote();
+            String updatedNotes = (existingNotes != null && !existingNotes.trim().isEmpty()) 
+                ? existingNotes + noteEntry 
+                : noteEntry;
+            
+            patient.setChairsideNote(updatedNotes);
+            patientRepository.save(patient);
+            
+            log.info("Patient {} hand over note updated with timestamp", patientId);
+            
+                            return ResponseEntity.ok(Map.of(
+                    "success", true, 
+                    "message", "Hand over note updated successfully",
+                    "updatedNotes", updatedNotes
+                ));
+            
+        } catch (Exception e) {
+            log.error("Error updating patient hand over note", e);
+            return ResponseEntity.status(HttpStatus.INTERNAL_SERVER_ERROR)
+                    .body(Map.of("success", false, "message", "Failed to update hand over note"));
+        }
+    }
+
     @PostMapping("/examination/{examinationId}/upload-xray")
     @ResponseBody
     @Transactional
@@ -1875,6 +2325,551 @@ public class PatientController {
                 "success", false,
                 "message", e.getMessage()
             ));
+        }
+    }
+
+    @PostMapping("/examination/upload-media-file")
+    @ResponseBody
+    public ResponseEntity<?> uploadMediaFile(
+            @RequestParam("examinationId") Long examinationId,
+            @RequestParam("file") MultipartFile file,
+            @RequestParam("fileType") String fileType) {
+        try {
+            if (examinationId == null) {
+                return ResponseEntity.badRequest().body(Map.of(
+                    "success", false,
+                    "message", "Missing examinationId"
+                ));
+            }
+            
+            if (file == null || file.isEmpty()) {
+                return ResponseEntity.badRequest().body(Map.of(
+                    "success", false,
+                    "message", "File is required"
+                ));
+            }
+            
+            if (fileType == null || fileType.trim().isEmpty()) {
+                return ResponseEntity.badRequest().body(Map.of(
+                    "success", false,
+                    "message", "File type is required"
+                ));
+            }
+            
+            // Validate file type
+            String contentType = file.getContentType();
+            String originalFilename = file.getOriginalFilename();
+            
+            // Check if it's an image or PDF
+            boolean isImage = contentType != null && contentType.startsWith("image/");
+            boolean isPdf = contentType != null && contentType.equals("application/pdf");
+            
+            if (!isImage && !isPdf) {
+                return ResponseEntity.badRequest().body(Map.of(
+                    "success", false,
+                    "message", "Only image files (JPG, PNG, etc.) and PDF files are allowed"
+                ));
+            }
+            
+            // Validate file size (max 10MB for PDFs, 5MB for images)
+            long maxSize = isPdf ? 10 * 1024 * 1024 : 5 * 1024 * 1024;
+            if (file.getSize() > maxSize) {
+                String maxSizeMB = isPdf ? "10MB" : "5MB";
+                return ResponseEntity.badRequest().body(Map.of(
+                    "success", false,
+                    "message", "File size must be less than " + maxSizeMB
+                ));
+            }
+            
+            log.info("Uploading media file for examination {} with type {} (content type: {})", 
+                    examinationId, fileType, contentType);
+            
+            // Find the examination
+            ToothClinicalExamination examination = toothClinicalExaminationRepository.findById(examinationId)
+                .orElseThrow(() -> new RuntimeException("Examination not found"));
+            
+            // Determine storage directory based on file type
+            String storageDirectory = isPdf ? "documents" : "dental-images";
+            
+            // Save the file
+            String filePath = null;
+            try {
+                filePath = fileStorageService.storeFile(file, storageDirectory);
+                log.info("Saved media file: {}", filePath);
+            } catch (Exception e) {
+                log.error("Error saving media file: {}", e.getMessage(), e);
+                return ResponseEntity.badRequest().body(Map.of(
+                    "success", false,
+                    "message", "Error saving file: " + e.getMessage()
+                ));
+            }
+            
+            // Create MediaFile entity
+            MediaFile mediaFile = new MediaFile();
+            mediaFile.setExamination(examination);
+            mediaFile.setFilePath(filePath);
+            mediaFile.setFileType(fileType);
+            mediaFile.setUploadedAt(LocalDateTime.now());
+            
+            // Save to database
+            mediaFileRepository.save(mediaFile);
+            
+            // Return success
+            return ResponseEntity.ok(Map.of(
+                "success", true,
+                "message", "File uploaded successfully",
+                "mediaFile", Map.of(
+                    "id", mediaFile.getId(),
+                    "filePath", mediaFile.getFilePath(),
+                    "fileType", mediaFile.getFileType(),
+                    "uploadedAt", mediaFile.getUploadedAt(),
+                    "isPdf", isPdf,
+                    "originalFilename", originalFilename
+                )
+            ));
+        } catch (Exception e) {
+            log.error("Error uploading media file: {}", e.getMessage(), e);
+            return ResponseEntity.badRequest().body(Map.of(
+                "success", false,
+                "message", e.getMessage()
+            ));
+        }
+    }
+    
+    @GetMapping("/examination/{examinationId}/media-files")
+    @ResponseBody
+    public ResponseEntity<?> getMediaFiles(@PathVariable Long examinationId) {
+        try {
+            List<MediaFile> mediaFiles = mediaFileRepository.findByExamination_Id(examinationId);
+            
+            List<Map<String, Object>> mediaFilesData = mediaFiles.stream()
+                .map(file -> {
+                    Map<String, Object> fileData = new HashMap<>();
+                    fileData.put("id", file.getId());
+                    fileData.put("filePath", file.getFilePath());
+                    fileData.put("fileType", file.getFileType());
+                    fileData.put("uploadedAt", file.getUploadedAt());
+                    return fileData;
+                })
+                .collect(Collectors.toList());
+            
+            return ResponseEntity.ok(Map.of(
+                "success", true,
+                "mediaFiles", mediaFilesData
+            ));
+        } catch (Exception e) {
+            log.error("Error fetching media files: {}", e.getMessage(), e);
+            return ResponseEntity.badRequest().body(Map.of(
+                "success", false,
+                "message", e.getMessage()
+            ));
+        }
+    }
+    
+    @PostMapping("/examination/delete-media-file/{mediaFileId}")
+    @ResponseBody
+    public ResponseEntity<?> deleteMediaFile(@PathVariable Long mediaFileId) {
+        try {
+            MediaFile mediaFile = mediaFileRepository.findById(mediaFileId)
+                .orElseThrow(() -> new RuntimeException("Media file not found"));
+            
+            // Delete the physical file
+            try {
+                fileStorageService.deleteFile(mediaFile.getFilePath());
+            } catch (Exception e) {
+                log.warn("Could not delete physical file: {}", e.getMessage());
+            }
+            
+            // Delete from database
+            mediaFileRepository.delete(mediaFile);
+            
+            return ResponseEntity.ok(Map.of(
+                "success", true,
+                "message", "Media file deleted successfully"
+            ));
+        } catch (Exception e) {
+            log.error("Error deleting media file: {}", e.getMessage(), e);
+            return ResponseEntity.badRequest().body(Map.of(
+                "success", false,
+                "message", e.getMessage()
+            ));
+        }
+    }
+
+    @GetMapping("/examination/fix-media-file")
+    @ResponseBody
+    public ResponseEntity<?> fixMediaFile() {
+        try {
+            List<MediaFile> mediaFiles = mediaFileRepository.findByExamination_Id(46L);
+            if (!mediaFiles.isEmpty()) {
+                MediaFile mediaFile = mediaFiles.get(0);
+                mediaFile.setFilePath("dental-images/dc3de607-5eb8-45de-80e3-c15047712b1c.jpeg");
+                mediaFileRepository.save(mediaFile);
+                return ResponseEntity.ok(Map.of("success", true, "message", "MediaFile record updated successfully"));
+            } else {
+                return ResponseEntity.ok(Map.of("success", false, "message", "No MediaFile record found for examination 46"));
+            }
+        } catch (Exception e) {
+            log.error("Error fixing media file: {}", e.getMessage(), e);
+            return ResponseEntity.badRequest().body(Map.of("success", false, "message", e.getMessage()));
+        }
+    }
+    
+    @PostMapping("/examination/{examinationId}/reopen")
+    @ResponseBody
+    @Transactional
+    public ResponseEntity<?> reopenCase(@PathVariable Long examinationId, @RequestBody Map<String, Object> request) {
+        try {
+            log.info("=== REOPEN CASE REQUEST ===");
+            log.info("Examination ID: {}", examinationId);
+            log.info("Request data: {}", request);
+            
+            // Get the examination
+            ToothClinicalExamination examination = toothClinicalExaminationRepository.findById(examinationId)
+                .orElseThrow(() -> new RuntimeException("Examination not found"));
+            
+            log.info("Current examination status: {}", examination.getProcedureStatus());
+            log.info("Can be reopened: {}", examination.canBeReopened());
+            
+            // Check if case can be reopened
+            if (!examination.canBeReopened()) {
+                log.warn("BLOCKED: Case cannot be reopened. Current status: {}", examination.getProcedureStatus());
+                return ResponseEntity.badRequest().body(Map.of(
+                    "success", false,
+                    "message", "Case cannot be reopened. Only closed cases can be reopened."
+                ));
+            }
+            
+            // Get current user (doctor)
+            User currentUser = getCurrentUser();
+            if (currentUser == null) {
+                log.warn("BLOCKED: User not authenticated");
+                return ResponseEntity.badRequest().body(Map.of(
+                    "success", false,
+                    "message", "User not authenticated"
+                ));
+            }
+            
+            log.info("Reopening doctor: {} (ID: {})", currentUser.getUsername(), currentUser.getId());
+            
+            // Extract request data
+            String reopeningReason = (String) request.get("reopeningReason");
+            String notes = (String) request.get("notes");
+            String patientCondition = (String) request.get("patientCondition");
+            String treatmentPlan = (String) request.get("treatmentPlan");
+            
+            log.info("Reopening reason: {}", reopeningReason);
+            log.info("Notes: {}", notes);
+            log.info("Patient condition: {}", patientCondition);
+            log.info("Treatment plan: {}", treatmentPlan);
+            
+            if (reopeningReason == null || reopeningReason.trim().isEmpty()) {
+                log.warn("BLOCKED: Reopening reason is required");
+                return ResponseEntity.badRequest().body(Map.of(
+                    "success", false,
+                    "message", "Reopening reason is required"
+                ));
+            }
+            
+            // Create reopening record
+            ReopeningRecord reopeningRecord = new ReopeningRecord(
+                examination,
+                currentUser,
+                currentUser.getClinic(),
+                reopeningReason,
+                examination.getProcedureStatus()
+            );
+            
+            reopeningRecord.setNotes(notes);
+            reopeningRecord.setPatientCondition(patientCondition);
+            reopeningRecord.setTreatmentPlan(treatmentPlan);
+            
+            log.info("Created reopening record with sequence: {}", reopeningRecord.getReopeningSequence());
+            
+            // Save reopening record
+            reopeningRecordRepository.save(reopeningRecord);
+            log.info("Reopening record saved with ID: {}", reopeningRecord.getId());
+            
+            // Update examination status to REOPEN
+            ProcedureStatus previousStatus = examination.getProcedureStatus();
+            examination.setProcedureStatus(ProcedureStatus.REOPEN);
+            examination.addReopeningRecord(reopeningRecord);
+            toothClinicalExaminationRepository.save(examination);
+            
+            log.info("=== REOPEN CASE SUCCESS ===");
+            log.info("Case reopened by doctor {} for examination {}", currentUser.getUsername(), examinationId);
+            log.info("Status changed from {} to {}", previousStatus, examination.getProcedureStatus());
+            log.info("Total reopen count: {}", examination.getReopenCount());
+            
+            return ResponseEntity.ok(Map.of(
+                "success", true,
+                "message", "Case reopened successfully",
+                "reopenCount", examination.getReopenCount(),
+                "reopenedBy", currentUser.getFirstName() + " " + currentUser.getLastName(),
+                "reopenedAt", reopeningRecord.getReopenedAt()
+            ));
+            
+        } catch (Exception e) {
+            log.error("=== REOPEN CASE ERROR ===");
+            log.error("Error reopening case for examination {}: {}", examinationId, e.getMessage(), e);
+            return ResponseEntity.badRequest().body(Map.of(
+                "success", false,
+                "message", "Error reopening case: " + e.getMessage()
+            ));
+        }
+    }
+
+    @PostMapping("/test-status-update")
+    @ResponseBody
+    public ResponseEntity<?> testStatusUpdate(@RequestBody Map<String, Object> request) {
+        log.info("=== TEST ENDPOINT HIT ===");
+        log.info("Test request received: {}", request);
+        return ResponseEntity.ok(Map.of(
+            "success", true,
+            "message", "Test endpoint working",
+            "receivedData", request
+        ));
+    }
+
+    @GetMapping("/test-endpoint")
+    @ResponseBody
+    public ResponseEntity<?> testEndpoint() {
+        log.info("=== TEST GET ENDPOINT HIT ===");
+        return ResponseEntity.ok()
+            .contentType(org.springframework.http.MediaType.APPLICATION_JSON)
+            .body(Map.of(
+                "success", true,
+                "message", "Test endpoint working",
+                "timestamp", LocalDateTime.now().toString()
+            ));
+    }
+
+    @PostMapping("/test-simple-update")
+    @ResponseBody
+    public ResponseEntity<?> testSimpleUpdate(@RequestParam Long examinationId, @RequestParam String status) {
+        log.info("=== SIMPLE TEST ENDPOINT HIT ===");
+        log.info("Examination ID: {}", examinationId);
+        log.info("Status: {}", status);
+        
+        return ResponseEntity.ok()
+            .contentType(org.springframework.http.MediaType.APPLICATION_JSON)
+            .body(Map.of(
+                "success", true,
+                "message", "Simple test endpoint working",
+                "examinationId", examinationId,
+                "status", status
+            ));
+    }
+    
+    @GetMapping("/my-appointments")
+    public String showMyAppointments(Model model) {
+        try {
+            User currentUser = getCurrentUser();
+            log.info("Loading appointments for user: {}", currentUser.getUsername());
+            
+            // Get appointments for the current user
+            List<Appointment> userAppointments = appointmentRepository.findByDoctorOrderByAppointmentDateTimeDesc(currentUser);
+            
+            // Group appointments by date for calendar view
+            Map<LocalDate, List<Appointment>> appointmentsByDate = userAppointments.stream()
+                .collect(Collectors.groupingBy(appointment -> 
+                    appointment.getAppointmentDateTime().toLocalDate()));
+            
+            // Get current month's appointments
+            LocalDate today = LocalDate.now();
+            LocalDate startOfMonth = today.withDayOfMonth(1);
+            LocalDate endOfMonth = today.withDayOfMonth(today.lengthOfMonth());
+            
+            List<Appointment> currentMonthAppointments = userAppointments.stream()
+                .filter(appointment -> {
+                    LocalDate appointmentDate = appointment.getAppointmentDateTime().toLocalDate();
+                    return !appointmentDate.isBefore(startOfMonth) && !appointmentDate.isAfter(endOfMonth);
+                })
+                .collect(Collectors.toList());
+            
+            // Get upcoming appointments (next 7 days)
+            List<Appointment> upcomingAppointments = userAppointments.stream()
+                .filter(appointment -> {
+                    LocalDate appointmentDate = appointment.getAppointmentDateTime().toLocalDate();
+                    return !appointmentDate.isBefore(today) && appointmentDate.isBefore(today.plusDays(7));
+                })
+                .collect(Collectors.toList());
+            
+            // Get today's appointments
+            List<Appointment> todaysAppointments = userAppointments.stream()
+                .filter(appointment -> 
+                    appointment.getAppointmentDateTime().toLocalDate().equals(today))
+                .collect(Collectors.toList());
+            
+            // Convert LocalDateTime to Date for JSP compatibility
+            List<Map<String, Object>> todaysAppointmentsWithDate = todaysAppointments.stream()
+                .map(appointment -> {
+                    Map<String, Object> appointmentMap = new HashMap<>();
+                    appointmentMap.put("id", appointment.getId());
+                    appointmentMap.put("appointmentDateTime", Date.from(appointment.getAppointmentDateTime().atZone(ZoneId.systemDefault()).toInstant()));
+                    appointmentMap.put("patient", appointment.getPatient());
+                    appointmentMap.put("notes", appointment.getNotes());
+                    appointmentMap.put("status", appointment.getStatus());
+                    return appointmentMap;
+                })
+                .collect(Collectors.toList());
+                
+            List<Map<String, Object>> upcomingAppointmentsWithDate = upcomingAppointments.stream()
+                .map(appointment -> {
+                    Map<String, Object> appointmentMap = new HashMap<>();
+                    appointmentMap.put("id", appointment.getId());
+                    appointmentMap.put("appointmentDateTime", Date.from(appointment.getAppointmentDateTime().atZone(ZoneId.systemDefault()).toInstant()));
+                    appointmentMap.put("patient", appointment.getPatient());
+                    appointmentMap.put("notes", appointment.getNotes());
+                    appointmentMap.put("status", appointment.getStatus());
+                    return appointmentMap;
+                })
+                .collect(Collectors.toList());
+                
+            List<Map<String, Object>> currentMonthAppointmentsWithDate = currentMonthAppointments.stream()
+                .map(appointment -> {
+                    Map<String, Object> appointmentMap = new HashMap<>();
+                    appointmentMap.put("id", appointment.getId());
+                    appointmentMap.put("appointmentDateTime", Date.from(appointment.getAppointmentDateTime().atZone(ZoneId.systemDefault()).toInstant()));
+                    appointmentMap.put("patient", appointment.getPatient());
+                    appointmentMap.put("notes", appointment.getNotes());
+                    appointmentMap.put("status", appointment.getStatus());
+                    return appointmentMap;
+                })
+                .collect(Collectors.toList());
+            
+            model.addAttribute("userAppointments", userAppointments);
+            model.addAttribute("appointmentsByDate", appointmentsByDate);
+            model.addAttribute("currentMonthAppointments", currentMonthAppointmentsWithDate);
+            model.addAttribute("upcomingAppointments", upcomingAppointmentsWithDate);
+            model.addAttribute("todaysAppointments", todaysAppointmentsWithDate);
+            model.addAttribute("currentUser", currentUser);
+            model.addAttribute("today", Date.from(today.atStartOfDay(ZoneId.systemDefault()).toInstant()));
+            model.addAttribute("startOfMonth", startOfMonth);
+            model.addAttribute("endOfMonth", endOfMonth);
+            
+            log.info("Loaded {} appointments for user {}", userAppointments.size(), currentUser.getUsername());
+            
+            return "appointments/myAppointments";
+        } catch (Exception e) {
+            log.error("Error loading appointments: {}", e.getMessage(), e);
+            model.addAttribute("errorMessage", "An error occurred while loading appointments. Please try again.");
+            return "error";
+        }
+    }
+    
+    @PostMapping("/schedule-appointment")
+    @ResponseBody
+    @Transactional
+    public ResponseEntity<?> scheduleAppointment(@RequestBody Map<String, Object> request) {
+        try {
+            Long patientId = Long.parseLong(request.get("patientId").toString());
+            String appointmentDate = request.get("appointmentDate").toString();
+            String appointmentTime = request.get("appointmentTime").toString();
+            String notes = request.get("notes") != null ? request.get("notes").toString() : "";
+            
+            // Parse date and time
+            LocalDateTime appointmentDateTime = LocalDateTime.parse(appointmentDate + "T" + appointmentTime);
+            
+            // Get current user and clinic
+            User currentUser = getCurrentUser();
+            ClinicModel clinic = currentUser.getClinic();
+            
+            // Get patient
+            Optional<Patient> patientOptional = patientRepository.findById(patientId);
+            if (patientOptional.isEmpty()) {
+                return ResponseEntity.badRequest().body(Map.of(
+                    "success", false,
+                    "message", "Patient not found"
+                ));
+            }
+            
+            Patient patient = patientOptional.get();
+            
+            // Create appointment
+            Appointment appointment = new Appointment();
+            appointment.setPatient(patient);
+            appointment.setPatientName(patient.getFirstName() + " " + patient.getLastName());
+            appointment.setPatientMobile(patient.getPhoneNumber());
+            appointment.setAppointmentDateTime(appointmentDateTime);
+            appointment.setStatus(AppointmentStatus.SCHEDULED);
+            appointment.setClinic(clinic);
+            appointment.setAppointmentBookedBy(currentUser);
+            appointment.setNotes(notes);
+            
+            // Save appointment
+            Appointment savedAppointment = appointmentRepository.save(appointment);
+            
+            log.info("Appointment scheduled - ID: {}, Patient: {}, Date: {}, Time: {}", 
+                savedAppointment.getId(), patient.getFirstName() + " " + patient.getLastName(), 
+                appointmentDate, appointmentTime);
+            
+            return ResponseEntity.ok(Map.of(
+                "success", true,
+                "message", "Appointment scheduled successfully",
+                "appointmentId", savedAppointment.getId()
+            ));
+            
+        } catch (Exception e) {
+            log.error("Error scheduling appointment: {}", e.getMessage(), e);
+            return ResponseEntity.badRequest().body(Map.of(
+                "success", false,
+                "message", "Failed to schedule appointment: " + e.getMessage()
+            ));
+        }
+    }
+
+    @GetMapping("/my-appointments/api")
+    @ResponseBody
+    public ResponseEntity<Map<String, Object>> getAppointmentsForDate(
+            @RequestParam("date") String dateString,
+            Authentication authentication) {
+        try {
+            User currentUser = getCurrentUser();
+            log.info("Loading appointments for user: {} on date: {}", currentUser.getUsername(), dateString);
+            
+            // Parse the date string
+            LocalDate selectedDate = LocalDate.parse(dateString);
+            
+            // Get appointments for the current user on the selected date
+            List<Appointment> userAppointments = appointmentRepository.findByDoctorOrderByAppointmentDateTimeDesc(currentUser);
+            
+            List<Appointment> appointmentsForDate = userAppointments.stream()
+                .filter(appointment -> 
+                    appointment.getAppointmentDateTime().toLocalDate().equals(selectedDate))
+                .collect(Collectors.toList());
+            
+            // Convert to DTO format for JSON response
+            List<Map<String, Object>> appointmentsData = appointmentsForDate.stream()
+                .map(appointment -> {
+                    Map<String, Object> appointmentMap = new HashMap<>();
+                    appointmentMap.put("id", appointment.getId());
+                    appointmentMap.put("appointmentDateTime", appointment.getAppointmentDateTime().toString());
+                    appointmentMap.put("patient", Map.of(
+                        "id", appointment.getPatient().getId(),
+                        "firstName", appointment.getPatient().getFirstName(),
+                        "lastName", appointment.getPatient().getLastName()
+                    ));
+                    appointmentMap.put("notes", appointment.getNotes());
+                    appointmentMap.put("status", appointment.getStatus());
+                    return appointmentMap;
+                })
+                .collect(Collectors.toList());
+            
+            Map<String, Object> response = new HashMap<>();
+            response.put("appointments", appointmentsData);
+            response.put("date", selectedDate.toString());
+            response.put("count", appointmentsForDate.size());
+            
+            log.info("Found {} appointments for date: {}", appointmentsForDate.size(), selectedDate);
+            
+            return ResponseEntity.ok(response);
+        } catch (Exception e) {
+            log.error("Error loading appointments for date: {}", e.getMessage(), e);
+            Map<String, Object> errorResponse = new HashMap<>();
+            errorResponse.put("error", "An error occurred while loading appointments");
+            errorResponse.put("message", e.getMessage());
+            return ResponseEntity.status(HttpStatus.INTERNAL_SERVER_ERROR).body(errorResponse);
         }
     }
 }

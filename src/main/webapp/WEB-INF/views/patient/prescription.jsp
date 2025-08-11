@@ -323,12 +323,6 @@
         <!-- Clinical Findings - Expanded -->
         <div class="section-title">Clinical Findings</div>
         <div class="findings-grid">
-            <c:if test="${not empty examination.toothSurface}">
-                <div class="findings-item">
-                    <span class="findings-label">Surface:</span>
-                    <span class="findings-value">${examination.toothSurface}</span>
-                </div>
-            </c:if>
             <c:if test="${not empty examination.toothCondition}">
                 <div class="findings-item">
                     <span class="findings-label">Condition:</span>
@@ -397,11 +391,27 @@
             </c:if>
         </div>
         
+        <!-- Chief Complaints - Only if present -->
+        <c:if test="${not empty examination.chiefComplaints}">
+            <div class="notes-section">
+                <div class="section-title">Chief Complaints</div>
+                <div class="notes-content">${examination.chiefComplaints}</div>
+            </div>
+        </c:if>
+        
+        <!-- Treatment Advised - Only if present -->
+        <c:if test="${not empty examination.advised}">
+            <div class="notes-section">
+                <div class="section-title">Treatment Advised</div>
+                <div class="notes-content">${examination.advised}</div>
+            </div>
+        </c:if>
+        
         <!-- Clinical Notes - Only if present -->
         <c:if test="${not empty examination.examinationNotes}">
             <div class="notes-section">
                 <div class="section-title">Clinical Notes</div>
-                <div class="notes-content">${examination.examinationNotes}</div>
+                <div class="notes-content" style="font-family: 'Courier New', monospace; font-size: 10px; white-space: pre-wrap; line-height: 1.3;">${examination.examinationNotes}</div>
             </div>
         </c:if>
         

@@ -52,7 +52,7 @@ public class SecurityConfig {
     public SecurityFilterChain filterChain(HttpSecurity http) throws Exception {
         http
             .csrf()
-                .ignoringAntMatchers("/css/**", "/js/**", "/images/**", "/api/mobile/**")
+                .ignoringAntMatchers("/css/**", "/js/**", "/images/**", "/api/mobile/**", "/patients/update-procedure-status", "/patients/test-simple-update")
             .and()
             .addFilterBefore(forcePasswordChangeFilter, UsernamePasswordAuthenticationFilter.class)
             .authorizeRequests()

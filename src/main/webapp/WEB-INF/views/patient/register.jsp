@@ -658,6 +658,17 @@
                                 <i class="fas fa-info-circle"></i> This helps us understand how patients find us
                             </div>
                         </div>
+                        
+                        <div class="form-group">
+                            <label for="colorCode">Patient Code</label>
+                            <form:select id="colorCode" path="colorCode" class="form-control">
+                                <form:option value="">Select a code</form:option>
+                                <form:options items="${patientColorCodes}" itemLabel="displayName" itemValue="name"/>
+                            </form:select>
+                            <div class="form-tip">
+                                <i class="fas fa-info-circle"></i> Assign a color code for patient categorization
+                            </div>
+                        </div>
                     </div>
                     
                     <!-- Emergency Contact Section -->

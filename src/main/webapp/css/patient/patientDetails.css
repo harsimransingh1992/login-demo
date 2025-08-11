@@ -722,21 +722,22 @@ body {
 
 /* Special Chief Complaints Styling - Full Width Breakout */
 .tooth-examination-modal .chief-complaints-section {
-    position: relative;
-    left: 50%;
-    right: 50%;
-    margin-left: -50vw;
-    margin-right: -50vw;
-    width: 100vw;
-    background: linear-gradient(135deg, #e3f2fd, #f0f8ff);
-    border-top: 2px solid #2196f3;
-    border-bottom: 2px solid #2196f3;
-    padding: 25px 50px;
-    margin-bottom: 25px;
-    box-shadow: 0 4px 20px rgba(33, 150, 243, 0.15);
-    position: relative;
-    overflow: hidden;
-    z-index: 10; /* Ensure it appears above other content */
+    position: relative !important;
+    left: 50% !important;
+    right: 50% !important;
+    margin-left: -50vw !important;
+    margin-right: -50vw !important;
+    width: 100vw !important;
+    background: linear-gradient(135deg, #e3f2fd, #f0f8ff) !important;
+    border-top: 2px solid #2196f3 !important;
+    border-bottom: 2px solid #2196f3 !important;
+    padding: 25px 50px !important;
+    margin-bottom: 25px !important;
+    box-shadow: 0 4px 20px rgba(33, 150, 243, 0.15) !important;
+    overflow: hidden !important;
+    z-index: 10 !important; /* Ensure it appears above other content */
+    border-radius: 0 !important;
+    border: none !important;
 }
 
 .tooth-examination-modal .chief-complaints-section::before {
@@ -757,42 +758,42 @@ body {
 }
 
 .tooth-examination-modal .chief-complaints-section h3 {
-    color: #1976d2;
-    font-size: 1.3rem;
-    font-weight: 700;
-    margin-bottom: 15px;
-    border-bottom: 3px solid #bbdefb;
-    padding-bottom: 10px;
-    text-align: center;
+    color: #1976d2 !important;
+    font-size: 1.3rem !important;
+    font-weight: 700 !important;
+    margin-bottom: 15px !important;
+    border-bottom: 3px solid #bbdefb !important;
+    padding-bottom: 10px !important;
+    text-align: center !important;
 }
 
 .tooth-examination-modal .chief-complaints-section .form-group {
-    margin-bottom: 0;
-    max-width: 1200px;
-    margin: 0 auto;
+    margin-bottom: 0 !important;
+    max-width: 1200px !important;
+    margin: 0 auto !important;
 }
 
 .tooth-examination-modal .chief-complaints-section label {
-    font-size: 1rem;
-    font-weight: 600;
-    color: #1565c0;
-    margin-bottom: 10px;
-    display: block;
-    text-align: center;
+    font-size: 1rem !important;
+    font-weight: 600 !important;
+    color: #1565c0 !important;
+    margin-bottom: 10px !important;
+    display: block !important;
+    text-align: center !important;
 }
 
 .tooth-examination-modal .chief-complaints-section textarea {
-    min-height: 150px;
-    padding: 20px 25px;
-    border: 3px solid #bbdefb;
-    border-radius: 12px;
-    font-size: 1rem;
-    line-height: 1.6;
-    background: white;
-    box-shadow: inset 0 4px 8px rgba(0,0,0,0.05);
-    transition: all 0.3s ease;
-    width: 100%;
-    resize: vertical;
+    min-height: 150px !important;
+    padding: 20px 25px !important;
+    border: 3px solid #bbdefb !important;
+    border-radius: 12px !important;
+    font-size: 1rem !important;
+    line-height: 1.6 !important;
+    background: white !important;
+    box-shadow: inset 0 4px 8px rgba(0,0,0,0.05) !important;
+    transition: all 0.3s ease !important;
+    width: 100% !important;
+    resize: vertical !important;
 }
 
 .tooth-examination-modal .chief-complaints-section textarea:focus {
@@ -1120,4 +1121,27 @@ body {
         min-height: 120px;
         padding: 15px 20px;
     }
+}
+
+/* Loading button state */
+.btn-loading {
+    opacity: 0.7;
+    cursor: not-allowed !important;
+    pointer-events: none;
+    position: relative;
+}
+
+.btn-loading:hover {
+    transform: none !important;
+    box-shadow: none !important;
+}
+
+.btn-loading .fa-spinner {
+    margin-right: 8px;
+    animation: spin 1s linear infinite;
+}
+
+@keyframes spin {
+    0% { transform: rotate(0deg); }
+    100% { transform: rotate(360deg); }
 }

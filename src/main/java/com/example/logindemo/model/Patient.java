@@ -98,6 +98,13 @@ public class Patient {
     @JoinColumn(name = "registered_clinic")
     private ClinicModel registeredClinic;
 
+    @Enumerated(EnumType.STRING)
+    @Column(name = "color_code")
+    private PatientColorCode colorCode = PatientColorCode.NO_CODE;
+
+    @Column(name = "chairside_note", columnDefinition = "TEXT")
+    private String chairsideNote;
+
     @Column(name = "created_at")
     private Date createdAt = new Date();
 

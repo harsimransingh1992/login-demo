@@ -189,6 +189,52 @@ body {
     transform: translateY(-2px);
     box-shadow: 0 4px 12px rgba(52, 152, 219, 0.2);
 }
+
+/* Check-in button - Green color */
+.btn-checkin {
+    background: #27ae60 !important;
+    color: white !important;
+    padding: 8px 16px !important;
+    font-size: 0.9rem !important;
+    border: none !important;
+    border-radius: 4px !important;
+    cursor: pointer !important;
+    transition: all 0.3s ease !important;
+    display: inline-flex !important;
+    align-items: center !important;
+    gap: 6px !important;
+    margin-right: 8px !important;
+    width: auto !important;
+}
+
+.btn-checkin:hover {
+    background: #229954 !important;
+    transform: translateY(-2px) !important;
+    box-shadow: 0 4px 12px rgba(39, 174, 96, 0.3) !important;
+}
+
+/* Check-out button - Orange color */
+.btn-checkout {
+    background: #f39c12 !important;
+    color: white !important;
+    padding: 8px 16px !important;
+    font-size: 0.9rem !important;
+    border: none !important;
+    border-radius: 4px !important;
+    cursor: pointer !important;
+    transition: all 0.3s ease !important;
+    display: inline-flex !important;
+    align-items: center !important;
+    gap: 6px !important;
+    margin-right: 8px !important;
+    width: auto !important;
+}
+
+.btn-checkout:hover {
+    background: #e67e22 !important;
+    transform: translateY(-2px) !important;
+    box-shadow: 0 4px 12px rgba(243, 156, 18, 0.3) !important;
+}
 .btn-danger {
     background: #e74c3c;
     color: white;
@@ -203,4 +249,49 @@ body {
     background: #c0392b;
     transform: translateY(-2px);
     box-shadow: 0 4px 12px rgba(231, 76, 60, 0.2);
+}
+
+.btn-appointment {
+    background: linear-gradient(135deg, #9b59b6, #8e44ad);
+    color: white;
+    border: none;
+    padding: 8px 16px;
+    border-radius: 6px;
+    cursor: pointer;
+    font-size: 0.85rem;
+    font-weight: 500;
+    transition: all 0.3s ease;
+    display: inline-flex;
+    align-items: center;
+    gap: 6px;
+    margin-right: 8px;
+}
+
+.btn-appointment:hover {
+    background: linear-gradient(135deg, #8e44ad, #7d3c98);
+    transform: translateY(-1px);
+    box-shadow: 0 4px 12px rgba(155, 89, 182, 0.3);
+}
+
+/* Loading button state */
+.btn-loading {
+    opacity: 0.7;
+    cursor: not-allowed !important;
+    pointer-events: none;
+    position: relative;
+}
+
+.btn-loading:hover {
+    transform: none !important;
+    box-shadow: none !important;
+}
+
+.btn-loading .fa-spinner {
+    margin-right: 8px;
+    animation: spin 1s linear infinite;
+}
+
+@keyframes spin {
+    0% { transform: rotate(0deg); }
+    100% { transform: rotate(360deg); }
 }

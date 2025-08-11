@@ -64,9 +64,6 @@ public class ToothClinicalExaminationServiceImpl implements ToothClinicalExamina
             .orElseThrow(() -> new RuntimeException("Examination not found"));
             
         // Update only the examination fields, preserving relationships
-        if (examinationDTO.getToothSurface() != null) {
-            examination.setToothSurface(examinationDTO.getToothSurface());
-        }
         if (examinationDTO.getToothCondition() != null) {
             examination.setToothCondition(examinationDTO.getToothCondition());
         }
@@ -190,7 +187,6 @@ public class ToothClinicalExaminationServiceImpl implements ToothClinicalExamina
         dto.setId(exam.getId());
         dto.setPatientId(exam.getPatient() != null ? exam.getPatient().getId() : null);
         dto.setToothNumber(exam.getToothNumber());
-        dto.setToothSurface(exam.getToothSurface());
         dto.setToothCondition(exam.getToothCondition());
         dto.setToothMobility(exam.getToothMobility());
         dto.setPocketDepth(exam.getPocketDepth());
@@ -206,6 +202,11 @@ public class ToothClinicalExaminationServiceImpl implements ToothClinicalExamina
         dto.setExaminationDate(exam.getExaminationDate());
         dto.setTreatmentStartingDate(exam.getTreatmentStartingDate());
         dto.setFollowUpDate(exam.getFollowUpDate());
+        
+        // Set procedure if available
+        if (exam.getProcedure() != null) {
+            dto.setProcedure(modelMapper.map(exam.getProcedure(), ProcedurePriceDTO.class));
+        }
         
         // Set doctor IDs
         if (exam.getAssignedDoctor() != null) {
@@ -446,12 +447,13 @@ public class ToothClinicalExaminationServiceImpl implements ToothClinicalExamina
         double totalPaid = examination.getTotalPaidAmount();
         double totalProcedureAmount = examination.getTotalProcedureAmount() != null ? examination.getTotalProcedureAmount() : 0.0;
         
-        // Mark as completed when any payment is received (partial or full)
-        if (totalPaid > 0) {
+        // Only change status to PAYMENT_COMPLETED if the previous status was PAYMENT_PENDING
+        // This prevents changing status from COMPLETED to PAYMENT_COMPLETED
+        if (examination.getProcedureStatus() == ProcedureStatus.PAYMENT_PENDING) {
             examination.setProcedureStatus(ProcedureStatus.PAYMENT_COMPLETED);
+            log.info("Changed status from PAYMENT_PENDING to PAYMENT_COMPLETED for examination: {}", examinationId);
         } else {
-            // Keep as pending only when no payments have been made
-            examination.setProcedureStatus(ProcedureStatus.PAYMENT_PENDING);
+            log.info("Payment collected but status remains {} for examination: {}", examination.getProcedureStatus(), examinationId);
         }
 
         toothClinicalExaminationRepository.save(examination);

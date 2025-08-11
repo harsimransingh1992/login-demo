@@ -11,5 +11,8 @@ public enum ToothNumber {
     TOOTH_31, TOOTH_32, TOOTH_33, TOOTH_34, TOOTH_35, TOOTH_36, TOOTH_37, TOOTH_38,
 
     // Lower Right Quadrant (4th Quadrant)
-    TOOTH_41, TOOTH_42, TOOTH_43, TOOTH_44, TOOTH_45, TOOTH_46, TOOTH_47, TOOTH_48
+    TOOTH_41, TOOTH_42, TOOTH_43, TOOTH_44, TOOTH_45, TOOTH_46, TOOTH_47, TOOTH_48,
+
+    // General Consultation (not tied to specific tooth)
+    GENERAL_CONSULTATION
 }

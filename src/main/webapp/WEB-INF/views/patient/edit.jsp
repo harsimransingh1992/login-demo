@@ -542,7 +542,14 @@
                                         </c:otherwise>
                                     </c:choose>
                                 </div>
-                        </div>
+                            </div>
+                            <div class="form-group w-50">
+                                <label for="colorCode">Patient Code</label>
+                                <form:select path="colorCode" id="colorCode" class="form-control">
+                                    <form:option value="">Select a code</form:option>
+                                    <form:options items="${patientColorCodes}" itemLabel="displayName" itemValue="name"/>
+                                </form:select>
+                            </div>
                         </div>
                     </div>
                     

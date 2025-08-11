@@ -61,6 +61,7 @@
             </div>
         </a>
     </sec:authorize>
+
     <sec:authorize access="hasRole('RECEPTIONIST')">
         <c:set var="isActive" value="${pageContext.request.requestURI == pageContext.request.contextPath.concat('/receptionist/appointments/tracking')}" />
         <a href="${pageContext.request.contextPath}/receptionist/appointments/tracking" class="action-card${isActive ? ' active' : ''}">

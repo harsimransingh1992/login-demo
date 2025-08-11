@@ -16,7 +16,6 @@ public class ToothClinicalExaminationDTO {
     private Long id;
     private Long patientId;
     private ToothNumber toothNumber;
-    private ToothSurface toothSurface;
     private ToothCondition toothCondition;
     private ToothMobility toothMobility;
     private PocketDepth pocketDepth;
