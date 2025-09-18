@@ -84,6 +84,8 @@ public class UserServiceImpl implements UserService {
                     user.setAddress(userDTO.getAddress());
                     user.setBio(userDTO.getBio());
                     user.setIsActive(userDTO.getIsActive());
+                    user.setCanRefund(userDTO.getCanRefund());
+                    user.setCanDeleteExamination(userDTO.getCanDeleteExamination());
                     
                     // Update clinic if provided
                     if (userDTO.getClinic() != null) {
@@ -197,4 +199,4 @@ public class UserServiceImpl implements UserService {
     public Optional<User> findByUsername(String username) {
         return userRepository.findByUsername(username);
     }
-} 
+}

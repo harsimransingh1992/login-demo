@@ -25,8 +25,8 @@
     <jsp:include page="/WEB-INF/views/common/menuStyles.jsp" />
     
     <script>
-    window.showRescheduleFollowUpModal = function(followUpId, examinationId) {
-        document.getElementById('rescheduleFollowUpId').value = followUpId;
+    window.showRescheduleNextSittingModal = function(followUpId, examinationId) {
+        document.getElementById('rescheduleNextSittingId').value = followUpId;
         document.getElementById('rescheduleExaminationId').value = examinationId;
         var dateInput = document.getElementById('rescheduleDate');
         var timeInput = document.getElementById('rescheduleTime');
@@ -34,14 +34,19 @@
         if (dateInput) dateInput.value = '';
         if (timeInput) timeInput.value = '';
         if (notesInput) notesInput.value = '';
-        document.getElementById('rescheduleFollowUpModal').style.display = 'block';
+        document.getElementById('rescheduleNextSittingModal').style.display = 'block';
     };
-    window.showCompleteFollowUpModal = function(followUpId, examinationId) {
-        document.getElementById('completeFollowUpId').value = followUpId;
+    window.showCompleteNextSittingModal = function(followUpId, examinationId) {
+        document.getElementById('completeNextSittingId').value = followUpId;
         document.getElementById('completeExaminationId').value = examinationId;
         var notesInput = document.getElementById('clinicalNotes');
         if (notesInput) notesInput.value = '';
-        document.getElementById('completeFollowUpModal').style.display = 'block';
+        document.getElementById('completeNextSittingModal').style.display = 'block';
+    };
+    window.showCancelNextSittingModal = function(followUpId, examinationId) {
+        document.getElementById('cancelNextSittingId').value = followUpId;
+        document.getElementById('cancelExaminationId').value = examinationId;
+        document.getElementById('cancelNextSittingModal').style.display = 'block';
     };
     </script>
     
@@ -1214,6 +1219,18 @@
             z-index: 10000;
         }
         
+        /* Alternative flexbox centering for better alignment */
+        .modal.flex-center {
+            display: flex;
+            align-items: center;
+            justify-content: center;
+        }
+        
+        .modal.flex-center .modal-content {
+            margin: 0;
+            position: relative;
+        }
+        
         .modal-options {
             display: flex;
             gap: 10px;
@@ -1228,12 +1245,56 @@
         .modal .modal-content {
             background-color: white !important;
             position: relative;
-            margin: 15% auto;
+            margin: 5% auto;
             padding: 20px;
             border-radius: 8px;
-            width: 80%;
-            max-width: 500px;
+            width: 90%;
+            max-width: 600px;
             box-shadow: 0 4px 20px rgba(0, 0, 0, 0.3);
+            max-height: 90vh;
+            overflow-y: auto;
+        }
+        
+        /* Specific styles for reopenModal to ensure better alignment */
+        #reopenModal .modal-content {
+            margin: 2% auto;
+            width: 95%;
+            max-width: 700px;
+            padding: 25px;
+        }
+        
+        /* Improve form spacing in reopenModal */
+        #reopenModal .form-group {
+            margin-bottom: 20px;
+        }
+        
+        #reopenModal .form-control {
+            width: 100%;
+            padding: 12px;
+            border: 1px solid #ddd;
+            border-radius: 6px;
+            font-size: 0.95rem;
+            line-height: 1.4;
+            resize: vertical;
+        }
+        
+        #reopenModal .reopen-warning {
+            margin-bottom: 25px;
+        }
+        
+        #reopenModal .modal-header h3 {
+            margin: 0;
+            font-size: 1.3rem;
+            color: #2c3e50;
+        }
+        
+        #reopenModal .modal-footer {
+            margin-top: 25px;
+            padding-top: 20px;
+            border-top: 1px solid #eee;
+            display: flex;
+            justify-content: flex-end;
+            gap: 10px;
         }
         
         /* Prevent modal content from turning black on hover */
@@ -1756,6 +1817,13 @@
                 width: 95%;
             }
             
+            #reopenModal .modal-content {
+                margin: 2% auto;
+                width: 98%;
+                max-width: none;
+                padding: 20px;
+            }
+            
             .modal-header {
                 padding: 15px 20px;
             }
@@ -1766,9 +1834,29 @@
             
             .modal-body {
                 padding: 20px;
-                max-height: 50vh;
+                max-height: 60vh;
             }
-            
+        }
+        
+        /* Large screen optimizations */
+        @media (min-width: 1200px) {
+            #reopenModal .modal-content {
+                margin: 3% auto;
+                width: 60%;
+                max-width: 800px;
+            }
+        }
+        
+        /* Extra large screen optimizations */
+        @media (min-width: 1600px) {
+            #reopenModal .modal-content {
+                margin: 5% auto;
+                width: 50%;
+                max-width: 900px;
+            }
+        }
+        
+        @media (max-width: 768px) {
             .modal-footer {
                 padding: 15px 20px;
                 flex-direction: column;
@@ -2064,7 +2152,7 @@
                             <i class="fas fa-calendar-alt" style="color: white; font-size: 1.1rem;"></i>
                         </div>
                         <div>
-                            <span style="font-weight: 700; font-size: 1.2rem; color: #2c3e50; margin-bottom: 2px; display: block;">Follow-up Management</span>
+                            <span style="font-weight: 700; font-size: 1.2rem; color: #2c3e50; margin-bottom: 2px; display: block;">Next Sitting Management</span>
                             <c:choose>
                                 <c:when test="${not empty followUpRecords}">
                                     <c:set var="scheduledCount" value="0" />
@@ -2076,13 +2164,13 @@
                                     <c:if test="${scheduledCount > 0}">
                                         <span style="font-size: 0.9rem; color: #27ae60; font-weight: 600; display: flex; align-items: center; gap: 5px;">
                                             <i class="fas fa-clock" style="font-size: 0.8rem;"></i>
-                                            ${scheduledCount} Active Follow-up${scheduledCount > 1 ? 's' : ''}
+                                            ${scheduledCount} Active Next Sitting${scheduledCount > 1 ? 's' : ''}
                                         </span>
                                     </c:if>
                                     <c:if test="${scheduledCount == 0}">
                                         <span style="font-size: 0.9rem; color: #95a5a6; font-weight: 500; display: flex; align-items: center; gap: 5px;">
                                             <i class="fas fa-check-circle" style="font-size: 0.8rem;"></i>
-                                            No Active Follow-ups
+                                            No Active Next Sittings
                                         </span>
                                     </c:if>
                                 </c:when>
@@ -2095,12 +2183,12 @@
                             </c:choose>
                         </div>
                     </div>
-                    <button id="followUpToggleBtn" class="btn btn-sm" type="button" style="background: linear-gradient(135deg, #3498db, #2980b9); color: white; border: none; padding: 10px 16px; border-radius: 25px; font-size: 0.9rem; font-weight: 600; box-shadow: 0 4px 12px rgba(52, 152, 219, 0.3); transition: all 0.3s ease;" onclick="toggleFollowUpSection()">
-                        <span id="followUpToggleIcon" class="fas fa-chevron-down" style="margin-right: 6px;"></span>
+                    <button id="nextSittingToggleBtn" class="btn btn-sm" type="button" style="background: linear-gradient(135deg, #3498db, #2980b9); color: white; border: none; padding: 10px 16px; border-radius: 25px; font-size: 0.9rem; font-weight: 600; box-shadow: 0 4px 12px rgba(52, 152, 219, 0.3); transition: all 0.3s ease;" onclick="toggleNextSittingSection()">
+                        <span id="nextSittingToggleIcon" class="fas fa-chevron-down" style="margin-right: 6px;"></span>
                         <span>View Details</span>
                     </button>
                 </div>
-                <div id="followUpSectionBody" style="display: none; background: white; padding: 25px;">
+                <div id="nextSittingSectionBody" style="display: none; background: white; padding: 25px;">
                     <!-- BEGIN: Follow-up Planning Form, Scheduling Modal, History, and Modals -->
                     <!-- (Move all follow-up related code from the bottom of the file here) -->
 
@@ -2110,7 +2198,7 @@
                             <div class="section-header" style="margin-bottom: 20px;">
                                 <h2 style="color: #2c3e50; font-size: 1.3rem; margin-bottom: 15px; display: flex; align-items: center; gap: 10px;">
                                     <i class="fas fa-history" style="color: #3498db;"></i> 
-                                    Follow-up History
+                                    Next Sitting History
                                 </h2>
                                 <div class="follow-up-stats" style="display: grid; grid-template-columns: repeat(auto-fit, minmax(150px, 1fr)); gap: 15px;">
                                     <div class="stat-item" style="background: white; padding: 12px 16px; border-radius: 8px; box-shadow: 0 2px 8px rgba(0,0,0,0.1); text-align: center;">
@@ -2202,13 +2290,13 @@
                                         <div class="follow-up-actions" style="display: flex; gap: 10px; flex-wrap: wrap;">
                                             <c:if test="${followUp.status.name() == 'SCHEDULED'}">
                                                 <!-- Simple form-based actions using dedicated FollowUpController -->
-                                                <button type="button" class="btn btn-sm btn-success" onclick="showCompleteFollowUpModal('${followUp.id}', '${examination.id}')" style="background: linear-gradient(135deg, #27ae60, #2ecc71); border: none; padding: 8px 16px; border-radius: 20px; font-size: 0.85rem; font-weight: 600; box-shadow: 0 2px 8px rgba(39, 174, 96, 0.3);">
+                                                <button type="button" class="btn btn-sm btn-success" onclick="showCompleteNextSittingModal('${followUp.id}', '${examination.id}')" style="background: linear-gradient(135deg, #27ae60, #2ecc71); border: none; padding: 8px 16px; border-radius: 20px; font-size: 0.85rem; font-weight: 600; box-shadow: 0 2px 8px rgba(39, 174, 96, 0.3);">
                                                     <i class="fas fa-check"></i> Mark Complete
                                                 </button>
-                                                <button type="button" class="btn btn-sm btn-warning" onclick="showRescheduleFollowUpModal('${followUp.id}', '${examination.id}')" style="background: linear-gradient(135deg, #f39c12, #e67e22); border: none; padding: 8px 16px; border-radius: 20px; font-size: 0.85rem; font-weight: 600; box-shadow: 0 2px 8px rgba(243, 156, 18, 0.3);">
+                                                <button type="button" class="btn btn-sm btn-warning" onclick="showRescheduleNextSittingModal('${followUp.id}', '${examination.id}')" style="background: linear-gradient(135deg, #f39c12, #e67e22); border: none; padding: 8px 16px; border-radius: 20px; font-size: 0.85rem; font-weight: 600; box-shadow: 0 2px 8px rgba(243, 156, 18, 0.3);">
                                                     <i class="fas fa-calendar-alt"></i> Reschedule
                                                 </button>
-                                                <button type="button" class="btn btn-sm btn-danger" onclick="showCancelFollowUpModal('${followUp.id}', '${examination.id}')" style="background: linear-gradient(135deg, #e74c3c, #c0392b); border: none; padding: 8px 16px; border-radius: 20px; font-size: 0.85rem; font-weight: 600; box-shadow: 0 2px 8px rgba(231, 76, 60, 0.3);">
+                                                <button type="button" class="btn btn-sm btn-danger" onclick="showCancelNextSittingModal('${followUp.id}', '${examination.id}')" style="background: linear-gradient(135deg, #e74c3c, #c0392b); border: none; padding: 8px 16px; border-radius: 20px; font-size: 0.85rem; font-weight: 600; box-shadow: 0 2px 8px rgba(231, 76, 60, 0.3);">
                                                     <i class="fas fa-times"></i> Cancel
                                                 </button>
                                             </c:if>
@@ -2219,17 +2307,17 @@
                         </div>
                     </c:if>
 
-                    <!-- Schedule New Follow-up Section - Show when status is FOLLOW_UP_SCHEDULED -->
+                    <!-- Schedule New Next-sitting Section - Show when status is FOLLOW_UP_SCHEDULED -->
                     <c:if test="${examination.procedureStatus.name() == 'FOLLOW_UP_SCHEDULED'}">
                         <c:choose>
                             <c:when test="${followUpStats.scheduledFollowUps > 0}">
                                 <div class="container" style="background: #fff3cd; border: 1px solid #ffeaa7; border-radius: 12px; padding: 20px; margin-bottom: 20px;">
                                     <div class="section-header" style="margin-bottom: 10px; display: flex; align-items: center; gap: 10px;">
                                         <i class="fas fa-exclamation-triangle" style="color: #f39c12; font-size: 1.3rem;"></i>
-                                        <span style="color: #856404; font-size: 1.1rem; font-weight: 600;">Cannot schedule a new follow-up</span>
+                                        <span style="color: #856404; font-size: 1.1rem; font-weight: 600;">Cannot schedule a new next sitting</span>
                                     </div>
                                     <div style="color: #856404; font-size: 0.95rem;">
-                                        You must complete, reschedule, or cancel the current scheduled follow-up before creating a new one. This ensures a clear follow-up history for the case.
+                                        You must complete, reschedule, or cancel the current scheduled next sitting before creating a new one. This ensures a clear next sitting history for the case.
                                     </div>
                                 </div>
                             </c:when>
@@ -2238,30 +2326,30 @@
                                     <div class="section-header" style="margin-bottom: 20px;">
                                         <h2 style="color: #2d5a2d; font-size: 1.3rem; margin-bottom: 15px; display: flex; align-items: center; gap: 10px;">
                                             <i class="fas fa-calendar-plus" style="color: #27ae60;"></i> 
-                                            Schedule New Follow-up
+                                            Schedule New Next Sitting
                                         </h2>
                                         <p style="color: #2d5a2d; font-size: 0.9rem; margin: 0;">
-                                            Schedule a new follow-up appointment for this patient.
+                                            Schedule a new next sitting appointment for this patient.
                                         </p>
                                     </div>
                                     
-                                    <form id="scheduleFollowUpForm" method="post" action="${pageContext.request.contextPath}/patients/examination/${examination.id}/schedule-followup">
+                                    <form id="scheduleNextSittingForm" method="post" action="${pageContext.request.contextPath}/patients/examination/${examination.id}/schedule-followup">
                                         <input type="hidden" name="${_csrf.parameterName}" value="${_csrf.token}">
                                         
                                         <div class="form-row" style="display: flex; gap: 15px; margin-bottom: 15px;">
                                             <div class="form-group" style="flex: 1;">
-                                                <label for="newFollowUpDate" style="display: block; margin-bottom: 5px; font-weight: 600; color: #2d5a2d;">Follow-up Date <span style="color: #e74c3c;">*</span></label>
+                                                <label for="newFollowUpDate" style="display: block; margin-bottom: 5px; font-weight: 600; color: #2d5a2d;">Next-sitting Date <span style="color: #e74c3c;">*</span></label>
                                                 <input type="date" id="newFollowUpDate" name="followupDate" class="form-control" required style="width: 100%; padding: 10px; border: 1px solid #c3e6c3; border-radius: 6px; font-size: 14px; background-color: white;">
                                             </div>
                                             <div class="form-group" style="flex: 1;">
-                                                <label for="newFollowUpTime" style="display: block; margin-bottom: 5px; font-weight: 600; color: #2d5a2d;">Follow-up Time <span style="color: #e74c3c;">*</span></label>
+                                                <label for="newFollowUpTime" style="display: block; margin-bottom: 5px; font-weight: 600; color: #2d5a2d;">Next-sitting Time <span style="color: #e74c3c;">*</span></label>
                                                 <input type="time" id="newFollowUpTime" name="followupTime" class="form-control" required style="width: 100%; padding: 10px; border: 1px solid #c3e6c3; border-radius: 6px; font-size: 14px; background-color: white;">
                                             </div>
                                         </div>
                                         
                                         <div class="form-group" style="margin-bottom: 15px;">
-                                            <label for="newFollowUpNotes" style="display: block; margin-bottom: 5px; font-weight: 600; color: #2d5a2d;">Follow-up Instructions/Notes</label>
-                                            <textarea id="newFollowUpNotes" name="followupNotes" class="form-control" rows="3" placeholder="Enter any specific instructions or notes for this follow-up..." style="width: 100%; padding: 10px; border: 1px solid #c3e6c3; border-radius: 6px; font-size: 14px; resize: vertical; background-color: white;"></textarea>
+                                            <label for="newFollowUpNotes" style="display: block; margin-bottom: 5px; font-weight: 600; color: #2d5a2d;">Next-sitting Instructions/Notes</label>
+                                            <textarea id="newFollowUpNotes" name="followupNotes" class="form-control" rows="3" placeholder="Enter any specific instructions or notes for this next-sitting..." style="width: 100%; padding: 10px; border: 1px solid #c3e6c3; border-radius: 6px; font-size: 14px; resize: vertical; background-color: white;"></textarea>
                                         </div>
                                         
                                         <c:if test="${not empty doctors}">
@@ -2278,7 +2366,7 @@
                                         
                                         <div class="form-actions" style="display: flex; justify-content: flex-end; gap: 12px;">
                                             <button type="submit" class="btn btn-success" style="background: linear-gradient(135deg, #27ae60, #2ecc71); color: white; border: none; padding: 12px 24px; border-radius: 6px; cursor: pointer; font-weight: 600; font-size: 0.9rem;">
-                                                <i class="fas fa-calendar-plus"></i> Schedule Follow-up
+                                                <i class="fas fa-calendar-plus"></i> Schedule Next-sitting
                                             </button>
                                         </div>
                                     </form>
@@ -2287,23 +2375,23 @@
                         </c:choose>
                     </c:if>
 
-                    <!-- Complete Follow-up Modal -->
-                    <div id="completeFollowUpModal" class="modal" style="display: none; position: fixed; z-index: 1000; left: 0; top: 0; width: 100%; height: 100%; background-color: rgba(0,0,0,0.5);">
+                    <!-- Complete Next-sitting Modal -->
+                    <div id="completeNextSittingModal" class="modal" style="display: none; position: fixed; z-index: 1000; left: 0; top: 0; width: 100%; height: 100%; background-color: rgba(0,0,0,0.5);">
                         <div class="modal-content" style="background-color: white; margin: 5% auto; padding: 0; border-radius: 12px; width: 90%; max-width: 500px; box-shadow: 0 8px 32px rgba(0,0,0,0.3);">
                             <div class="modal-header" style="background: linear-gradient(135deg, #27ae60, #2ecc71); color: white; padding: 20px; border-radius: 12px 12px 0 0;">
                                 <h3 style="margin: 0; font-size: 1.3rem; display: flex; align-items: center; gap: 10px;">
-                                    <i class="fas fa-check-circle"></i> Complete Follow-up
+                                    <i class="fas fa-check-circle"></i> Complete Next-sitting
                                 </h3>
                                 <span class="close-modal" onclick="closeCompleteFollowUpModal()" style="position: absolute; right: 20px; top: 20px; font-size: 28px; font-weight: bold; cursor: pointer; color: white;">&times;</span>
                             </div>
                             <div class="modal-body" style="padding: 25px;">
-                                <form id="completeFollowUpForm" method="post" action="${pageContext.request.contextPath}/follow-up/complete">
+                                <form id="completeNextSittingForm" method="post" action="${pageContext.request.contextPath}/follow-up/complete">
                                     <input type="hidden" name="${_csrf.parameterName}" value="${_csrf.token}">
-                                    <input type="hidden" id="completeFollowUpId" name="followUpId">
+                                    <input type="hidden" id="completeNextSittingId" name="followUpId">
                                     <input type="hidden" id="completeExaminationId" name="examinationId">
                                     <div class="form-group" style="margin-bottom: 20px;">
                                         <label for="clinicalNotes" style="display: block; margin-bottom: 5px; font-weight: 600; color: #2c3e50;">Clinical Notes <span style="color: #e74c3c;">*</span></label>
-                                        <textarea id="clinicalNotes" name="clinicalNotes" class="form-control" rows="4" placeholder="Enter clinical notes for this follow-up..." required style="width: 100%; padding: 10px; border: 1px solid #ddd; border-radius: 6px; font-size: 14px; resize: vertical;"></textarea>
+                                        <textarea id="clinicalNotes" name="clinicalNotes" class="form-control" rows="4" placeholder="Enter clinical notes for this next-sitting..." required style="width: 100%; padding: 10px; border: 1px solid #ddd; border-radius: 6px; font-size: 14px; resize: vertical;"></textarea>
                                     </div>
                                     <div class="modal-footer" style="display: flex; justify-content: flex-end; gap: 12px; padding: 20px 0 0 0; border-top: 1px solid #eee; margin-top: 20px;">
                                         <button type="button" class="btn btn-secondary" onclick="closeCompleteFollowUpModal()" style="background: #95a5a6; color: white; border: none; padding: 10px 20px; border-radius: 6px; cursor: pointer;">Cancel</button>
@@ -2316,19 +2404,19 @@
                         </div>
                     </div>
 
-                    <!-- Reschedule Follow-up Modal -->
-                    <div id="rescheduleFollowUpModal" class="modal" style="display: none; position: fixed; z-index: 1000; left: 0; top: 0; width: 100%; height: 100%; background-color: rgba(0,0,0,0.5);">
+                    <!-- Reschedule Next-sitting Modal -->
+                    <div id="rescheduleNextSittingModal" class="modal" style="display: none; position: fixed; z-index: 1000; left: 0; top: 0; width: 100%; height: 100%; background-color: rgba(0,0,0,0.5);">
                         <div class="modal-content" style="background-color: white; margin: 5% auto; padding: 0; border-radius: 12px; width: 90%; max-width: 500px; box-shadow: 0 8px 32px rgba(0,0,0,0.3);">
                             <div class="modal-header" style="background: linear-gradient(135deg, #f39c12, #e67e22); color: white; padding: 20px; border-radius: 12px 12px 0 0;">
                                 <h3 style="margin: 0; font-size: 1.3rem; display: flex; align-items: center; gap: 10px;">
-                                    <i class="fas fa-calendar-alt"></i> Reschedule Follow-up
+                                    <i class="fas fa-calendar-alt"></i> Reschedule Next-sitting
                                 </h3>
                                 <span class="close-modal" onclick="closeRescheduleFollowUpModal()" style="position: absolute; right: 20px; top: 20px; font-size: 28px; font-weight: bold; cursor: pointer; color: white;">&times;</span>
                             </div>
                             <div class="modal-body" style="padding: 25px;">
-                                <form id="rescheduleFollowUpForm" method="post" action="${pageContext.request.contextPath}/follow-up/reschedule">
+                                <form id="rescheduleNextSittingForm" method="post" action="${pageContext.request.contextPath}/follow-up/reschedule">
                                     <input type="hidden" name="${_csrf.parameterName}" value="${_csrf.token}">
-                                    <input type="hidden" id="rescheduleFollowUpId" name="followUpId">
+                                    <input type="hidden" id="rescheduleNextSittingId" name="followUpId">
                                     <input type="hidden" id="rescheduleExaminationId" name="examinationId">
                                     <div class="form-row" style="display: flex; gap: 15px; margin-bottom: 15px;">
                                         <div class="form-group" style="flex: 1;">
@@ -2366,38 +2454,38 @@
                         </div>
                     </div>
 
-                    <!-- Cancel Follow-up Modal -->
-                    <div id="cancelFollowUpModal" class="modal" style="display: none; position: fixed; z-index: 1000; left: 0; top: 0; width: 100%; height: 100%; background-color: rgba(0,0,0,0.5);">
+                    <!-- Cancel Next-sitting Modal -->
+                    <div id="cancelNextSittingModal" class="modal" style="display: none; position: fixed; z-index: 1000; left: 0; top: 0; width: 100%; height: 100%; background-color: rgba(0,0,0,0.5);">
                         <div class="modal-content" style="background-color: white; margin: 5% auto; padding: 0; border-radius: 12px; width: 90%; max-width: 500px; box-shadow: 0 8px 32px rgba(0,0,0,0.3);">
                             <div class="modal-header" style="background: linear-gradient(135deg, #e74c3c, #c0392b); color: white; padding: 20px; border-radius: 12px 12px 0 0;">
                                 <h3 style="margin: 0; font-size: 1.3rem; display: flex; align-items: center; gap: 10px;">
-                                    <i class="fas fa-times-circle"></i> Cancel Follow-up
+                                    <i class="fas fa-times-circle"></i> Cancel Next-sitting
                                 </h3>
                                 <span class="close-modal" onclick="closeCancelFollowUpModal()" style="position: absolute; right: 20px; top: 20px; font-size: 28px; font-weight: bold; cursor: pointer; color: white;">&times;</span>
                             </div>
                             <div class="modal-body" style="padding: 25px;">
-                                <form id="cancelFollowUpForm" method="post" action="${pageContext.request.contextPath}/follow-up/cancel">
+                                <form id="cancelNextSittingForm" method="post" action="${pageContext.request.contextPath}/follow-up/cancel">
                                     <input type="hidden" name="${_csrf.parameterName}" value="${_csrf.token}">
-                                    <input type="hidden" id="cancelFollowUpId" name="followUpId">
+                                    <input type="hidden" id="cancelNextSittingId" name="followUpId">
                                     <input type="hidden" id="cancelExaminationId" name="examinationId">
                                     <div class="form-group" style="margin-bottom: 20px;">
                                         <label for="cancelReason" style="display: block; margin-bottom: 5px; font-weight: 600; color: #2c3e50;">Reason for Cancellation <span style="color: #e74c3c;">*</span></label>
-                                        <textarea id="cancelReason" name="reason" class="form-control" rows="3" placeholder="Enter reason for cancelling this follow-up..." required style="width: 100%; padding: 10px; border: 1px solid #ddd; border-radius: 6px; font-size: 14px; resize: vertical;"></textarea>
+                                        <textarea id="cancelReason" name="reason" class="form-control" rows="3" placeholder="Enter reason for cancelling this next-sitting..." required style="width: 100%; padding: 10px; border: 1px solid #ddd; border-radius: 6px; font-size: 14px; resize: vertical;"></textarea>
                                     </div>
                                     <div class="modal-footer" style="display: flex; justify-content: flex-end; gap: 12px; padding: 20px 0 0 0; border-top: 1px solid #eee; margin-top: 20px;">
                                         <button type="button" class="btn btn-secondary" onclick="closeCancelFollowUpModal()" style="background: #95a5a6; color: white; border: none; padding: 10px 20px; border-radius: 6px; cursor: pointer;">Cancel</button>
                                         <button type="submit" class="btn btn-danger" style="background: linear-gradient(135deg, #e74c3c, #c0392b); color: white; border: none; padding: 10px 20px; border-radius: 6px; cursor: pointer; font-weight: 600;">
-                                            <i class="fas fa-times"></i> Cancel Follow-up
+                                            <i class="fas fa-times"></i> Cancel Next-sitting
                                         </button>
                                     </div>
                                 </form>
                             </div>
                         </div>
                     </div>
-                    <!-- END: Follow-up Planning Form, Scheduling Modal, History, and Modals -->
+                    <!-- END: Next-sitting Planning Form, Scheduling Modal, History, and Modals -->
                 </div>
             </div>
-            <!-- End Collapsible Follow-up Section -->
+            <!-- End Collapsible Next-sitting Section -->
             
             <!-- Image Modal for Viewing Attached Images -->
             <div id="imageModal" class="image-modal">
@@ -2463,7 +2551,6 @@
                 const confirmXrayUploadBtn = document.getElementById('confirmXrayUpload');
                 if (confirmXrayUploadBtn) {
                     confirmXrayUploadBtn.addEventListener('click', async function() {
-                        console.log('Upload Images button clicked');
                         
                         const fileInput = document.getElementById('xray-upload');
                         const files = fileInput.files;
@@ -2490,7 +2577,6 @@
                             const token = $("meta[name='_csrf']").attr("content");
                             const header = $("meta[name='_csrf_header']").attr("content");
                             
-                            console.log('Uploading files to examination:', examinationId);
                             
                             // Upload X-ray images
                             const response = await fetch(
@@ -2503,7 +2589,6 @@
                             );
                             
                             if (response.ok) {
-                                console.log('Images uploaded successfully, now closing case');
                                 
                                 // Images uploaded, now close the case
                                 const statusResponse = await fetch(
@@ -2518,12 +2603,8 @@
                                     }
                                 );
                                 
-                                console.log('Status update response status:', statusResponse.status);
-                                console.log('Status update response ok:', statusResponse.ok);
-                                
                                 if (statusResponse.ok) {
                                     const statusResult = await statusResponse.json();
-                                    console.log('Status update result:', statusResult);
                                     alert('Images uploaded and case closed successfully!');
                                     document.getElementById('xrayUploadModal').style.display = 'none';
                                     window.location.reload();
@@ -2559,30 +2640,22 @@
             });
             
             window.selectXrayOption = function(option) {
-                console.log('=== SELECT XRAY OPTION CALLED ===');
-                console.log('Option:', option);
-                console.log('window.pendingStatusUpdate:', window.pendingStatusUpdate);
                 
                 closeXrayConfirmationModal();
                 
                 if (option === 'upload') {
-                    console.log('Opening upload modal');
                     const xrayUploadModal = document.getElementById('xrayUploadModal');
                     if (xrayUploadModal) {
                         xrayUploadModal.style.display = 'block';
                     }
                 } else if (option === 'close') {
-                    console.log('User chose to close without X-ray, proceeding with status update');
-                    console.log('window.pendingStatusUpdate value:', window.pendingStatusUpdate);
                     
                     // Check current payment status before proceeding
                     const paymentStatusElement = document.querySelector('.payment-status');
                     if (paymentStatusElement) {
                         const currentPaymentStatus = paymentStatusElement.textContent.trim();
-                        console.log('Current payment status on page:', currentPaymentStatus);
                         
                         if (currentPaymentStatus.includes('PENDING') || currentPaymentStatus.includes('pending')) {
-                            console.log('Payment still shows as pending, showing payment modal');
                             showPaymentPendingModal();
                             return;
                         }
@@ -2590,10 +2663,8 @@
                     
                     // Continue with the status update without X-ray
                     if (window.pendingStatusUpdate) {
-                        console.log('Using pendingStatusUpdate:', window.pendingStatusUpdate);
                         updateProcedureStatusDirect(window.pendingStatusUpdate);
                     } else {
-                        console.log('No pendingStatusUpdate, using fallback CLOSED');
                         // Fallback: directly update to CLOSED status
                         updateProcedureStatusDirect('CLOSED');
                     }
@@ -2627,13 +2698,6 @@
                 const modalTitle = document.getElementById('imageModalTitle');
                 const modalBody = document.getElementById('imageModalBody');
                 
-                console.log('Opening image modal with URL:', imageUrl, 'Title:', title);
-                console.log('Modal elements found:', {
-                    modal: !!modal,
-                    modalTitle: !!modalTitle,
-                    modalBody: !!modalBody
-                });
-                
                 modalTitle.textContent = title || 'Image View';
                 
                 // Check if it's a PDF or image
@@ -2646,7 +2710,6 @@
                 modal.style.display = 'block';
                 document.body.style.overflow = 'hidden';
                 
-                console.log('Modal opened, body content:', modalBody.innerHTML);
             };
             
             window.closeImageModal = function() {
@@ -2661,17 +2724,11 @@
                 const imagesGrid = document.getElementById('attachedImagesGrid');
                 const noImagesMessage = document.getElementById('noImagesMessage');
                 
-                console.log('Loading attached images for examination ID:', examinationId);
-                
                 try {
                     const contextPath = ''; // Root context
                     const url = `${contextPath}/patients/examination/${examinationId}/media-files`;
-                    console.log('Context path:', contextPath);
-                    console.log('Fetching from URL:', url);
                     
                     const response = await fetch(url);
-                    console.log('Response status:', response.status);
-                    console.log('Response ok:', response.ok);
                     
                     if (!response.ok) {
                         throw new Error(`HTTP error! status: ${response.status}`);
@@ -2894,10 +2951,10 @@
                 }
             });
 
-            function toggleFollowUpSection() {
-                const section = document.getElementById('followUpSectionBody');
-                const icon = document.getElementById('followUpToggleIcon');
-                const button = document.getElementById('followUpToggleBtn');
+            function toggleNextSittingSection() {
+                const section = document.getElementById('nextSittingSectionBody');
+                const icon = document.getElementById('nextSittingToggleIcon');
+                const button = document.getElementById('nextSittingToggleBtn');
                 const buttonText = button.querySelector('span:last-child');
                 
                 if (section.style.display === 'none') {
@@ -3088,56 +3145,72 @@
                         </div>
                         
                         <div class="reopening-timeline" style="position: relative;">
+                            <!-- Timeline connector -->
+                            <div class="timeline-connector" style="position: absolute; left: 12px; top: 0; bottom: 0; width: 2px; background-color: #e9ecef; z-index: 1;"></div>
+                            
                             <c:forEach var="reopening" items="${examination.reopeningRecords}" varStatus="status">
-                                <div class="reopening-item" style="position: relative; padding: 15px; margin-bottom: 15px; background: white; border-radius: 8px; border-left: 4px solid #e67e22; box-shadow: 0 2px 4px rgba(0, 0, 0, 0.05);">
-                                    <div style="display: flex; justify-content: space-between; align-items: flex-start; margin-bottom: 10px;">
-                                        <div style="display: flex; align-items: center; gap: 8px;">
-                                            <span class="reopening-number" style="background: #e67e22; color: white; width: 24px; height: 24px; border-radius: 50%; display: flex; align-items: center; justify-content: center; font-size: 0.8rem; font-weight: 600;">
-                                                ${reopening.reopeningSequence}
-                                            </span>
-                                            <div>
-                                                <h5 style="margin: 0; color: #2c3e50; font-weight: 600; font-size: 1rem;">
-                                                    Reopened by ${reopening.reopenedByDoctor.firstName} ${reopening.reopenedByDoctor.lastName}
-                                                </h5>
-                                                <p style="margin: 5px 0 0 0; color: #6c757d; font-size: 0.85rem;">
-                                                    <i class="fas fa-calendar-alt"></i> 
-                                                    ${reopening.reopenedAt}
-                                                </p>
-                                            </div>
-                                        </div>
-                                        <span class="status-badge" style="background: #e67e22; color: white; padding: 3px 8px; border-radius: 12px; font-size: 0.75rem; font-weight: 600;">
-                                            Reopened
-                                        </span>
+                                <div class="reopening-item" style="position: relative; padding: 15px 15px 15px 30px; margin-bottom: 20px; background: white; border-radius: 8px; border-left: 4px solid #e67e22; box-shadow: 0 3px 6px rgba(0, 0, 0, 0.08);">
+                                    <!-- Timeline dot -->
+                                    <div class="timeline-dot" style="position: absolute; left: -14px; top: 20px; width: 28px; height: 28px; background: #e67e22; border: 4px solid #fff; border-radius: 50%; z-index: 2; display: flex; align-items: center; justify-content: center; color: white; font-weight: bold; font-size: 0.8rem;">
+                                        ${reopening.reopeningSequence}
                                     </div>
                                     
-                                    <div class="reopening-details" style="margin-top: 12px;">
+                                    <div style="display: flex; justify-content: space-between; align-items: flex-start; margin-bottom: 12px;">
+                                        <div style="display: flex; flex-direction: column;">
+                                            <h5 style="margin: 0; color: #2c3e50; font-weight: 600; font-size: 1.05rem;">
+                                                Reopened by Dr. ${reopening.reopenedByDoctor.firstName} ${reopening.reopenedByDoctor.lastName}
+                                                <c:if test="${not empty reopening.reopenedByDoctor.specialization}">
+                                                    <span style="font-size: 0.85rem; color: #6c757d; font-weight: normal;">(${reopening.reopenedByDoctor.specialization})</span>
+                                                </c:if>
+                                            </h5>
+                              
+                                        </div>
+                                        <div style="display: flex; flex-direction: column; align-items: flex-end; gap: 5px;">
+                                            <span class="status-badge" style="background: #e67e22; color: white; padding: 3px 10px; border-radius: 12px; font-size: 0.75rem; font-weight: 600;">
+                                                Reopened
+                                            </span>
+
+                                        </div>
+                                    </div>
+                                    
+                                    <div class="reopening-details" style="margin-top: 15px; background: #f8f9fa; border-radius: 6px; padding: 12px;">
                                         <c:if test="${not empty reopening.reopeningReason}">
-                                            <div class="detail-item" style="margin-bottom: 8px;">
-                                                <strong style="color: #495057; font-size: 0.9rem;">Reason:</strong>
-                                                <p style="margin: 5px 0 0 0; color: #6c757d; font-size: 0.9rem; line-height: 1.4;">${reopening.reopeningReason}</p>
+                                            <div class="detail-item" style="margin-bottom: 12px;">
+                                                <strong style="color: #e74c3c; font-size: 0.9rem; display: flex; align-items: center; gap: 5px;">
+                                                    <i class="fas fa-exclamation-circle"></i> Reason for Reopening:
+                                                </strong>
+                                                <p style="margin: 5px 0 0 0; color: #2c3e50; font-size: 0.9rem; line-height: 1.5; background: #fff; padding: 8px; border-radius: 4px; border-left: 3px solid #e74c3c;">${reopening.reopeningReason}</p>
                                             </div>
                                         </c:if>
                                         
                                         <c:if test="${not empty reopening.patientCondition}">
-                                            <div class="detail-item" style="margin-bottom: 8px;">
-                                                <strong style="color: #495057; font-size: 0.9rem;">Patient Condition:</strong>
-                                                <p style="margin: 5px 0 0 0; color: #6c757d; font-size: 0.9rem; line-height: 1.4;">${reopening.patientCondition}</p>
+                                            <div class="detail-item" style="margin-bottom: 12px;">
+                                                <strong style="color: #3498db; font-size: 0.9rem; display: flex; align-items: center; gap: 5px;">
+                                                    <i class="fas fa-user-md"></i> Patient's Condition:
+                                                </strong>
+                                                <p style="margin: 5px 0 0 0; color: #2c3e50; font-size: 0.9rem; line-height: 1.5; background: #fff; padding: 8px; border-radius: 4px; border-left: 3px solid #3498db;">${reopening.patientCondition}</p>
                                             </div>
                                         </c:if>
                                         
                                         <c:if test="${not empty reopening.treatmentPlan}">
-                                            <div class="detail-item" style="margin-bottom: 8px;">
-                                                <strong style="color: #495057; font-size: 0.9rem;">Treatment Plan:</strong>
-                                                <p style="margin: 5px 0 0 0; color: #6c757d; font-size: 0.9rem; line-height: 1.4;">${reopening.treatmentPlan}</p>
+                                            <div class="detail-item" style="margin-bottom: 12px;">
+                                                <strong style="color: #2ecc71; font-size: 0.9rem; display: flex; align-items: center; gap: 5px;">
+                                                    <i class="fas fa-clipboard-list"></i> Treatment Plan:
+                                                </strong>
+                                                <p style="margin: 5px 0 0 0; color: #2c3e50; font-size: 0.9rem; line-height: 1.5; background: #fff; padding: 8px; border-radius: 4px; border-left: 3px solid #2ecc71;">${reopening.treatmentPlan}</p>
                                             </div>
                                         </c:if>
                                         
                                         <c:if test="${not empty reopening.notes}">
                                             <div class="detail-item" style="margin-bottom: 8px;">
-                                                <strong style="color: #495057; font-size: 0.9rem;">Additional Notes:</strong>
-                                                <p style="margin: 5px 0 0 0; color: #6c757d; font-size: 0.9rem; line-height: 1.4;">${reopening.notes}</p>
+                                                <strong style="color: #9b59b6; font-size: 0.9rem; display: flex; align-items: center; gap: 5px;">
+                                                    <i class="fas fa-sticky-note"></i> Additional Notes:
+                                                </strong>
+                                                <p style="margin: 5px 0 0 0; color: #2c3e50; font-size: 0.9rem; line-height: 1.5; background: #fff; padding: 8px; border-radius: 4px; border-left: 3px solid #9b59b6;">${reopening.notes}</p>
                                             </div>
                                         </c:if>
+                                        
+
                                     </div>
                                 </div>
                             </c:forEach>
@@ -3354,39 +3427,39 @@
                         </div>
                         
                         <!-- Follow-up Planning Section (Initially Hidden) -->
-                        <div class="clinical-card follow-up-card" id="followUpCard" style="display: none;">
+                        <div class="clinical-card next-sitting-card" id="nextSittingCard" style="display: none;">
                             <div class="clinical-card-header">
-                                <h3><i class="fas fa-calendar-alt"></i> Follow-up Planning</h3>
+                                <h3><i class="fas fa-calendar-alt"></i> Next Sitting Planning</h3>
                             </div>
                             <div class="clinical-card-body">
-                                <form id="followUpForm" action="${pageContext.request.contextPath}/patients/examination/${examination.id}/schedule-followup" method="post">
+                                <form id="nextSittingForm" action="${pageContext.request.contextPath}/patients/examination/${examination.id}/schedule-followup" method="post">
                                     <input type="hidden" name="${_csrf.parameterName}" value="${_csrf.token}" />
                                     
                                     <div class="follow-up-required">
-                                        <label>Follow-up Required?</label>
+                                        <label>Next Sitting Required?</label>
                                         <div class="follow-up-toggle">
-                                            <input type="radio" id="followUpYes" name="followUpRequired" value="yes" 
+                                            <input type="radio" id="nextSittingYes" name="followUpRequired" value="yes" 
                                                 ${not empty examination.followUpDate ? 'checked' : ''} 
                                                 ${examination.procedureStatus == 'CANCELLED' ? 'disabled' : ''}>
                                             <label for="followUpYes">Yes</label>
                                             
-                                            <input type="radio" id="followUpNo" name="followUpRequired" value="no" 
+                                            <input type="radio" id="nextSittingNo" name="followUpRequired" value="no" 
                                                 ${empty examination.followUpDate ? 'checked' : ''} 
                                                 ${examination.procedureStatus == 'CANCELLED' ? 'disabled' : ''}>
                                             <label for="followUpNo">No</label>
                                         </div>
                                     </div>
                                     
-                                    <div id="followUpDetails" ${not empty examination.followUpDate ? '' : 'style="display: none;"'}>
+                                    <div id="nextSittingDetails" ${not empty examination.followUpDate ? '' : 'style="display: none;"'}>
                                         <div class="form-row">
                                             <div class="form-group form-group-half">
-                                                <label for="followupDate">Follow-up Date</label>
+                                                <label for="followupDate">Next Sitting Date</label>
                                                 <input type="date" id="followupDate" name="followupDate" class="form-control" 
                                                     value="${not empty examination.followUpDate ? examination.followUpDate.toLocalDate() : ''}"
                                                     ${examination.procedureStatus == 'CANCELLED' ? 'disabled' : ''}>
                                             </div>
                                             <div class="form-group form-group-half">
-                                                <label for="followupTime">Follow-up Time</label>
+                                                <label for="followupTime">Next Sitting Time</label>
                                                 <input type="time" id="followupTime" name="followupTime" class="form-control"
                                                     value="${not empty examination.followUpDate ? examination.followUpDate.toLocalTime() : ''}"
                                                     ${examination.procedureStatus == 'CANCELLED' ? 'disabled' : ''}>
@@ -3394,14 +3467,14 @@
                                         </div>
                                         
                                         <div class="form-group">
-                                            <label for="followupNotes">Follow-up Instructions</label>
+                                            <label for="followupNotes">Next Sitting Instructions</label>
                                             <textarea id="followupNotes" name="followupNotes" class="form-control" rows="2" 
-                                                placeholder="Enter follow-up instructions for the patient..."
+                                                placeholder="Enter next sitting instructions for the patient..."
                                                 ${examination.procedureStatus == 'CANCELLED' ? 'disabled' : ''}></textarea>
                                         </div>
                                         
                                         <div class="follow-up-reason">
-                                            <label>Reason for Follow-up</label>
+                                            <label>Reason for Next Sitting</label>
                                             <div class="checkbox-list">
                                                 <div class="checkbox-item">
                                                     <input type="checkbox" id="reason1" name="followUpReason" value="checkHealing">
@@ -3429,7 +3502,7 @@
                                     
                                     <div class="form-actions">
                                         <button type="submit" class="btn btn-primary">
-                                            <i class="fas fa-save"></i> Save Follow-up Plan
+                                            <i class="fas fa-save"></i> Save Next Sitting Plan
                                         </button>
                                     </div>
                                 </form>
@@ -3460,7 +3533,7 @@
                         <i class="fas fa-credit-card"></i> Payment
                     </div>
                     <div class="timeline-nav-item" data-target="#stage-followup">
-                        <i class="fas fa-calendar-check"></i> Follow-up
+                        <i class="fas fa-calendar-check"></i> Next Sitting
                     </div>
                 </div>
                 
@@ -3789,12 +3862,12 @@
             }
             
             // Initialize follow-up modal functionality
-            function initializeFollowUpModal() {
-                const followUpModal = document.getElementById('followUpModal');
-                const closeFollowUpModal = document.getElementById('closeFollowUpModal');
-                const cancelFollowUp = document.getElementById('cancelFollowUp');
-                const confirmFollowUp = document.getElementById('confirmFollowUp');
-                const followUpValidation = document.getElementById('followUpValidation');
+            function initializeNextSittingModal() {
+                 const followUpModal = document.getElementById('nextSittingModal');
+                const closeFollowUpModal = document.getElementById('closeNextSittingModal');
+                const cancelFollowUp = document.getElementById('cancelNextSitting');
+                const confirmFollowUp = document.getElementById('confirmNextSitting');
+                const followUpValidation = document.getElementById('nextSittingValidation');
                 const modalFollowupDate = document.getElementById('modalFollowupDate');
                 const modalFollowupTime = document.getElementById('modalFollowupTime');
                 
@@ -3839,9 +3912,9 @@
             }
             
             // Validate follow-up form
-            function validateFollowUpForm() {
-                const modalFollowupDate = document.getElementById('modalFollowupDate');
-                const modalFollowupTime = document.getElementById('modalFollowupTime');
+            function validateNextSittingForm() {
+                 const modalFollowupDate = document.getElementById('modalNextSittingDate');
+                 const modalFollowupTime = document.getElementById('modalNextSittingTime');
                 const confirmFollowUp = document.getElementById('confirmFollowUp');
                 const followUpValidation = document.getElementById('followUpValidation');
                 
@@ -3858,11 +3931,11 @@
             }
             
             // Handle follow-up confirmation
-            async function handleFollowUpConfirm() {
-                const examinationId = $('#examinationId').val();
-                const modalFollowupDate = document.getElementById('modalFollowupDate');
-                const modalFollowupTime = document.getElementById('modalFollowupTime');
-                const modalFollowupNotes = document.getElementById('modalFollowupNotes');
+            async function handleNextSittingConfirm() {
+                 const examinationId = $('#examinationId').val();
+                 const modalFollowupDate = document.getElementById('modalNextSittingDate');
+                 const modalFollowupTime = document.getElementById('modalNextSittingTime');
+                 const modalFollowupNotes = document.getElementById('modalNextSittingNotes');
                 const confirmFollowUp = document.getElementById('confirmFollowUp');
                 
                 // Validate required fields
@@ -3904,15 +3977,15 @@
                 } finally {
                     // Reset button
                     confirmFollowUp.disabled = false;
-                    confirmFollowUp.innerHTML = '<i class="fas fa-check"></i> Schedule Follow-up';
+                    confirmFollowUp.innerHTML = '<i class="fas fa-check"></i> Schedule Next Sitting';
                 }
             }
             
             // Reset follow-up form
-            function resetFollowUpForm() {
-                const modalFollowupDate = document.getElementById('modalFollowupDate');
-                const modalFollowupTime = document.getElementById('modalFollowupTime');
-                const modalFollowupNotes = document.getElementById('modalFollowupNotes');
+            function resetNextSittingForm() {
+                 const modalFollowupDate = document.getElementById('modalNextSittingDate');
+                 const modalFollowupTime = document.getElementById('modalNextSittingTime');
+                 const modalFollowupNotes = document.getElementById('modalNextSittingNotes');
                 const followUpValidation = document.getElementById('followUpValidation');
                 
                 if (modalFollowupDate) modalFollowupDate.value = '';
@@ -4445,22 +4518,22 @@
             initializeFollowUpModal();
             
             // Close modal functions
-            window.closeCompleteFollowUpModal = function() {
-                document.getElementById('completeFollowUpModal').style.display = 'none';
+            window.closeCompleteNextSittingModal = function() {
+                document.getElementById('completeNextSittingModal').style.display = 'none';
             };
             
-            window.closeRescheduleFollowUpModal = function() {
-                document.getElementById('rescheduleFollowUpModal').style.display = 'none';
+            window.closeRescheduleNextSittingModal = function() {
+                document.getElementById('rescheduleNextSittingModal').style.display = 'none';
             };
             
-            window.closeCancelFollowUpModal = function() {
-                document.getElementById('cancelFollowUpModal').style.display = 'none';
+            window.closeCancelNextSittingModal = function() {
+                document.getElementById('cancelNextSittingModal').style.display = 'none';
             };
             
 
             
-            window.showCancelFollowUpModal = function(followUpId, examinationId) {
-                document.getElementById('cancelFollowUpId').value = followUpId;
+            window.showCancelNextSittingModal = function(followUpId, examinationId) {
+                document.getElementById('cancelNextSittingId').value = followUpId;
                 document.getElementById('cancelExaminationId').value = examinationId;
                 var reasonInput = document.getElementById('cancelReason');
                 if (reasonInput) reasonInput.value = '';
@@ -4469,13 +4542,17 @@
             
             // Reopen case functionality
             window.showReopenModal = function() {
-                document.getElementById('reopenModal').style.display = 'block';
+                const modal = document.getElementById('reopenModal');
+                modal.style.display = 'flex';
+                modal.classList.add('flex-center');
                 // Clear form
                 document.getElementById('reopenForm').reset();
             };
             
             window.closeReopenModal = function() {
-                document.getElementById('reopenModal').style.display = 'none';
+                const modal = document.getElementById('reopenModal');
+                modal.style.display = 'none';
+                modal.classList.remove('flex-center');
             };
             
             window.reopenCase = async function() {
@@ -4486,6 +4563,16 @@
                 
                 if (!reopeningReason) {
                     alert('Please provide a reason for reopening the case.');
+                    return;
+                }
+                
+                if (!patientCondition) {
+                    alert('Please describe the patient\'s current condition.');
+                    return;
+                }
+                
+                if (!treatmentPlan) {
+                    alert('Please outline the treatment plan.');
                     return;
                 }
                 
@@ -4652,19 +4739,21 @@
                     
                     <div class="form-group">
                         <label for="patientCondition" style="font-weight: 600; color: #2c3e50; margin-bottom: 8px; display: block;">
-                            Patient's Current Condition
+                            Patient's Current Condition <span style="color: #e74c3c;">*</span>
                         </label>
                         <textarea id="patientCondition" name="patientCondition" rows="3" class="form-control" 
-                                  placeholder="Describe the patient's current condition..."></textarea>
+                                  placeholder="Describe the patient's current condition..." required></textarea>
                     </div>
                     
                     <div class="form-group">
                         <label for="treatmentPlan" style="font-weight: 600; color: #2c3e50; margin-bottom: 8px; display: block;">
-                            Treatment Plan
+                            Treatment Plan <span style="color: #e74c3c;">*</span>
                         </label>
                         <textarea id="treatmentPlan" name="treatmentPlan" rows="3" class="form-control" 
-                                  placeholder="Outline the treatment plan for the reopened case..."></textarea>
+                                  placeholder="Outline the treatment plan for the reopened case..." required></textarea>
                     </div>
+                    
+                    <!-- Clinic field removed as it's not needed -->
                     
                     <div class="form-group">
                         <label for="notes" style="font-weight: 600; color: #2c3e50; margin-bottom: 8px; display: block;">
@@ -4744,4 +4833,4 @@
         document.addEventListener('DOMContentLoaded', optimizeImageLoading);
     </script>
 </body>
-</html> 
+</html>

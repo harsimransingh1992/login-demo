@@ -287,6 +287,11 @@
                     <i class="fas fa-check-circle"></i> You have been successfully logged out.
                 </div>
             </c:if>
+            <c:if test="${param.reset == 'success'}">
+                <div class="success">
+                    <i class="fas fa-check-circle"></i> Your password has been successfully reset. You can now log in with your new password.
+                </div>
+            </c:if>
             
             <form action="${pageContext.request.contextPath}/login" method="post">
                 <input type="hidden" name="${_csrf.parameterName}" value="${_csrf.token}"/>
@@ -307,6 +312,14 @@
                 </div>
                 
                 <button type="submit">Sign In</button>
+                
+                <div class="forgot-password-link" style="text-align: center; margin: 20px 0;">
+                    <a href="${pageContext.request.contextPath}/password-reset/request" 
+                       style="color: #3498db; text-decoration: none; font-size: 14px; font-weight: 500; display: inline-flex; align-items: center; gap: 6px; transition: color 0.3s;">
+                        <i class="fas fa-key" style="font-size: 12px;"></i>
+                        Forgot your password?
+                    </a>
+                </div>
                 
                 <div class="footer">
                     <p class="copyright">© 2024 PeriDesk. All rights reserved.</p>

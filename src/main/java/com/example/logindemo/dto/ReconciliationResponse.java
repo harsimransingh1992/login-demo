@@ -16,10 +16,13 @@ public class ReconciliationResponse {
     public static class TransactionDTO {
         private Long examinationId;
         private String patientName;
+        private String patientRegistrationCode;
         private String procedureName;
         private double amount;
         private String paymentMode;
         private String status;
         private String collectionDate;
+        private String transactionType;
+        private String examinationDate;
     }
 } 

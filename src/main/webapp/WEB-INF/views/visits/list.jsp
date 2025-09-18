@@ -381,7 +381,7 @@
                 <h1 class="welcome-message">Patient Visit History</h1>
                 <form action="${pageContext.request.contextPath}/logout" method="post">
                     <input type="hidden" name="${_csrf.parameterName}" value="${_csrf.token}"/>
-                    <button type="submit" class="btn-secondary"><i class="fas fa-sign-out-alt"></i> Logout</button>
+                    <button type="submit" class="btn-secondary"><i class="fas fa-power-off"></i> Logout</button>
                 </form>
             </div>
 

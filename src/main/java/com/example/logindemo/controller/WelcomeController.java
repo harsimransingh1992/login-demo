@@ -1,17 +1,22 @@
 package com.example.logindemo.controller;
 
 import com.example.logindemo.dto.PatientDTO;
+import com.example.logindemo.model.ClinicModel;
+import com.example.logindemo.model.User;
+import com.example.logindemo.model.UserRole;
+import com.example.logindemo.repository.UserRepository;
 import com.example.logindemo.service.PatientService;
+import com.example.logindemo.service.UserService;
 import lombok.extern.slf4j.Slf4j;
+import org.springframework.beans.factory.annotation.Autowired;
 import org.springframework.security.core.Authentication;
 import org.springframework.stereotype.Controller;
 import org.springframework.ui.Model;
 import org.springframework.web.bind.annotation.GetMapping;
 
 import javax.annotation.Resource;
-import java.util.List;
-import java.util.Comparator;
 import java.util.ArrayList;
+import java.util.List;
 
 @Controller
 @Slf4j
@@ -19,31 +24,46 @@ public class WelcomeController {
 
     @Resource(name="patientService")
     PatientService patientService;
+    
+    @Autowired
+    UserService userService;
+    
+    @Autowired
+    UserRepository userRepository;
 
     @GetMapping("/welcome")
     public String showWelcomePage(Authentication authentication, Model model) {
         if (authentication != null && authentication.isAuthenticated()) {
-            List<PatientDTO> waitingPatients = patientService.getCheckedInPatients();
-            
-            // Create a new modifiable list to avoid UnsupportedOperationException
-            List<PatientDTO> sortedWaitingPatients = new ArrayList<>(waitingPatients);
-            
-            // Sort patients by check-in time (earliest first)
-            sortedWaitingPatients.sort((p1, p2) -> {
-                if (p1.getCurrentCheckInRecord() == null || p1.getCurrentCheckInRecord().getCheckInTime() == null) {
-                    return 1; // Move patients without check-in time to the end
+            try {
+                List<PatientDTO> waitingPatients = patientService.getCheckedInPatients();
+                
+                // Get the logged-in user's clinic and add clinic doctors
+                String username = authentication.getName();
+                User currentUser = userService.findByUsername(username)
+                    .orElseThrow(() -> new RuntimeException("User not found"));
+                
+                ClinicModel userClinic = currentUser.getClinic();
+                if (userClinic != null) {
+                    List<User> clinicDoctors = userRepository.findByClinicAndRoleIn(
+                        userClinic, 
+                        List.of(UserRole.DOCTOR, UserRole.OPD_DOCTOR)
+                    );
+                    model.addAttribute("clinicDoctors", clinicDoctors);
+                } else {
+                    model.addAttribute("clinicDoctors", new ArrayList<>());
                 }
-                if (p2.getCurrentCheckInRecord() == null || p2.getCurrentCheckInRecord().getCheckInTime() == null) {
-                    return -1; // Move patients without check-in time to the end
-                }
-                return p1.getCurrentCheckInRecord().getCheckInTime().compareTo(p2.getCurrentCheckInRecord().getCheckInTime());
-            });
-            
-            log.info("Total Patient Waiting Count: {}", sortedWaitingPatients.size());
-            model.addAttribute("waitingPatients", sortedWaitingPatients);
-            model.addAttribute("username", authentication.getName());
-            return "welcome";
+                
+                model.addAttribute("waitingPatients", waitingPatients);
+                model.addAttribute("username", authentication.getName());
+                return "welcome";
+            } catch (Exception e) {
+                log.error("Error loading welcome page: {}", e.getMessage(), e);
+                model.addAttribute("errorMessage", "An error occurred while loading the dashboard.");
+                model.addAttribute("username", authentication.getName());
+                model.addAttribute("clinicDoctors", new ArrayList<>());
+                return "welcome";
+            }
         }
         return "redirect:/login";
     }
-} 
+}

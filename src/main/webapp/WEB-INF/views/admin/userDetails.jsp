@@ -97,8 +97,8 @@
                                             <p><strong>Assigned to Clinic:</strong> ${user.clinic.clinicName}</p>
                                         </c:if>
                                         <c:if test="${not empty user.joiningDate}">
-                                            <p><strong>Joined on:</strong> <fmt:formatDate value="${user.joiningDate}" pattern="MMM dd, yyyy" /></p>
-                                        </c:if>
+                            <p><strong>Joined on:</strong> ${user.joiningDate}</p>
+                        </c:if>
                                     </div>
                                 </div>
                             </div>
@@ -114,8 +114,8 @@
                                             <p><strong>Specialization:</strong> ${user.specialization}</p>
                                             <p><strong>License Number:</strong> ${user.licenseNumber}</p>
                                             <c:if test="${not empty user.licenseExpiryDate}">
-                                                <p><strong>License Expires:</strong> <fmt:formatDate value="${user.licenseExpiryDate}" pattern="MMM dd, yyyy" /></p>
-                                            </c:if>
+                                <p><strong>License Expires:</strong> ${user.licenseExpiryDate}</p>
+                            </c:if>
                                         </div>
                                         <div class="col-md-6">
                                             <p><strong>Qualification:</strong> ${user.qualification}</p>
@@ -221,4 +221,4 @@
     <script src="https://cdn.jsdelivr.net/npm/@popperjs/core@2.5.4/dist/umd/popper.min.js"></script>
     <script src="https://stackpath.bootstrapcdn.com/bootstrap/4.5.2/js/bootstrap.min.js"></script>
 </body>
-</html> 
+</html>

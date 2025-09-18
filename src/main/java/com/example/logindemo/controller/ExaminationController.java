@@ -37,9 +37,8 @@ public class ExaminationController {
      * Example of using @PreAuthorize for role-based authorization at the method level
      * Only users with DOCTOR or ADMIN role can access this endpoint
      */
-    @PreAuthorize("hasAnyRole('DOCTOR', 'ADMIN')")
-    @GetMapping("/examination/{id}/procedures")
-    public String showProcedures(@PathVariable("id") Long id, Model model) {
+    @PreAuthorize("hasAnyRole('DOCTOR', 'OPD_DOCTOR', 'ADMIN', 'CLINIC_OWNER')")
+    public String showExaminationDetails(@PathVariable("id") Long id, Model model) {
         // Implementation would go here
         return "patient/procedures";
     }
@@ -90,7 +89,7 @@ public class ExaminationController {
      * Combination approach: Use @PreAuthorize for basic role check,
      * then use AuthorizationService for more complex logic
      */
-    @PreAuthorize("hasAnyRole('DOCTOR', 'ADMIN', 'CLINIC_OWNER')")
+    @PreAuthorize("hasAnyRole('DOCTOR', 'OPD_DOCTOR', 'ADMIN', 'CLINIC_OWNER')")
     @DeleteMapping("/patients/examination/{id}")
     public ResponseEntity<?> deleteExamination(@PathVariable("id") Long id) {
         Map<String, Object> response = new HashMap<>();

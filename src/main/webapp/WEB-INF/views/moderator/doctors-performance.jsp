@@ -111,7 +111,7 @@
                             <td>
                                 <c:choose>
                                     <c:when test="${not empty stats.doctor.joiningDate}">
-                                        <fmt:formatDate value="${stats.doctor.joiningDate}" pattern="dd MMM yyyy"/>
+                                        ${stats.doctor.joiningDate}
                                     </c:when>
                                     <c:otherwise>-</c:otherwise>
                                 </c:choose>
@@ -136,4 +136,4 @@
     </c:choose>
 </div>
 </body>
-</html> 
+</html>

@@ -46,6 +46,8 @@ public class CustomAuthenticationSuccessHandler implements AuthenticationSuccess
         } else if (authorities.stream().anyMatch(a -> a.getAuthority().equals("ROLE_CLINIC_OWNER"))) {
             response.sendRedirect(contextPath + "/clinic/dashboard");
         } else if (authorities.stream().anyMatch(a -> a.getAuthority().equals("ROLE_DOCTOR"))) {
+            response.sendRedirect(contextPath + "/welcome"); // Changed from "/doctor/dashboard"
+        } else if (authorities.stream().anyMatch(a -> a.getAuthority().equals("ROLE_OPD_DOCTOR"))) {
             response.sendRedirect(contextPath + "/welcome");
         } else {
             response.sendRedirect(contextPath + "/welcome");

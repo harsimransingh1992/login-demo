@@ -43,6 +43,14 @@ public class PaymentEntry {
     private PaymentNotes paymentNotes;
 
     /**
+     * The type of transaction (CAPTURE, REFUND, etc.)
+     * Following banking/payment processor patterns like CyberSource
+     */
+    @Enumerated(EnumType.STRING)
+    @Column(name = "transaction_type", nullable = false)
+    private TransactionType transactionType = TransactionType.CAPTURE;
+
+    /**
      * The date and time when the payment was made
      */
     @Column(name = "payment_date", nullable = false)
@@ -88,12 +96,74 @@ public class PaymentEntry {
     private String transactionReference;
 
     /**
+     * The type of refund (FULL or PARTIAL) if this is a refund entry
+     */
+    @Enumerated(EnumType.STRING)
+    @Column(name = "refund_type")
+    private RefundType refundType;
+
+    /**
+     * Reference to the original payment entry being refunded
+     */
+    @ManyToOne(fetch = FetchType.LAZY)
+    @JoinColumn(name = "original_payment_id")
+    private PaymentEntry originalPayment;
+
+    /**
+     * The reason for the refund
+     */
+    @Column(name = "refund_reason", length = 500)
+    private String refundReason;
+
+    /**
+     * The user who approved this refund
+     */
+    @ManyToOne(fetch = FetchType.LAZY)
+    @JoinColumn(name = "refund_approved_by")
+    private User refundApprovedBy;
+
+    /**
+     * The date and time when the refund was approved
+     */
+    @Column(name = "refund_approval_date")
+    private LocalDateTime refundApprovalDate;
+
+    /**
+     * Helper method to check if this entry is a refund
+     */
+    public boolean isRefund() {
+        return transactionType == TransactionType.REFUND;
+    }
+
+    /**
+     * Helper method to check if this entry is a capture (payment)
+     */
+    public boolean isCapture() {
+        return transactionType == TransactionType.CAPTURE;
+    }
+
+    /**
+     * Helper method to check if this is a full refund
+     */
+    public boolean isFullRefund() {
+        return isRefund() && refundType == RefundType.FULL;
+    }
+
+    /**
+     * Helper method to check if this is a partial refund
+     */
+    public boolean isPartialRefund() {
+        return isRefund() && refundType == RefundType.PARTIAL;
+    }
+
+    /**
      * Creates a new payment entry with the specified details
      */
     public static PaymentEntry createPaymentEntry(
             Double amount,
             PaymentMode paymentMode,
             PaymentNotes paymentNotes,
+            TransactionType transactionType,
             ToothClinicalExamination examination,
             User recordedBy,
             String remarks,
@@ -103,10 +173,49 @@ public class PaymentEntry {
         entry.setAmount(amount);
         entry.setPaymentMode(paymentMode);
         entry.setPaymentNotes(paymentNotes);
+        entry.setTransactionType(transactionType);
         entry.setExamination(examination);
         entry.setRecordedBy(recordedBy);
         entry.setRemarks(remarks);
         entry.setTransactionReference(transactionReference);
+        return entry;
+    }
+
+    /**
+     * Creates a new capture (payment) entry
+     */
+    public static PaymentEntry createCaptureEntry(
+            Double amount,
+            PaymentMode paymentMode,
+            ToothClinicalExamination examination,
+            User recordedBy,
+            String remarks,
+            String transactionReference) {
+        
+        return createPaymentEntry(amount, paymentMode, PaymentNotes.FULL_PAYMENT, 
+                TransactionType.CAPTURE, examination, recordedBy, remarks, transactionReference);
+    }
+
+    /**
+     * Creates a new refund entry
+     */
+    public static PaymentEntry createRefundEntry(
+            Double amount,
+            PaymentMode paymentMode,
+            ToothClinicalExamination examination,
+            User recordedBy,
+            String refundReason,
+            PaymentEntry originalPayment,
+            RefundType refundType,
+            User approvedBy) {
+        
+        PaymentEntry entry = createPaymentEntry(amount, paymentMode, PaymentNotes.REFUND, 
+                TransactionType.REFUND, examination, recordedBy, refundReason, null);
+        entry.setOriginalPayment(originalPayment);
+        entry.setRefundType(refundType);
+        entry.setRefundReason(refundReason);
+        entry.setRefundApprovedBy(approvedBy);
+        entry.setRefundApprovalDate(LocalDateTime.now());
         return entry;
     }
 } 

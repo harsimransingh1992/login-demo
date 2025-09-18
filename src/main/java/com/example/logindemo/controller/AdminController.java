@@ -13,17 +13,22 @@ import com.example.logindemo.service.MotivationQuoteService;
 import lombok.extern.slf4j.Slf4j;
 import org.modelmapper.ModelMapper;
 import org.springframework.beans.factory.annotation.Autowired;
+import org.springframework.beans.propertyeditors.CustomDateEditor;
 import org.springframework.http.HttpStatus;
 import org.springframework.http.ResponseEntity;
 import org.springframework.jdbc.core.JdbcTemplate;
 import org.springframework.security.crypto.password.PasswordEncoder;
 import org.springframework.stereotype.Controller;
 import org.springframework.ui.Model;
+import org.springframework.web.bind.WebDataBinder;
 import org.springframework.web.bind.annotation.*;
 import org.springframework.web.servlet.mvc.support.RedirectAttributes;
 
 import javax.annotation.Resource;
+import java.beans.PropertyEditorSupport;
+import java.time.LocalDate;
 import java.time.LocalDateTime;
+import java.time.format.DateTimeFormatter;
 import java.util.*;
 import java.util.stream.Collectors;
 
@@ -74,6 +79,26 @@ public class AdminController {
     @Autowired
     private MotivationQuoteService motivationQuoteService;
 
+    @InitBinder
+    public void initBinder(WebDataBinder binder) {
+        // Register custom editor for LocalDate fields
+        binder.registerCustomEditor(LocalDate.class, new PropertyEditorSupport() {
+            @Override
+            public void setAsText(String text) throws IllegalArgumentException {
+                if (text != null && !text.trim().isEmpty()) {
+                    try {
+                        setValue(LocalDate.parse(text, DateTimeFormatter.ofPattern("yyyy-MM-dd")));
+                    } catch (Exception e) {
+                        log.warn("Invalid date format: {}", text);
+                        setValue(null);
+                    }
+                } else {
+                    setValue(null);
+                }
+            }
+        });
+    }
+
     @GetMapping
     public String adminDashboard(Model model) {
         model.addAttribute("userCount", userService.countUsers());
@@ -104,11 +129,9 @@ public class AdminController {
                             RedirectAttributes redirectAttributes) {
         try {
             // If the created user is a doctor, set the specialization
-            if (userDTO.getRole() == UserRole.DOCTOR && specialization != null && !specialization.isEmpty()) {
-                try {
+            if (userDTO.getRole() == UserRole.DOCTOR || userDTO.getRole() == UserRole.OPD_DOCTOR) {
+                if (specialization != null && !specialization.isEmpty()) {
                     userDTO.setSpecialization(specialization);
-                } catch (IllegalArgumentException e) {
-                    userDTO.setSpecialization(DentalSpecialization.GENERAL_DENTISTRY.name());
                 }
             }
 
@@ -141,8 +164,10 @@ public class AdminController {
                 model.addAttribute("specializations", DentalSpecialization.values());
                 
                 // If the user is a doctor, get the existing specialization from the user directly
-                if (user.getRole() == UserRole.DOCTOR && user.getSpecialization() != null) {
-                    model.addAttribute("currentSpecialization", user.getSpecialization());
+                if (user.getRole() == UserRole.DOCTOR || user.getRole() == UserRole.OPD_DOCTOR) {
+                    if (user.getSpecialization() != null) {
+                        model.addAttribute("specialization", user.getSpecialization());
+                    }
                 }
                 
                 return "admin/editUser";
@@ -157,11 +182,9 @@ public class AdminController {
                             RedirectAttributes redirectAttributes) {
         try {
             // If the updated user is a doctor, set the specialization
-            if (userDTO.getRole() == UserRole.DOCTOR && specialization != null && !specialization.isEmpty()) {
-                try {
+            if (userDTO.getRole() == UserRole.DOCTOR || userDTO.getRole() == UserRole.OPD_DOCTOR) {
+                if (specialization != null && !specialization.isEmpty()) {
                     userDTO.setSpecialization(specialization);
-                } catch (IllegalArgumentException e) {
-                    userDTO.setSpecialization(DentalSpecialization.GENERAL_DENTISTRY.name());
                 }
             }
             
@@ -231,7 +254,7 @@ public class AdminController {
         // Since UserRepository doesn't have findByRole yet, use a filter on findAll
         List<User> allUsers = userRepository.findAll();
         List<User> doctors = allUsers.stream()
-            .filter(user -> user.getRole() == UserRole.DOCTOR)
+            .filter(user -> user.getRole() == UserRole.DOCTOR || user.getRole() == UserRole.OPD_DOCTOR)
             .collect(Collectors.toList());
         
         List<ClinicModel> clinics = clinicRepository.findAll();
@@ -832,4 +855,4 @@ public class AdminController {
         }
         return "redirect:/admin/motivation-quotes";
     }
-} 
+}

@@ -46,10 +46,11 @@ public class AppointmentManagementController {
     private UserRepository userRepository;
 
     @GetMapping("/management")
-    @PreAuthorize("hasAnyRole('RECEPTIONIST', 'DOCTOR')")
+    @PreAuthorize("hasAnyRole('RECEPTIONIST', 'DOCTOR', 'OPD_DOCTOR')")
     public String appointmentManagement(
             @RequestParam(required = false) String date,
             @RequestParam(required = false) Boolean myAppointments,
+            @RequestParam(defaultValue = "day") String view,
             @RequestParam(defaultValue = "0") int page,
             @RequestParam(defaultValue = "20") int size,
             @RequestParam(defaultValue = "20") int pageSize,
@@ -64,37 +65,56 @@ public class AppointmentManagementController {
         // Determine default for myAppointments: doctors default to true when not specified
         User currentUser = userRepository.findByUsername(authentication.getName())
                 .orElseThrow(() -> new IllegalStateException("Current user not found"));
+        boolean isDoctor = (currentUser.getRole() != null && 
+            (currentUser.getRole().name().equals("DOCTOR") || currentUser.getRole().name().equals("OPD_DOCTOR")));
         boolean myAppointmentsEffective = (myAppointments != null) ? myAppointments.booleanValue() :
-                (currentUser.getRole() != null && currentUser.getRole().name().equals("DOCTOR"));
-        logger.info("Received request for appointment management. Date: {}, My appointments (effective): {}, page: {}, size: {}", 
-            date, myAppointmentsEffective, page, actualSize);
+                isDoctor;
+        logger.info("Received request for appointment management. Date: {}, View: {}, My appointments (effective): {}, page: {}, size: {}", 
+            date, view, myAppointmentsEffective, page, actualSize);
         
-        LocalDateTime startOfDay;
-        LocalDateTime endOfDay;
+        LocalDateTime startOfPeriod;
+        LocalDateTime endOfPeriod;
         String formattedDate;
         org.springframework.data.domain.Page<Appointment> appointmentsPage;
         
         try {
+            LocalDate selectedDate;
             if (date != null && !date.isEmpty()) {
-                LocalDate selectedDate = LocalDate.parse(date, DateTimeFormatter.ofPattern("yyyy-MM-dd"));
-                
-                startOfDay = selectedDate.atStartOfDay();
-                endOfDay = selectedDate.atTime(LocalTime.MAX);
-                formattedDate = selectedDate.format(DATE_FORMATTER);
-                logger.info("Using date: {}", formattedDate);
+                selectedDate = LocalDate.parse(date, DateTimeFormatter.ofPattern("yyyy-MM-dd"));
+                logger.info("Using date: {}", selectedDate);
             } else {
                 // Default to today
-                LocalDate today = LocalDate.now();
-                startOfDay = today.atStartOfDay();
-                endOfDay = today.atTime(LocalTime.MAX);
-                formattedDate = today.format(DATE_FORMATTER);
-                logger.info("No date provided. Using today's date: {}", formattedDate);
+                selectedDate = LocalDate.now();
+                logger.info("No date provided. Using today's date: {}", selectedDate);
+            }
+            
+            // Calculate date range based on view type
+            switch (view.toLowerCase()) {
+                case "week":
+                    // Start from Monday of the week containing selectedDate
+                    LocalDate startOfWeek = selectedDate.with(java.time.DayOfWeek.MONDAY);
+                    startOfPeriod = startOfWeek.atStartOfDay();
+                    endOfPeriod = startOfWeek.plusDays(6).atTime(LocalTime.MAX);
+                    formattedDate = startOfWeek.format(DATE_FORMATTER) + " - " + startOfWeek.plusDays(6).format(DATE_FORMATTER);
+                    break;
+                case "month":
+                    // Start from first day of the month containing selectedDate
+                    LocalDate startOfMonth = selectedDate.withDayOfMonth(1);
+                    startOfPeriod = startOfMonth.atStartOfDay();
+                    endOfPeriod = startOfMonth.plusMonths(1).minusDays(1).atTime(LocalTime.MAX);
+                    formattedDate = startOfMonth.format(DateTimeFormatter.ofPattern("MMMM yyyy"));
+                    break;
+                default: // "day"
+                    startOfPeriod = selectedDate.atStartOfDay();
+                    endOfPeriod = selectedDate.atTime(LocalTime.MAX);
+                    formattedDate = selectedDate.format(DATE_FORMATTER);
+                    break;
             }
         } catch (DateTimeParseException e) {
             logger.warn("Invalid date format provided: {}. Defaulting to today's date", date);
             LocalDate today = LocalDate.now();
-            startOfDay = today.atStartOfDay();
-            endOfDay = today.atTime(LocalTime.MAX);
+            startOfPeriod = today.atStartOfDay();
+            endOfPeriod = today.atTime(LocalTime.MAX);
             formattedDate = today.format(DATE_FORMATTER);
         }
         
@@ -121,17 +141,19 @@ public class AppointmentManagementController {
             );
             
             if (myAppointmentsEffective) {
-                // Get user's upcoming appointments within their clinic with pagination
-                appointmentsPage = appointmentService.getUpcomingAppointmentsForUserInClinicPaginated(currentUser, userClinic, pageable);
-                logger.info("Found {} upcoming appointments for user {} in clinic {} (page {} of {})", 
+                // Get user's appointments for the current date within their clinic with pagination
+                LocalDateTime startOfToday = LocalDateTime.now().withHour(0).withMinute(0).withSecond(0);
+                LocalDateTime endOfToday = startOfToday.plusDays(1);
+                appointmentsPage = appointmentService.getAppointmentsByDateRangeAndClinicPaginated(startOfToday, endOfToday, userClinic, pageable);
+                logger.info("Found {} appointments for today for user {} in clinic {} (page {} of {})", 
                     appointmentsPage.getTotalElements(), currentUser.getUsername(), userClinic.getClinicName(), 
                     page + 1, appointmentsPage.getTotalPages());
             } else {
-                // Get appointments for the selected date within user's clinic with pagination
-                logger.debug("Fetching appointments between {} and {} for clinic {} with pagination", startOfDay, endOfDay, userClinic.getClinicName());
-                appointmentsPage = appointmentService.getAppointmentsByDateRangeAndClinicPaginated(startOfDay, endOfDay, userClinic, pageable);
-                logger.info("Found {} appointments for date {} in clinic {} (page {} of {})", 
-                    appointmentsPage.getTotalElements(), formattedDate, userClinic.getClinicName(), 
+                // Get appointments for the selected period within user's clinic with pagination
+                logger.debug("Fetching appointments between {} and {} for clinic {} with pagination", startOfPeriod, endOfPeriod, userClinic.getClinicName());
+                appointmentsPage = appointmentService.getAppointmentsByDateRangeAndClinicPaginated(startOfPeriod, endOfPeriod, userClinic, pageable);
+                logger.info("Found {} appointments for {} view ({}) in clinic {} (page {} of {})", 
+                    appointmentsPage.getTotalElements(), view, formattedDate, userClinic.getClinicName(), 
                     page + 1, appointmentsPage.getTotalPages());
             }
         }
@@ -139,6 +161,7 @@ public class AppointmentManagementController {
         model.addAttribute("appointments", appointmentsPage.getContent());
         model.addAttribute("statuses", AppointmentStatus.values());
         model.addAttribute("selectedDate", formattedDate);
+        model.addAttribute("currentView", view);
         model.addAttribute("myAppointments", myAppointmentsEffective);
         model.addAttribute("currentPage", page);
         model.addAttribute("totalPages", appointmentsPage.getTotalPages());
@@ -146,6 +169,17 @@ public class AppointmentManagementController {
         model.addAttribute("pageSize", actualSize);
         model.addAttribute("sort", sort);
         model.addAttribute("direction", direction);
+        
+        // Add doctors from current clinic for appointment creation
+        if (userClinic != null) {
+            List<User> clinicDoctors = userRepository.findByClinicAndRoleIn(
+                userClinic, 
+                List.of(com.example.logindemo.model.UserRole.DOCTOR, com.example.logindemo.model.UserRole.OPD_DOCTOR)
+            );
+            model.addAttribute("clinicDoctors", clinicDoctors);
+        } else {
+            model.addAttribute("clinicDoctors", new ArrayList<>());
+        }
         
         // Prepare JSON data for calendar
         ObjectMapper mapper = new ObjectMapper();
@@ -158,6 +192,11 @@ public class AppointmentManagementController {
                     event.put("start", appointment.getAppointmentDateTime().toString());
                     event.put("status", appointment.getStatus().toString());
                     event.put("patientName", appointment.getPatientName());
+                    // Explicitly handle patient registration status
+                    boolean hasPatient = appointment.getPatient() != null;
+                    event.put("patientId", hasPatient ? appointment.getPatient().getId() : null);
+                    event.put("isRegistered", hasPatient);
+                    event.put("hasPatient", hasPatient); // Additional flag for debugging
                     event.put("doctorName", appointment.getDoctor() != null ? 
                         appointment.getDoctor().getFirstName() + " " + appointment.getDoctor().getLastName() : 
                         "Unassigned");
@@ -168,6 +207,10 @@ public class AppointmentManagementController {
             
             String appointmentsJson = mapper.writeValueAsString(calendarEvents);
             model.addAttribute("appointmentsJson", appointmentsJson);
+            
+            // Debug: Log a sample of the generated JSON
+            logger.info("Sample calendar events: {}", calendarEvents.stream().limit(2).collect(Collectors.toList()));
+            logger.info("Generated JSON string: {}", appointmentsJson.substring(0, Math.min(500, appointmentsJson.length())));
             logger.debug("Generated calendar events JSON for {} appointments", appointmentsPage.getContent().size());
         } catch (Exception e) {
             logger.error("Error generating calendar events JSON", e);
@@ -178,13 +221,13 @@ public class AppointmentManagementController {
     }
 
     @PostMapping("/create")
-    @PreAuthorize("hasAnyRole('RECEPTIONIST', 'DOCTOR')")
-    public String createAppointment(
-            @RequestParam String patientName,
-            @RequestParam String patientMobile,
-            @RequestParam String appointmentDateTime,
-            Authentication authentication,
-            RedirectAttributes redirectAttributes) {
+    @PreAuthorize("hasAnyRole('RECEPTIONIST', 'DOCTOR', 'OPD_DOCTOR')")
+    public String createAppointment(@RequestParam String patientName,
+                                   @RequestParam String patientMobile,
+                                   @RequestParam String appointmentDateTime,
+                                   @RequestParam(required = false) Long doctorId,
+                                   Authentication authentication,
+                                   RedirectAttributes redirectAttributes) {
 
         // Validate inputs
         if (patientName == null || patientName.trim().isEmpty()) {
@@ -210,7 +253,7 @@ public class AppointmentManagementController {
         }
 
         try {
-            appointmentService.createAppointment(patientName.trim(), patientMobile, appointmentTime, authentication);
+            appointmentService.createAppointment(patientName.trim(), patientMobile, appointmentTime, doctorId, authentication);
             redirectAttributes.addFlashAttribute("successMessage", "Appointment created successfully!");
         } catch (IllegalStateException e) {
             redirectAttributes.addFlashAttribute("errorMessage", e.getMessage());
@@ -223,14 +266,15 @@ public class AppointmentManagementController {
         return "redirect:/appointments/management";
     }
 
-    @PutMapping("/{id}/status")
-    @PreAuthorize("hasAnyRole('RECEPTIONIST', 'DOCTOR')")
-    @ResponseBody
-    public ResponseEntity<?> updateAppointmentStatus(
-            @PathVariable Long id,
-            @RequestBody AppointmentStatusUpdateRequest request) {
+    @PostMapping("/management/update-status")
+    @PreAuthorize("hasAnyRole('RECEPTIONIST', 'DOCTOR', 'OPD_DOCTOR')")
+    public ResponseEntity<?> updateAppointmentStatus(@RequestBody Map<String, Object> request) {
         try {
-            appointmentService.updateAppointmentStatus(id, request.getStatus(), request.getPatientRegistrationNumber());
+            Long id = ((Number) request.get("id")).longValue();
+            AppointmentStatus status = AppointmentStatus.valueOf((String) request.get("status"));
+            String patientRegistrationNumber = (String) request.get("patientRegistrationNumber");
+
+            appointmentService.updateAppointmentStatus(id, status, patientRegistrationNumber);
             return ResponseEntity.ok().build();
         } catch (IllegalStateException e) {
             return ResponseEntity.badRequest().body(new ErrorResponse(e.getMessage()));
@@ -272,4 +316,4 @@ public class AppointmentManagementController {
             return message;
         }
     }
-} 
+}

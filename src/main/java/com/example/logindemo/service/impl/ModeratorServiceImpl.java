@@ -328,7 +328,7 @@ public class ModeratorServiceImpl implements ModeratorService {
             double collectedRevenue = revenueByClinicId.getOrDefault(clinic.getClinicId(), 0.0);
             int doctorCount = (clinic.getDoctors() != null) ? 
                 (int) clinic.getDoctors().stream()
-                    .filter(doctor -> doctor.getRole() == UserRole.DOCTOR)
+                    .filter(doctor -> doctor.getRole() == UserRole.DOCTOR || doctor.getRole() == UserRole.OPD_DOCTOR)
                     .count() : 0;
             // Calculate to-be-collected revenue: sum totalProcedureAmount for unique examinations with payments in this clinic
             Set<Long> seenExamIds = new HashSet<>();

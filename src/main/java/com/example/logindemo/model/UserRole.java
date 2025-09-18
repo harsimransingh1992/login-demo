@@ -4,6 +4,7 @@ public enum UserRole {
     ADMIN("Administrator"),
     CLINIC_OWNER("Clinic Owner"),
     DOCTOR("Doctor"),
+    OPD_DOCTOR("OPD Doctor"),
     STAFF("Staff"),
     RECEPTIONIST("Receptionist"),
     MODERATOR("Moderator");

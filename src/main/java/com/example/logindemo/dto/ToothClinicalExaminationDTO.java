@@ -37,16 +37,22 @@ public class ToothClinicalExaminationDTO {
     private LocalDateTime examinationDate;
     private LocalDateTime treatmentStartingDate;
     
+    // Formatted date string for easy display
+    private String examinationDateFormatted;
+    
     private Long assignedDoctorId;
     private Long opdDoctorId;
     
-    @JsonManagedReference
+    @JsonIgnoreProperties({"examinations", "clinicalFiles"})
     private PatientDTO patient;
     
-    @JsonManagedReference
+    @JsonIgnoreProperties({"examinations", "patients"})
     private ClinicModelDTO examinationClinic;
     
+    private ClinicalFileDTO clinicalFile;
+    
     private ProcedurePriceDTO procedure;
+    private ProcedureStatus procedureStatus;
     private LocalDateTime followUpDate;
     private String followUpNotes;
     private PaymentMode paymentMode;
@@ -86,5 +92,24 @@ public class ToothClinicalExaminationDTO {
 
     public void setPaymentNotes(String paymentNotes) {
         this.paymentNotes = paymentNotes;
+    }
+    
+    // Refund calculation methods for JSP compatibility
+    public Double getTotalPaidAmount() {
+        // This will be calculated by the service/controller
+        // For now, return 0.0 as default
+        return 0.0;
+    }
+    
+    public Double getTotalRefundedAmount() {
+        // This will be calculated by the service/controller
+        // For now, return 0.0 as default
+        return 0.0;
+    }
+    
+    public Double getNetPaidAmount() {
+        // This will be calculated by the service/controller
+        // For now, return 0.0 as default
+        return 0.0;
     }
 }

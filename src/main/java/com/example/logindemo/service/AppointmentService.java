@@ -18,9 +18,10 @@ public interface AppointmentService {
     List<Appointment> getTodayAppointments();
     List<Appointment> getAppointmentsByDateRange(LocalDateTime startDate, LocalDateTime endDate);
     List<Appointment> getAppointmentsByDateRangeAndClinic(LocalDateTime startDate, LocalDateTime endDate, ClinicModel clinic);
-    void createAppointment(String patientName, String patientMobile, LocalDateTime appointmentDateTime, Authentication authentication);
+    void createAppointment(String patientName, String patientMobile, LocalDateTime appointmentDateTime, Long doctorId, Authentication authentication);
     void updateAppointmentStatus(Long appointmentId, AppointmentStatus newStatus, String patientRegistrationNumber);
     Appointment updateAppointment(Long id, Appointment appointment);
+    Appointment updateAppointmentNotes(Long id, String notes);
     void deleteAppointment(Long id);
     Appointment getAppointmentById(Long id);
     List<Appointment> getAppointmentsByDoctor(User doctor);
@@ -48,4 +49,4 @@ public interface AppointmentService {
     void validateRescheduleRequest(RescheduleAppointmentDTO dto);
     int getRemainingReschedules(Long appointmentId);
     Map<String, Object> getRescheduleSummary(Long appointmentId);
-} 
+}

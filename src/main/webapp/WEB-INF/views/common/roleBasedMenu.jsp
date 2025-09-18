@@ -126,7 +126,7 @@
             </div>
         </a>
         <a href="${pageContext.request.contextPath}/logout" class="action-card">
-            <i class="fas fa-sign-out-alt"></i>
+            <i class="fas fa-power-off"></i>
             <div class="card-text">
                 <h3>Sign Out</h3>
                 <p>Log out of your account</p>

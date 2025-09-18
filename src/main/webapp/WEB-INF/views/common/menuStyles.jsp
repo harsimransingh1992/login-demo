@@ -3,6 +3,10 @@
 <style>
     /* Sidebar Menu Styles */
     .sidebar-menu {
+        position: fixed;
+        top: 0;
+        left: 0;
+        bottom: 0;
         width: 280px;
         background: rgba(255, 255, 255, 0.1);
         backdrop-filter: blur(20px);

@@ -20,6 +20,18 @@ public interface PatientRepository extends JpaRepository<Patient, Long> {
     List<Patient> findByPhoneNumberContaining(String phoneNumber);
     List<Patient> findByCheckedInTrue();
     List<Patient> findByCheckedInTrueAndCurrentCheckInRecord_Clinic(ClinicModel clinic);
+    
+    // Optimized query with JOIN FETCH to avoid N+1 problem
+    // Ensures: 1) Patient is checked in, 2) Has a current check-in record, 3) Patient's registered clinic matches logged-in user's clinic
+    @Query("SELECT DISTINCT p FROM Patient p " +
+           "LEFT JOIN FETCH p.currentCheckInRecord cir " +
+           "LEFT JOIN FETCH cir.assignedDoctor " +
+           "WHERE p.checkedIn = true " +
+           "AND p.currentCheckInRecord IS NOT NULL " +
+           "AND p.registeredClinic = :clinic " +
+           "ORDER BY cir.checkInTime ASC")
+    List<Patient> findCheckedInPatientsWithDetailsOptimized(@org.springframework.data.repository.query.Param("clinic") ClinicModel clinic);
+    
     Patient getPatientsById(Long patientId);
     
     // Method to find patients with the same first name and phone number
@@ -46,4 +58,4 @@ public interface PatientRepository extends JpaRepository<Patient, Long> {
     // Count patients registered at each clinic in a date range, grouped by clinic
     @org.springframework.data.jpa.repository.Query("SELECT p.registeredClinic.id, COUNT(p) FROM Patient p WHERE p.registeredClinic IS NOT NULL AND p.registrationDate BETWEEN :start AND :end GROUP BY p.registeredClinic.id")
     java.util.List<Object[]> countRegisteredByClinicAndDate(@org.springframework.data.repository.query.Param("start") java.util.Date start, @org.springframework.data.repository.query.Param("end") java.util.Date end);
-} 
+}

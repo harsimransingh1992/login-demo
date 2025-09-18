@@ -29,7 +29,7 @@ public class DoctorDetailServiceImpl implements DoctorDetailService {
     public List<UserDTO> findDoctorsByOnboardClinicUsername(String username) {
         final List<User> clinicDoctors = doctorDetailRepository.findByClinic_Owner_Username(username);
         return clinicDoctors.stream()
-            .filter(user -> user.getRole() == UserRole.DOCTOR)
+            .filter(user -> user.getRole() == UserRole.DOCTOR || user.getRole() == UserRole.OPD_DOCTOR)
             .map(user -> modelMapper.map(user, UserDTO.class))
             .collect(Collectors.toList());
     }
@@ -37,7 +37,11 @@ public class DoctorDetailServiceImpl implements DoctorDetailService {
     @Override
     public List<UserDTO> getAllDoctors() {
         final List<User> doctors = doctorDetailRepository.findByRole(UserRole.DOCTOR);
-        return doctors.stream()
+        final List<User> opdDoctors = doctorDetailRepository.findByRole(UserRole.OPD_DOCTOR);
+        List<User> allDoctors = new ArrayList<>();
+        allDoctors.addAll(doctors);
+        allDoctors.addAll(opdDoctors);
+        return allDoctors.stream()
             .map(user -> modelMapper.map(user, UserDTO.class))
             .collect(Collectors.toList());
     }

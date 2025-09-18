@@ -69,6 +69,12 @@ public class User {
     @Column
     private Boolean forcePasswordChange = false;
     
+    @Column
+    private Boolean canRefund = false;
+    
+    @Column
+    private Boolean canDeleteExamination = false;
+    
     @ManyToOne
     @JoinColumn(name = "clinic_id")
     private ClinicModel clinic;
@@ -79,4 +85,4 @@ public class User {
     
     @OneToMany(mappedBy = "owner")
     private List<ClinicModel> ownedClinics; // Changed from OneToOne to OneToMany
-} 
+}

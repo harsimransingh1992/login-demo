@@ -162,6 +162,14 @@
                                                 <form:checkbox path="isActive" class="custom-control-input" id="activeStatusSwitch" />
                                                 <label class="custom-control-label" for="activeStatusSwitch">Active</label>
                                             </div>
+                                            <div class="custom-control custom-switch mt-2">
+                                                <form:checkbox path="canRefund" class="custom-control-input" id="canRefundSwitch" />
+                                                <label class="custom-control-label" for="canRefundSwitch">Can Process Refunds</label>
+                                            </div>
+                                            <div class="custom-control custom-switch mt-2">
+                                                <form:checkbox path="canDeleteExamination" class="custom-control-input" id="canDeleteExaminationSwitch" />
+                                                <label class="custom-control-label" for="canDeleteExaminationSwitch">Can Delete Examinations</label>
+                                            </div>
                                         </div>
                                     </div>
                                 </div>
@@ -260,6 +268,7 @@
                 // Role-specific field display
                 switch(role) {
                     case 'DOCTOR':
+                    case 'OPD_DOCTOR':
                         // Show all professional fields for doctors
                         $('#specializationRow').show();
                         $('#specialization').prop('required', true);
@@ -334,4 +343,4 @@
         });
     </script>
 </body>
-</html> 
+</html>

@@ -1,0 +1,158 @@
+/* Print Styles for Patient Registration Details */
+@media print {
+    /* Reset and base styles */
+    * {
+        margin: 0;
+        padding: 0;
+        box-sizing: border-box;
+    }
+    
+    body {
+        font-family: 'Times New Roman', 'Georgia', serif;
+        font-size: 9pt;
+        line-height: 1.2;
+        color: #000;
+        background: white;
+    }
+    
+    /* Show only print content during print */
+    .print-content {
+        display: block !important;
+        visibility: visible !important;
+        position: static !important;
+        width: 100% !important;
+        height: auto !important;
+        margin: 0 !important;
+        padding: 10mm 8mm !important;
+        box-sizing: border-box;
+        font-family: 'Times New Roman', 'Georgia', serif;
+        font-size: 9pt;
+        line-height: 1.2;
+        color: #000 !important;
+        background: white !important;
+    }
+    
+    /* Page setup with increased upper margin */
+    @page {
+        size: A4;
+        margin: 25mm 10mm 15mm 10mm;
+    }
+    
+    /* Header styling - increased top margin with 9+ lines of space */
+    .print-header {
+        text-align: center;
+        margin-top: 50mm; /* Approximately 9+ lines of space at top */
+        margin-bottom: 8mm;
+        border-bottom: 1px solid #333;
+        padding-bottom: 5mm;
+    }
+    
+    .print-title {
+        font-size: 12pt;
+        font-weight: bold;
+        margin: 0 0 2mm 0;
+        color: #333;
+        font-family: 'Times New Roman', 'Georgia', serif;
+    }
+    
+    .print-subtitle {
+        font-size: 9pt;
+        margin: 0;
+        color: #666;
+        font-family: 'Times New Roman', 'Georgia', serif;
+    }
+    
+    /* Registration details container - reduced spacing */
+    .registration-details {
+        display: flex;
+        flex-wrap: wrap;
+        gap: 6mm;
+        margin-bottom: 8mm;
+    }
+    
+    /* Two-column layout for efficient space usage */
+    .detail-column {
+        flex: 1;
+        min-width: 45%;
+    }
+    
+    .detail-section {
+        margin-bottom: 6mm;
+        break-inside: avoid;
+    }
+    
+    .section-title {
+        font-size: 10pt;
+        font-weight: bold;
+        margin: 0 0 3mm 0;
+        color: #333;
+        border-bottom: 1px solid #ddd;
+        padding-bottom: 1mm;
+        font-family: 'Times New Roman', 'Georgia', serif;
+    }
+    
+    .detail-item {
+        display: flex;
+        margin-bottom: 2mm;
+        align-items: flex-start;
+    }
+    
+    .detail-label {
+        font-weight: bold;
+        min-width: 25mm;
+        margin-right: 3mm;
+        color: #555;
+        flex-shrink: 0;
+        font-size: 8pt;
+        font-family: 'Times New Roman', 'Georgia', serif;
+    }
+    
+    .detail-value {
+        flex: 1;
+        word-wrap: break-word;
+        color: #333;
+        font-size: 8pt;
+        font-family: 'Times New Roman', 'Georgia', serif;
+    }
+    
+    /* Registration code highlight - reduced spacing */
+    .registration-code {
+        background-color: #f8f8f8;
+        padding: 3mm 5mm;
+        border: 1px solid #ccc;
+        border-radius: 1mm;
+        text-align: center;
+        margin: 5mm 0;
+        font-size: 10pt;
+        font-weight: bold;
+        font-family: 'Courier New', monospace;
+        break-inside: avoid;
+    }
+    
+    /* Footer spacing - keep on same page */
+    .slip-footer {
+        margin-top: 8mm;
+        margin-bottom: 0;
+        text-align: center;
+        page-break-inside: avoid;
+        font-family: 'Times New Roman', 'Georgia', serif;
+        font-size: 7pt;
+        color: #666;
+        break-inside: avoid;
+    }
+    
+    /* Ensure content fits on one page */
+    .print-content {
+        page-break-after: avoid;
+    }
+    
+    /* Prevent page breaks in critical sections */
+    .detail-section:last-child {
+        margin-bottom: 3mm;
+    }
+}
+
+/* Screen styles - hide print content by default */
+.print-content {
+    display: none;
+}

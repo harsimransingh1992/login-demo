@@ -3,116 +3,53 @@
          xsi:noNamespaceSchemaLocation="http://ehcache.org/ehcache.xsd"
          updateCheck="false">
 
-    <diskStore path="java.io.tmpdir"/>
-
     <!-- Default cache configuration -->
     <defaultCache
-            maxElementsInMemory="50000"
-            eternal="false"
-            timeToIdleSeconds="600"
-            timeToLiveSeconds="1200"
-            overflowToDisk="true"
-            maxElementsOnDisk="100000"
-            diskPersistent="false"
-            diskExpiryThreadIntervalSeconds="120"
-            memoryStoreEvictionPolicy="LRU"
-            diskSpoolBufferSizeMB="30"
-            maxMemoryPolicy="LRU"/>
+        maxElementsInMemory="1000"
+        eternal="false"
+        timeToIdleSeconds="300"
+        timeToLiveSeconds="600"
+        overflowToDisk="false"
+        diskPersistent="false"
+        memoryStoreEvictionPolicy="LRU" />
 
-    <!-- Patient cache - frequently accessed -->
-    <cache name="com.example.logindemo.model.Patient"
-           maxElementsInMemory="10000"
+    <!-- Clinic doctors cache - frequently accessed, rarely changes -->
+    <cache name="clinicDoctors"
+           maxElementsInMemory="100"
            eternal="false"
            timeToIdleSeconds="1800"
            timeToLiveSeconds="3600"
-           overflowToDisk="true"
-           maxElementsOnDisk="50000"
-           diskPersistent="false"
-           diskExpiryThreadIntervalSeconds="120"
-           memoryStoreEvictionPolicy="LRU"
-           diskSpoolBufferSizeMB="30"
-           maxMemoryPolicy="LRU"/>
+           overflowToDisk="false"
+           memoryStoreEvictionPolicy="LRU" />
 
-    <!-- User cache - authentication data -->
-    <cache name="com.example.logindemo.model.User"
-           maxElementsInMemory="5000"
+    <!-- Checked-in patients cache - short-lived for real-time data -->
+    <cache name="checkedInPatients"
+           maxElementsInMemory="500"
            eternal="false"
-           timeToIdleSeconds="3600"
-           timeToLiveSeconds="7200"
-           overflowToDisk="true"
-           maxElementsOnDisk="10000"
-           diskPersistent="false"
-           diskExpiryThreadIntervalSeconds="120"
-           memoryStoreEvictionPolicy="LRU"
-           diskSpoolBufferSizeMB="30"
-           maxMemoryPolicy="LRU"/>
+           timeToIdleSeconds="30"
+           timeToLiveSeconds="60"
+           overflowToDisk="false"
+           memoryStoreEvictionPolicy="LRU" />
 
-    <!-- Clinic cache - rarely changes -->
-    <cache name="com.example.logindemo.model.ClinicModel"
-           maxElementsInMemory="1000"
-           eternal="true"
-           timeToIdleSeconds="0"
-           timeToLiveSeconds="0"
-           overflowToDisk="true"
-           maxElementsOnDisk="5000"
-           diskPersistent="false"
-           diskExpiryThreadIntervalSeconds="120"
-           memoryStoreEvictionPolicy="LRU"
-           diskSpoolBufferSizeMB="30"
-           maxMemoryPolicy="LRU"/>
-
-    <!-- Query cache for frequently executed queries -->
-    <cache name="org.hibernate.cache.internal.StandardQueryCache"
-           maxElementsInMemory="20000"
-           eternal="false"
-           timeToIdleSeconds="1800"
-           timeToLiveSeconds="3600"
-           overflowToDisk="true"
-           maxElementsOnDisk="100000"
-           diskPersistent="false"
-           diskExpiryThreadIntervalSeconds="120"
-           memoryStoreEvictionPolicy="LRU"
-           diskSpoolBufferSizeMB="30"
-           maxMemoryPolicy="LRU"/>
-
-    <!-- Update timestamps cache -->
-    <cache name="org.hibernate.cache.spi.UpdateTimestampsCache"
-           maxElementsInMemory="10000"
-           eternal="true"
-           timeToIdleSeconds="0"
-           timeToLiveSeconds="0"
-           overflowToDisk="true"
-           maxElementsOnDisk="50000"
-           diskPersistent="false"
-           diskExpiryThreadIntervalSeconds="120"
-           memoryStoreEvictionPolicy="LRU"
-           diskSpoolBufferSizeMB="30"
-           maxMemoryPolicy="LRU"/>
-
-    <!-- Custom caches for specific use cases -->
-    <cache name="appointmentCache"
-           maxElementsInMemory="5000"
+    <!-- User by username cache -->
+    <cache name="userByUsername"
+           maxElementsInMemory="200"
            eternal="false"
            timeToIdleSeconds="900"
            timeToLiveSeconds="1800"
-           overflowToDisk="true"
-           maxElementsOnDisk="25000"
-           diskPersistent="false"
-           diskExpiryThreadIntervalSeconds="120"
-           memoryStoreEvictionPolicy="LRU"
-           diskSpoolBufferSizeMB="30"
-           maxMemoryPolicy="LRU"/>
+           overflowToDisk="false"
+           memoryStoreEvictionPolicy="LRU" />
 
-    <cache name="examinationCache"
-           maxElementsInMemory="3000"
+    <!-- Hibernate second level cache regions -->
+    <cache name="org.hibernate.cache.internal.StandardQueryCache"
+           maxElementsInMemory="1000"
            eternal="false"
-           timeToIdleSeconds="1200"
-           timeToLiveSeconds="2400"
-           overflowToDisk="true"
-           maxElementsOnDisk="15000"
-           diskPersistent="false"
-           diskExpiryThreadIntervalSeconds="120"
-           memoryStoreEvictionPolicy="LRU"
-           diskSpoolBufferSizeMB="30"
-           maxMemoryPolicy="LRU"/>
-</ehcache> 
+           timeToLiveSeconds="300"
+           overflowToDisk="false" />
+
+    <cache name="org.hibernate.cache.spi.UpdateTimestampsCache"
+           maxElementsInMemory="5000"
+           eternal="true"
+           overflowToDisk="false" />
+
+</ehcache>

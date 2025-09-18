@@ -103,7 +103,7 @@ public class AppointmentServiceImpl implements AppointmentService {
 
     @Override
     @Transactional
-    public void createAppointment(String patientName, String patientMobile, LocalDateTime appointmentDateTime, Authentication authentication) {
+    public void createAppointment(String patientName, String patientMobile, LocalDateTime appointmentDateTime, Long doctorId, Authentication authentication) {
         try {
             logger.debug("Creating appointment for patient: {} with mobile: {}", patientName, patientMobile);
             
@@ -118,6 +118,15 @@ public class AppointmentServiceImpl implements AppointmentService {
             appointment.setClinic(currentClinic);
             appointment.setStatus(AppointmentStatus.SCHEDULED);
             appointment.setAppointmentBookedBy(currentUser);
+            
+            // Set the assigned doctor if provided
+            if (doctorId != null) {
+                User doctor = userRepository.findById(doctorId).orElse(null);
+                if (doctor != null && doctor.getClinic().equals(currentClinic)) {
+                    appointment.setDoctor(doctor);
+                    logger.debug("Assigned doctor {} to appointment", doctor.getUsername());
+                }
+            }
             
             logger.debug("Saving appointment for walk-in patient");
             appointmentRepository.save(appointment);
@@ -144,6 +153,17 @@ public class AppointmentServiceImpl implements AppointmentService {
         existingAppointment.setAppointmentDateTime(appointment.getAppointmentDateTime());
         existingAppointment.setStatus(appointment.getStatus());
         existingAppointment.setClinic(appointment.getClinic());
+        
+        return appointmentRepository.save(existingAppointment);
+    }
+
+    @Override
+    @Transactional
+    public Appointment updateAppointmentNotes(Long id, String notes) {
+        Appointment existingAppointment = appointmentRepository.findById(id)
+            .orElseThrow(() -> new RuntimeException("Appointment not found"));
+        
+        existingAppointment.setNotes(notes);
         
         return appointmentRepository.save(existingAppointment);
     }
@@ -375,4 +395,4 @@ public class AppointmentServiceImpl implements AppointmentService {
             throw new IllegalArgumentException("Reschedule reason is required");
         }
     }
-} 
+}

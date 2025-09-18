@@ -165,7 +165,9 @@ public class PerformanceController {
                         cacheInfo.put("name", cacheName);
                         cacheInfo.put("nativeCache", cache.getNativeCache().getClass().getSimpleName());
                         
-                        // Try to get EhCache statistics if available
+                        // Try to get cache statistics if available
+                        // Note: EhCache-specific code commented out due to missing dependency
+                        /*
                         if (cache.getNativeCache() instanceof net.sf.ehcache.Ehcache) {
                             net.sf.ehcache.Ehcache ehcache = (net.sf.ehcache.Ehcache) cache.getNativeCache();
                             cacheInfo.put("size", ehcache.getSize());
@@ -187,6 +189,8 @@ public class PerformanceController {
                                 cacheInfo.put("statisticsError", "Unable to get cache statistics: " + e.getMessage());
                             }
                         } else {
+                        */
+                        {
                             // Try to get size if available for other cache types
                             try {
                                 if (cache.getNativeCache() instanceof java.util.Map) {

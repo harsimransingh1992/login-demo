@@ -115,6 +115,7 @@
 
         .role-ADMIN { background-color: var(--danger-color); }
         .role-DOCTOR { background-color: var(--success-color); }
+        .role-OPD_DOCTOR { background-color: var(--info-color); }
         .role-STAFF { background-color: var(--primary-color); }
 
         .action-buttons {

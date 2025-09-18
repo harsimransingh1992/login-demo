@@ -127,7 +127,7 @@ public class FollowUpServiceImpl implements FollowUpService {
         if (allCompleted) {
             examination.setProcedureStatus(ProcedureStatus.FOLLOW_UP_COMPLETED);
             toothClinicalExaminationService.saveExamination(examination);
-            log.info("All follow-ups completed. Updated procedure status to FOLLOW_UP_COMPLETED for examination ID: {}", examination.getId());
+            log.info("All next sittings completed. Updated procedure status to Next-Sitting Completed for examination ID: {}", examination.getId());
         }
         
         return savedFollowUp;
@@ -300,4 +300,4 @@ public class FollowUpServiceImpl implements FollowUpService {
         followUpRecord.setUpdatedAt(LocalDateTime.now());
         return followUpRecordRepository.save(followUpRecord);
     }
-} 
+}

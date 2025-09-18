@@ -200,7 +200,7 @@
     <div class="summary-section">
         <div class="summary-grid">
             <div class="summary-card">
-                <div class="summary-label">Total Collections</div>
+                <div class="summary-label">Net Collections</div>
                 <div class="summary-value">₹<fmt:formatNumber value="${reconciliationData.totalCollections}" pattern="#,##0.00"/></div>
             </div>
             <div class="summary-card">
@@ -232,8 +232,11 @@
                     <tr>
                         <th>Time</th>
                         <th>Exam ID</th>
+                        <th>Exam Date</th>
                         <th>Patient</th>
+                        <th>Registration ID</th>
                         <th>Procedure</th>
+                        <th>Type</th>
                         <th>Amount</th>
                         <th>Payment Mode</th>
                         <th>Status</th>
@@ -250,9 +253,28 @@
                                 </c:if>
                             </td>
                             <td><a href="${pageContext.request.contextPath}/examination/${transaction.examinationId}" class="exam-link" target="_blank">${transaction.examinationId}</a></td>
+                            <td>
+                                <c:set var="examDateString" value="${transaction.examinationDate}"/>
+                                <c:if test="${not empty examDateString}">
+                                    <fmt:parseDate value="${examDateString}" pattern="yyyy-MM-dd'T'HH:mm:ss" var="parsedExamDate"/>
+                                    <fmt:formatDate value="${parsedExamDate}" pattern="dd/MM/yyyy"/>
+                                </c:if>
+                                <c:if test="${empty examDateString}">N/A</c:if>
+                            </td>
                             <td>${transaction.patientName}</td>
+                            <td>${transaction.patientRegistrationCode}</td>
                             <td>${transaction.procedureName}</td>
-                            <td>₹<fmt:formatNumber value="${transaction.amount}" pattern="#,##0.00"/></td>
+                            <td>${transaction.transactionType}</td>
+                            <td>
+                                <c:choose>
+                                    <c:when test="${transaction.transactionType == 'REFUND'}">
+                                        -₹<fmt:formatNumber value="${transaction.amount}" pattern="#,##0.00"/>
+                                    </c:when>
+                                    <c:otherwise>
+                                        ₹<fmt:formatNumber value="${transaction.amount}" pattern="#,##0.00"/>
+                                    </c:otherwise>
+                                </c:choose>
+                            </td>
                             <td>${transaction.paymentMode}</td>
                             <td>${transaction.status}</td>
                         </tr>

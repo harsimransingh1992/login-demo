@@ -7,6 +7,8 @@ import org.springframework.data.jpa.repository.JpaRepository;
 import org.springframework.data.jpa.repository.Query;
 import org.springframework.stereotype.Component;
 import org.springframework.stereotype.Repository;
+import org.springframework.data.domain.Page;
+import org.springframework.data.domain.Pageable;
 
 import java.time.LocalDateTime;
 import java.util.List;
@@ -19,6 +21,8 @@ public interface ToothClinicalExaminationRepository extends JpaRepository<ToothC
     List<ToothClinicalExamination> findByPatientIdOrderByExaminationDateDescToothNumberAsc(Long patientId);
 
     List<ToothClinicalExamination> findByPatientId(Long patientId);
+
+    Page<ToothClinicalExamination> findByPatientId(Long patientId, Pageable pageable);
 
     List<ToothClinicalExamination> findByTreatmentStartingDateBetween(LocalDateTime startDate, LocalDateTime endDate);
 

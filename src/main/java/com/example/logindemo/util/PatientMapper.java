@@ -116,6 +116,16 @@ public class PatientMapper implements Mapper<Patient, PatientDTO> {
             checkInRecordDTO.setCheckOutTime(patient.getCurrentCheckInRecord().getCheckOutTime());
             checkInRecordDTO.setStatus(patient.getCurrentCheckInRecord().getStatus());
 
+            // Map assigned doctor if present
+            if (patient.getCurrentCheckInRecord().getAssignedDoctor() != null) {
+                UserDTO assignedDoctorDTO = new UserDTO();
+                assignedDoctorDTO.setId(patient.getCurrentCheckInRecord().getAssignedDoctor().getId());
+                assignedDoctorDTO.setFirstName(patient.getCurrentCheckInRecord().getAssignedDoctor().getFirstName());
+                assignedDoctorDTO.setLastName(patient.getCurrentCheckInRecord().getAssignedDoctor().getLastName());
+                assignedDoctorDTO.setUsername(patient.getCurrentCheckInRecord().getAssignedDoctor().getUsername());
+                assignedDoctorDTO.setRole(patient.getCurrentCheckInRecord().getAssignedDoctor().getRole());
+                checkInRecordDTO.setAssignedDoctor(assignedDoctorDTO);
+            }
 
             patientDTO.setCurrentCheckInRecord(checkInRecordDTO);
         }
