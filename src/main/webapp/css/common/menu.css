@@ -70,10 +70,63 @@ body {
     width: 80%;
     border-radius: 2px;
 }
+
+/* Action card styles */
+.action-card {
+    display: flex;
+    align-items: center;
+    padding: 1rem 1.5rem;
+    color: #4a5568;
+    text-decoration: none;
+    transition: all 0.2s;
+    cursor: pointer;
+    border-left: 4px solid transparent;
+}
+
+.action-card:hover {
+    background-color: #f7fafc;
+    color: #2b6cb0;
+    text-decoration: none;
+}
+
 .action-card.active {
     background-color: #ebf8ff;
     color: #2b6cb0;
     border-left: 4px solid #2b6cb0;
+}
+
+.action-card i {
+    width: 24px;
+    margin-right: 0.75rem;
+    font-size: 1.25rem;
+    text-align: center;
+}
+
+.action-card .card-text h3 {
+    margin: 0;
+    font-size: 0.875rem;
+    font-weight: 500;
+}
+
+/* Logo styles */
+.logo {
+    display: flex;
+    align-items: center;
+    padding: 1.5rem;
+    border-bottom: 1px solid #e2e8f0;
+}
+
+.logo img {
+    width: 32px;
+    height: 32px;
+    margin-right: 0.75rem;
+}
+
+.logo h1 {
+    margin: 0;
+    font-size: 1.5rem;
+    font-weight: 600;
+    color: #2d3748;
 }
 
 /* Menu item */
@@ -150,6 +203,23 @@ body {
 .main-content {
     margin-left: 280px;
     transition: margin-left 0.3s ease;
+    flex: 1;
+    padding: 2rem;
+    background: #f8fafc;
+    min-height: 100vh;
+}
+
+.content-wrapper {
+    max-width: 1200px;
+    margin: 0 auto;
+}
+
+.container-fluid {
+    width: 100%;
+    padding-right: 15px;
+    padding-left: 15px;
+    margin-right: auto;
+    margin-left: auto;
 }
 
 /* Responsive styles */
@@ -176,6 +246,27 @@ body {
     padding: 1rem 1.5rem;
     border-top: 1px solid #e2e8f0;
     margin-top: auto;
+    text-align: center;
+}
+
+.footer p {
+    margin: 0.25rem 0;
+    font-size: 0.75rem;
+    color: #718096;
+}
+
+.footer .copyright {
+    font-weight: 500;
+}
+
+.footer .powered-by {
+    color: #2b6cb0;
+    font-weight: 600;
+}
+
+.footer .navtech {
+    color: #e53e3e;
+    font-weight: 600;
 }
 
 /* User info in menu */

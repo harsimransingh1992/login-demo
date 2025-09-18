@@ -95,7 +95,7 @@ public class ModeratorController {
             int totalDoctors = accessibleClinics.stream()
                 .flatMap(clinic -> clinic.getDoctors() != null ? clinic.getDoctors().stream() : java.util.stream.Stream.empty())
                 .filter(user -> user.getIsActive() != null && user.getIsActive())
-                .filter(user -> user.getRole() == UserRole.DOCTOR)
+                .filter(user -> user.getRole() == UserRole.DOCTOR || user.getRole() == UserRole.OPD_DOCTOR)
                 .map(User::getId) // prevent duplicates if any doctor is in multiple clinics
                 .distinct()
                 .toArray().length;
@@ -291,7 +291,7 @@ public class ModeratorController {
                 if (clinicForStats != null && clinicForStats.getDoctors() != null) {
                     doctors = clinicForStats.getDoctors().stream()
                         .filter(user -> user.getIsActive() != null && user.getIsActive())
-                        .filter(user -> user.getRole() == UserRole.DOCTOR)
+                        .filter(user -> user.getRole() == UserRole.DOCTOR || user.getRole() == UserRole.OPD_DOCTOR)
                         .toList();
                     int selectedYearInt = Integer.parseInt(year);
                     Integer selectedMonthInt = (month != null && !month.isEmpty()) ? Integer.parseInt(month) : null;

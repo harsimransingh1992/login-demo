@@ -177,7 +177,7 @@ public class ProcedureLifecycleServiceImpl implements ProcedureLifecycleService 
             paymentVerified = "Payment Completed".equals(statusLabel) ||
                              "In Progress".equals(statusLabel) ||
                              "Completed".equals(statusLabel) ||
-                             "Follow-Up Scheduled".equals(statusLabel) ||
+                             "Next Sitting Scheduled".equals(statusLabel) ||
                              "Closed".equals(statusLabel);
         }
         
@@ -222,7 +222,7 @@ public class ProcedureLifecycleServiceImpl implements ProcedureLifecycleService 
             String statusLabel = examination.getProcedureStatus().getLabel();
             procedureStarted = "In Progress".equals(statusLabel) ||
                               "Completed".equals(statusLabel) ||
-                              "Follow-Up Scheduled".equals(statusLabel) ||
+                              "Next Sitting Scheduled".equals(statusLabel) ||
                               "Closed".equals(statusLabel);
         }
         
@@ -261,7 +261,7 @@ public class ProcedureLifecycleServiceImpl implements ProcedureLifecycleService 
         if (examination.getProcedureStatus() != null) {
             String statusLabel = examination.getProcedureStatus().getLabel();
             procedureCompleted = "Completed".equals(statusLabel) ||
-                                "Follow-Up Scheduled".equals(statusLabel) ||
+                                "Next Sitting Scheduled".equals(statusLabel) ||
                                 "Closed".equals(statusLabel);
         }
         
@@ -296,16 +296,16 @@ public class ProcedureLifecycleServiceImpl implements ProcedureLifecycleService 
         boolean followUpScheduled = false;
         if (examination.getProcedureStatus() != null) {
             String statusLabel = examination.getProcedureStatus().getLabel();
-            followUpScheduled = "Follow-Up Scheduled".equals(statusLabel);
+            followUpScheduled = "Next Sitting Scheduled".equals(statusLabel);
         }
         
         stage.put("completed", followUpScheduled);
         stage.put("timestamp", examination.getFollowUpDate() != null ? 
                    examination.getFollowUpDate().format(formatter) : null);
         stage.put("description", followUpScheduled ? 
-            "Follow-up scheduled for " + (examination.getFollowUpDate() != null ? 
+            "Next sitting scheduled for " + (examination.getFollowUpDate() != null ? 
                                         examination.getFollowUpDate().format(formatter) : "") : 
-            "No follow-up scheduled");
+            "No next sitting scheduled");
         
         if (followUpScheduled && examination.getFollowUpDate() != null) {
             Map<String, String> details = new HashMap<>();
@@ -314,7 +314,7 @@ public class ProcedureLifecycleServiceImpl implements ProcedureLifecycleService 
                 examination.getFollowUpDate()
             ).toDays();
             
-            details.put("Days Until Follow-up", daysUntil + " days");
+            details.put("Days Until Next Sitting", daysUntil + " days");
             details.put("With Doctor", examination.getDoctor() != null ? 
                        "Dr. " + examination.getDoctor().getFirstName() + " " + 
                        examination.getDoctor().getLastName() : "Same doctor");
@@ -324,4 +324,4 @@ public class ProcedureLifecycleServiceImpl implements ProcedureLifecycleService 
         
         return stage;
     }
-} 
+}

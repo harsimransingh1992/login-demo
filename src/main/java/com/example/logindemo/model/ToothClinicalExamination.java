@@ -7,6 +7,7 @@ import javax.persistence.*;
 import java.time.LocalDateTime;
 import java.util.List;
 import java.util.ArrayList;
+import java.util.stream.Collectors;
 
 /**
  * Entity representing a tooth clinical examination record in the dental management system.
@@ -187,6 +188,14 @@ public class ToothClinicalExamination {
     private User opdDoctor;
 
     /**
+     * The clinical file this examination belongs to.
+     * This allows grouping multiple examinations into a single clinical case.
+     */
+    @ManyToOne
+    @JoinColumn(name = "clinical_file_id")
+    private ClinicalFile clinicalFile;
+
+    /**
      * The patient that this examination belongs to.
      * Stored as a foreign key to the patient table in the database.
      */
@@ -281,12 +290,13 @@ public class ToothClinicalExamination {
     private List<ReopeningRecord> reopeningRecords = new ArrayList<>();
     
     /**
-     * Gets the total amount paid so far by summing up all payment entries.
+     * Gets the total amount paid so far by summing up all capture (payment) entries.
      * @return the total amount paid
      */
     public Double getTotalPaidAmount() {
         if (paymentEntries == null || paymentEntries.isEmpty()) return 0.0;
         return paymentEntries.stream()
+            .filter(entry -> entry.getTransactionType() == TransactionType.CAPTURE)
             .mapToDouble(e -> e.getAmount() != null ? e.getAmount() : 0.0)
             .sum();
     }
@@ -422,5 +432,54 @@ public class ToothClinicalExamination {
         }
         reopeningRecord.setReopeningSequence(getReopenCount() + 1);
         reopeningRecords.add(reopeningRecord);
+    }
+
+    /**
+     * Gets the total amount refunded so far by summing up all refund entries.
+     * @return the total amount refunded
+     */
+    public Double getTotalRefundedAmount() {
+        if (paymentEntries == null) return 0.0;
+        return paymentEntries.stream()
+            .filter(entry -> entry.getTransactionType() == TransactionType.REFUND)
+            .mapToDouble(entry -> Math.abs(entry.getAmount()))
+            .sum();
+    }
+
+    /**
+     * Gets the net amount paid (total paid minus total refunded).
+     * @return the net amount paid
+     */
+    public Double getNetPaidAmount() {
+        return getTotalPaidAmount() - getTotalRefundedAmount();
+    }
+
+    /**
+     * Gets all refund entries for this examination.
+     * @return list of refund entries
+     */
+    public List<PaymentEntry> getRefundEntries() {
+        if (paymentEntries == null) return new ArrayList<>();
+        return paymentEntries.stream()
+            .filter(entry -> entry.getTransactionType() == TransactionType.REFUND)
+            .collect(Collectors.toList());
+    }
+
+    /**
+     * Checks if this examination can be refunded.
+     * @return true if refund is possible
+     */
+    public boolean canBeRefunded() {
+        return getTotalPaidAmount() > 0 && 
+               procedureStatus != ProcedureStatus.CANCELLED &&
+               getNetPaidAmount() > 0;
+    }
+
+    /**
+     * Gets the maximum refundable amount (net paid amount).
+     * @return the maximum amount that can be refunded
+     */
+    public Double getMaxRefundableAmount() {
+        return getNetPaidAmount();
     }
 }

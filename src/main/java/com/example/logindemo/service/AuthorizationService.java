@@ -37,7 +37,7 @@ public class AuthorizationService {
         }
         
         // Doctors can only edit examinations assigned to them
-        if (authorities.stream().anyMatch(a -> a.getAuthority().equals("ROLE_DOCTOR"))) {
+        if (authorities.stream().anyMatch(a -> a.getAuthority().equals("ROLE_DOCTOR") || a.getAuthority().equals("ROLE_OPD_DOCTOR"))) {
             String username = auth.getName();
             
             // If the examination has no assigned doctor, check if we should allow editing

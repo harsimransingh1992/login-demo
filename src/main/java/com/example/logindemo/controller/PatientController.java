@@ -23,6 +23,7 @@ import org.springframework.web.bind.annotation.*;
 import org.springframework.web.multipart.MultipartFile;
 import org.springframework.web.servlet.mvc.support.RedirectAttributes;
 import org.springframework.transaction.annotation.Transactional;
+import org.springframework.data.domain.Page;
 
 import javax.annotation.Resource;
 import java.beans.PropertyEditor;
@@ -85,6 +86,9 @@ public class PatientController {
     @Resource(name="appointmentRepository")
     private AppointmentRepository appointmentRepository;
 
+    @Resource(name="procedurePriceRepository")
+    private ProcedurePriceRepository procedurePriceRepository;
+
     @Autowired
     private ModelMapper modelMapper;
 
@@ -96,6 +100,9 @@ public class PatientController {
 
     @Autowired
     private MotivationQuoteService motivationQuoteService;
+
+    @Autowired
+    private ClinicalFileService clinicalFileService;
 
     @Autowired
     private FollowUpService followUpService;
@@ -371,6 +378,19 @@ public class PatientController {
         model.addAttribute("sort", sort);
         model.addAttribute("direction", direction);
         
+        // Add doctors from current clinic for appointment scheduling
+        User currentUser = getCurrentUser();
+        ClinicModel userClinic = currentUser.getClinic();
+        if (userClinic != null) {
+            List<User> clinicDoctors = userRepository.findByClinicAndRoleIn(
+                userClinic, 
+                List.of(com.example.logindemo.model.UserRole.DOCTOR, com.example.logindemo.model.UserRole.OPD_DOCTOR)
+            );
+            model.addAttribute("clinicDoctors", clinicDoctors);
+        } else {
+            model.addAttribute("clinicDoctors", new ArrayList<>());
+        }
+        
         return "patient/list";
     }
 
@@ -416,7 +436,7 @@ public class PatientController {
 
     @PostMapping("/checkin/{id}")
     @ResponseBody
-    public ResponseEntity<?> checkInPatient(@PathVariable Long id) {
+    public ResponseEntity<?> checkInPatient(@PathVariable Long id, @RequestBody(required = false) Map<String, Object> request) {
         try {
             Authentication authentication = SecurityContextHolder.getContext().getAuthentication();
             String username = authentication.getName();
@@ -432,6 +452,12 @@ public class PatientController {
             Patient patient = patientService.getPatientById(id)
                 .orElseThrow(() -> new RuntimeException("Patient not found"));
 
+            // Get doctor ID from request if provided
+            Long doctorId = null;
+            if (request != null && request.get("doctorId") != null && !request.get("doctorId").toString().isEmpty()) {
+                doctorId = Long.parseLong(request.get("doctorId").toString());
+            }
+
             // Create new check-in record
             CheckInRecord checkInRecord = new CheckInRecord();
             checkInRecord.setPatient(patient);
@@ -439,6 +465,14 @@ public class PatientController {
             checkInRecord.setCheckInClinic(loggedInUser);
             checkInRecord.setClinic(loggedInUser.getClinic());
             checkInRecord.setStatus(CheckInStatus.WAITING);
+            
+            // Set the assigned doctor if provided
+            if (doctorId != null) {
+                User doctor = userRepository.findById(doctorId).orElse(null);
+                if (doctor != null && doctor.getClinic().equals(loggedInUser.getClinic())) {
+                    checkInRecord.setAssignedDoctor(doctor);
+                }
+            }
 
             // Save the check-in record first
             checkInRecord = checkInRecordRepository.save(checkInRecord);
@@ -461,6 +495,11 @@ public class PatientController {
             appointment.setClinic(loggedInUser.getClinic());
             appointment.setAppointmentBookedBy(loggedInUser);
             appointment.setNotes("Patient checked in - appointment completed");
+            
+            // Set the assigned doctor if provided
+            if (checkInRecord.getAssignedDoctor() != null) {
+                appointment.setDoctor(checkInRecord.getAssignedDoctor());
+            }
 
             // Save the appointment record
             Appointment savedAppointment = appointmentRepository.save(appointment);
@@ -490,13 +529,27 @@ public class PatientController {
     }
 
     @GetMapping("/details/{id}")
-    public String getPatientDetails(@PathVariable Long id, Model model) {
+    public String getPatientDetails(@PathVariable Long id, 
+                                   @RequestParam(defaultValue = "0") int page,
+                                   @RequestParam(defaultValue = "10") int size,
+                                   Model model) {
 
         Optional<Patient> patient = patientRepository.findById(id);
         
         if(patient.isPresent()) {
             model.addAttribute("patient", patient.get());
-            model.addAttribute("examinationHistory", toothClinicalExaminationService.getToothClinicalExaminationForPatientId(patient.get().getId()));
+            
+            // Get paginated examination history
+            Page<ToothClinicalExaminationDTO> examinationPage = toothClinicalExaminationService.getToothClinicalExaminationForPatientIdPaginated(patient.get().getId(), page, size);
+            model.addAttribute("examinationHistory", examinationPage.getContent());
+            model.addAttribute("currentPage", page);
+            model.addAttribute("totalPages", examinationPage.getTotalPages());
+            model.addAttribute("totalItems", examinationPage.getTotalElements());
+            model.addAttribute("pageSize", size);
+            
+            // Get clinical files for the patient
+            List<ClinicalFileDTO> clinicalFiles = clinicalFileService.getClinicalFilesByPatientId(patient.get().getId());
+            model.addAttribute("clinicalFiles", clinicalFiles);
             
             // Get current user's clinic
             String currentUsername = PeriDeskUtils.getCurrentClinicUserName();
@@ -506,9 +559,16 @@ public class PatientController {
             // Add current user's role to model for frontend validation
             model.addAttribute("currentUserRole", currentUser.getRole());
             
+            // Add current user to model for permission checks
+            model.addAttribute("currentUser", currentUser);
+            
             // Get doctors from the same clinic
             List<UserDTO> doctors = userService.getUsersByRoleAndClinic(UserRole.DOCTOR, currentUser.getClinic());
-            model.addAttribute("doctorDetails", doctors);
+            List<UserDTO> opdDoctors = userService.getUsersByRoleAndClinic(UserRole.OPD_DOCTOR, currentUser.getClinic());
+            List<UserDTO> allDoctors = new ArrayList<>();
+            allDoctors.addAll(doctors);
+            allDoctors.addAll(opdDoctors);
+            model.addAttribute("doctorDetails", allDoctors);
 
             // Prepare duplicate permissions map keyed by exam id for easy lookup in JSP
             try {
@@ -531,7 +591,9 @@ public class PatientController {
                             isOpdDoctor = java.util.Objects.equals(examModelOpt.get().getOpdDoctor().getId(), currentUser.getId());
                         }
                     } catch (Exception ignore) { /* keep false */ }
-                    duplicateAllowed.put(examDto.getId(), sameClinic && sameDate && isOpdDoctor);
+                    // Allow OPD_DOCTOR role to duplicate regardless of being the OPD doctor
+                    boolean canDuplicate = sameClinic && sameDate && (isOpdDoctor || currentUser.getRole() == UserRole.OPD_DOCTOR);
+                    duplicateAllowed.put(examDto.getId(), canDuplicate);
                 }
                 model.addAttribute("duplicateAllowed", duplicateAllowed);
             } catch (Exception e) {
@@ -677,6 +739,34 @@ public class PatientController {
                 return "redirect:/patients/list";
             }
             
+            // Get the examination entity to access payment calculation methods
+            Optional<ToothClinicalExamination> entityOpt = toothClinicalExaminationRepository.findById(id);
+            if (entityOpt.isPresent()) {
+                ToothClinicalExamination entity = entityOpt.get();
+                
+                // Create an enriched DTO with refund calculations
+                ToothClinicalExaminationDTO enrichedExamination = new ToothClinicalExaminationDTO() {
+                    @Override
+                    public Double getTotalPaidAmount() {
+                        return entity.getTotalPaidAmount();
+                    }
+                    
+                    @Override
+                    public Double getTotalRefundedAmount() {
+                        return entity.getTotalRefundedAmount();
+                    }
+                    
+                    @Override
+                    public Double getNetPaidAmount() {
+                        return entity.getNetPaidAmount();
+                    }
+                };
+                
+                // Copy all properties from the original DTO
+                modelMapper.map(examination, enrichedExamination);
+                examination = enrichedExamination;
+            }
+            
             // Get patient details
             Optional<Patient> patient = patientRepository.findById(Long.valueOf(examination.getPatient().getId()));
             if (!patient.isPresent()) {
@@ -690,11 +780,17 @@ public class PatientController {
             
             // Get doctors from the same clinic
             List<UserDTO> doctors = userService.getUsersByRoleAndClinic(UserRole.DOCTOR, currentUser.getClinic());
+            List<UserDTO> opdDoctors = userService.getUsersByRoleAndClinic(UserRole.OPD_DOCTOR, currentUser.getClinic());
+            List<UserDTO> allDoctors = new ArrayList<>();
+            allDoctors.addAll(doctors);
+            allDoctors.addAll(opdDoctors);
+            model.addAttribute("doctorDetails", allDoctors);
             
             model.addAttribute("examination", examination);
             model.addAttribute("patient", patient.get());
-            model.addAttribute("doctors", doctors);
+            model.addAttribute("doctors", allDoctors);
             model.addAttribute("currentUserRole", currentUser.getRole());
+            model.addAttribute("currentUser", currentUser);
             
             return "patient/examinationDetails";
         } catch (Exception e) {
@@ -748,9 +844,28 @@ public class PatientController {
         }
     }
 
+    @GetMapping("/examination/{id}/update")
+    public String showExaminationUpdatePage(@PathVariable Long id) {
+        // Redirect to the examination details page where editing can be done
+        return "redirect:/patients/examination/" + id;
+    }
+
     @PostMapping("/examination/{id}/update")
     @ResponseBody
-    public ResponseEntity<?> updateExamination(@PathVariable Long id, @RequestBody ToothClinicalExaminationDTO examinationDTO) {
+    public ResponseEntity<?> updateExamination(@PathVariable Long id, 
+                                             @RequestParam(required = false) String toothCondition,
+                                             @RequestParam(required = false) String existingRestoration,
+                                             @RequestParam(required = false) String toothMobility,
+                                             @RequestParam(required = false) String pocketDepth,
+                                             @RequestParam(required = false) String bleedingOnProbing,
+                                             @RequestParam(required = false) String plaqueScore,
+                                             @RequestParam(required = false) String gingivalRecession,
+                                             @RequestParam(required = false) String toothVitality,
+                                             @RequestParam(required = false) String furcationInvolvement,
+                                             @RequestParam(required = false) String toothSensitivity,
+                                             @RequestParam(required = false) String examinationNotes,
+                                             @RequestParam(required = false) String chiefComplaints,
+                                             @RequestParam(required = false) String advised) {
         try {
             // Get current user to check role
             String currentUsername = PeriDeskUtils.getCurrentClinicUserName();
@@ -778,38 +893,44 @@ public class PatientController {
             ToothClinicalExamination existingExamination = existingExaminationOpt.get();
             
             // Update only the fields that can be changed
-            if (examinationDTO.getToothCondition() != null) {
-                existingExamination.setToothCondition(examinationDTO.getToothCondition());
+            if (toothCondition != null && !toothCondition.trim().isEmpty()) {
+                existingExamination.setToothCondition(ToothCondition.valueOf(toothCondition));
             }
-            if (examinationDTO.getExistingRestoration() != null) {
-                existingExamination.setExistingRestoration(examinationDTO.getExistingRestoration());
+            if (existingRestoration != null && !existingRestoration.trim().isEmpty()) {
+                existingExamination.setExistingRestoration(ExistingRestoration.valueOf(existingRestoration));
             }
-            if (examinationDTO.getToothMobility() != null) {
-                existingExamination.setToothMobility(examinationDTO.getToothMobility());
+            if (toothMobility != null && !toothMobility.trim().isEmpty()) {
+                existingExamination.setToothMobility(ToothMobility.valueOf(toothMobility));
             }
-            if (examinationDTO.getPocketDepth() != null) {
-                existingExamination.setPocketDepth(examinationDTO.getPocketDepth());
+            if (pocketDepth != null && !pocketDepth.trim().isEmpty()) {
+                existingExamination.setPocketDepth(PocketDepth.valueOf(pocketDepth));
             }
-            if (examinationDTO.getBleedingOnProbing() != null) {
-                existingExamination.setBleedingOnProbing(examinationDTO.getBleedingOnProbing());
+            if (bleedingOnProbing != null && !bleedingOnProbing.trim().isEmpty()) {
+                existingExamination.setBleedingOnProbing(BleedingOnProbing.valueOf(bleedingOnProbing));
             }
-            if (examinationDTO.getPlaqueScore() != null) {
-                existingExamination.setPlaqueScore(examinationDTO.getPlaqueScore());
+            if (plaqueScore != null && !plaqueScore.trim().isEmpty()) {
+                existingExamination.setPlaqueScore(PlaqueScore.valueOf(plaqueScore));
             }
-            if (examinationDTO.getGingivalRecession() != null) {
-                existingExamination.setGingivalRecession(examinationDTO.getGingivalRecession());
+            if (gingivalRecession != null && !gingivalRecession.trim().isEmpty()) {
+                existingExamination.setGingivalRecession(GingivalRecession.valueOf(gingivalRecession));
             }
-            if (examinationDTO.getToothVitality() != null) {
-                existingExamination.setToothVitality(examinationDTO.getToothVitality());
+            if (toothVitality != null && !toothVitality.trim().isEmpty()) {
+                existingExamination.setToothVitality(ToothVitality.valueOf(toothVitality));
             }
-            if (examinationDTO.getFurcationInvolvement() != null) {
-                existingExamination.setFurcationInvolvement(examinationDTO.getFurcationInvolvement());
+            if (furcationInvolvement != null && !furcationInvolvement.trim().isEmpty()) {
+                existingExamination.setFurcationInvolvement(FurcationInvolvement.valueOf(furcationInvolvement));
             }
-            if (examinationDTO.getToothSensitivity() != null) {
-                existingExamination.setToothSensitivity(examinationDTO.getToothSensitivity());
+            if (toothSensitivity != null && !toothSensitivity.trim().isEmpty()) {
+                existingExamination.setToothSensitivity(ToothSensitivity.valueOf(toothSensitivity));
             }
-            if (examinationDTO.getExaminationNotes() != null) {
-                existingExamination.setExaminationNotes(examinationDTO.getExaminationNotes());
+            if (examinationNotes != null && !examinationNotes.trim().isEmpty()) {
+                existingExamination.setExaminationNotes(examinationNotes);
+            }
+            if (chiefComplaints != null && !chiefComplaints.trim().isEmpty()) {
+                existingExamination.setChiefComplaints(chiefComplaints);
+            }
+            if (advised != null && !advised.trim().isEmpty()) {
+                existingExamination.setAdvised(advised);
             }
             
             // Save the updated examination
@@ -944,7 +1065,11 @@ public class PatientController {
             if (currentUser.isPresent()) {
                 User user = currentUser.get();
                 List<UserDTO> doctors = userService.getUsersByRoleAndClinic(UserRole.DOCTOR, user.getClinic());
-                model.addAttribute("doctors", doctors);
+                List<UserDTO> opdDoctors = userService.getUsersByRoleAndClinic(UserRole.OPD_DOCTOR, user.getClinic());
+                List<UserDTO> allDoctors = new ArrayList<>();
+                allDoctors.addAll(doctors);
+                allDoctors.addAll(opdDoctors);
+                model.addAttribute("doctors", allDoctors);
                 model.addAttribute("currentUserRole", user.getRole());
             }
             
@@ -1396,6 +1521,11 @@ public class PatientController {
             User currentUser = userService.findByUsername(currentUsername)
                 .orElseThrow(() -> new RuntimeException("Current user not found"));
             List<UserDTO> doctors = userService.getUsersByRoleAndClinic(UserRole.DOCTOR, currentUser.getClinic());
+            List<UserDTO> opdDoctors = userService.getUsersByRoleAndClinic(UserRole.OPD_DOCTOR, currentUser.getClinic());
+            List<UserDTO> allDoctors = new ArrayList<>();
+            allDoctors.addAll(doctors);
+            allDoctors.addAll(opdDoctors);
+            model.addAttribute("doctorDetails", allDoctors);
 
             log.info("Loading lifecycle stages for examination ID: {}", examinationId);
             // Get lifecycle stages from the service
@@ -1436,7 +1566,7 @@ public class PatientController {
             model.addAttribute("opdDoctor", opdDoctor);
             model.addAttribute("paymentStatus", paymentStatus);
             model.addAttribute("lifecycleStages", lifecycleStages);
-            model.addAttribute("doctors", doctors);
+            model.addAttribute("doctors", allDoctors);
             model.addAttribute("currentUserRole", currentUser.getRole());
 
             return "patient/procedureLifecycle";
@@ -1448,9 +1578,9 @@ public class PatientController {
     }
 
     private String determinePaymentStatus(ToothClinicalExamination examination) {
-        double totalPaid = examination.getTotalPaidAmount();
+        double netPaid = examination.getNetPaidAmount();
         double totalProcedureAmount = examination.getTotalProcedureAmount() != null ? examination.getTotalProcedureAmount() : 0.0;
-        double remainingAmount = totalProcedureAmount - totalPaid;
+        double remainingAmount = totalProcedureAmount - netPaid;
         
         if (remainingAmount <= 0) {
             return "Full Payment Received";
@@ -1507,7 +1637,11 @@ public class PatientController {
             
             // Get available doctors for the clinic
             List<User> doctors = userRepository.findByRoleAndClinic_Id(UserRole.DOCTOR, examination.getExaminationClinic().getId());
-            model.addAttribute("doctors", doctors);
+            List<User> opdDoctors = userRepository.findByRoleAndClinic_Id(UserRole.OPD_DOCTOR, examination.getExaminationClinic().getId());
+            List<User> allDoctors = new ArrayList<>();
+            allDoctors.addAll(doctors);
+            allDoctors.addAll(opdDoctors);
+            model.addAttribute("doctors", allDoctors);
             
             return "patient/scheduleFollowup";
         } catch (Exception e) {
@@ -1556,14 +1690,7 @@ public class PatientController {
                 ));
             }
 
-            // 3) Current user must be the OPD doctor
-            if (existing.getOpdDoctor() == null || existing.getOpdDoctor().getId() == null
-                || !existing.getOpdDoctor().getId().equals(currentUser.getId())) {
-                return ResponseEntity.status(HttpStatus.FORBIDDEN).body(Map.of(
-                        "success", false,
-                        "message", "Cannot duplicate: only the OPD doctor can duplicate this examination"
-                ));
-            }
+            // OPD doctor validation removed - any user can now duplicate examinations
 
             // Create a new examination copying requested clinical details
             ToothClinicalExamination duplicate = new ToothClinicalExamination();
@@ -1626,6 +1753,212 @@ public class PatientController {
             return ResponseEntity.ok(Map.of(
                     "success", true,
                     "newExaminationId", saved.getId()
+            ));
+        } catch (Exception e) {
+            log.error("Error duplicating examination {}: {}", examinationId, e.getMessage(), e);
+            return ResponseEntity.badRequest().body(Map.of(
+                    "success", false,
+                    "message", e.getMessage()
+            ));
+        }
+    }
+
+    @GetMapping("/examination/{examinationId}/details")
+    @ResponseBody
+    public ResponseEntity<?> getExaminationDetails(@PathVariable Long examinationId) {
+        try {
+            Optional<ToothClinicalExamination> optional = toothClinicalExaminationRepository.findById(examinationId);
+            if (optional.isEmpty()) {
+                return ResponseEntity.badRequest().body(Map.of(
+                        "success", false,
+                        "message", "Examination not found"
+                ));
+            }
+
+            ToothClinicalExamination examination = optional.get();
+
+            // Get treating doctor name
+            String treatingDoctorName = null;
+            if (examination.getDoctor() != null) {
+                treatingDoctorName = examination.getDoctor().getFirstName() + " " + 
+                                   examination.getDoctor().getLastName();
+            }
+
+            // Get procedure name and price
+            String procedureName = null;
+            Double procedurePrice = null;
+            log.info("Examination ID: {}, Procedure: {}", examinationId, examination.getProcedure());
+            if (examination.getProcedure() != null) {
+                procedureName = examination.getProcedure().getProcedureName();
+                procedurePrice = examination.getProcedure().getPrice();
+                log.info("Procedure found - Name: {}, Price: {}", procedureName, procedurePrice);
+            } else {
+                log.warn("No procedure found for examination ID: {}", examinationId);
+            }
+
+            // Count attachments
+            int attachmentCount = mediaFileRepository.countByExaminationId(examinationId);
+
+            return ResponseEntity.ok(Map.of(
+                    "success", true,
+                    "treatingDoctorName", treatingDoctorName != null ? treatingDoctorName : "",
+                    "procedureName", procedureName != null ? procedureName : "",
+                    "procedurePrice", procedurePrice != null ? procedurePrice : 0.0,
+                    "attachmentCount", attachmentCount
+            ));
+
+        } catch (Exception e) {
+            log.error("Error getting examination details: ", e);
+            return ResponseEntity.status(HttpStatus.INTERNAL_SERVER_ERROR).body(Map.of(
+                    "success", false,
+                    "message", "Error getting examination details: " + e.getMessage()
+            ));
+        }
+    }
+
+    @PostMapping("/examination/{examinationId}/duplicate-selective")
+    @ResponseBody
+    public ResponseEntity<?> duplicateExaminationSelective(
+            @PathVariable Long examinationId,
+            @RequestBody Map<String, Object> request) {
+        try {
+            Optional<ToothClinicalExamination> optional = toothClinicalExaminationRepository.findById(examinationId);
+            if (optional.isEmpty()) {
+                return ResponseEntity.badRequest().body(Map.of(
+                        "success", false,
+                        "message", "Examination not found"
+                ));
+            }
+
+            ToothClinicalExamination existing = optional.get();
+
+            // Authorization and validation checks (same as original)
+            String currentUsername = PeriDeskUtils.getCurrentClinicUserName();
+            User currentUser = userService.findByUsername(currentUsername)
+                .orElseThrow(() -> new RuntimeException("Current user not found"));
+
+            // 1) Clinic must match
+            if (existing.getExaminationClinic() == null || currentUser.getClinic() == null
+                || !existing.getExaminationClinic().getId().equals(currentUser.getClinic().getId())) {
+                return ResponseEntity.status(HttpStatus.FORBIDDEN).body(Map.of(
+                        "success", false,
+                        "message", "Cannot duplicate: examination clinic does not match current user's clinic"
+                ));
+            }
+
+            // 2) Examination date must be today
+            LocalDate examDate = existing.getExaminationDate() != null ? existing.getExaminationDate().toLocalDate() : null;
+            if (examDate == null || !examDate.equals(LocalDate.now())) {
+                return ResponseEntity.status(HttpStatus.FORBIDDEN).body(Map.of(
+                        "success", false,
+                        "message", "Cannot duplicate: examination date must be today"
+                ));
+            }
+
+            // OPD doctor validation removed - any user can now duplicate examinations
+
+            // Get selection parameters (matching frontend parameter names)
+            boolean copyAttachments = Boolean.TRUE.equals(request.get("duplicateAttachments"));
+            boolean copyTreatingDoctor = Boolean.TRUE.equals(request.get("duplicateTreatingDoctor"));
+            boolean copyProcedure = Boolean.TRUE.equals(request.get("duplicateProcedure"));
+            
+            // Get target teeth from request
+            @SuppressWarnings("unchecked")
+            List<Integer> targetTeeth = (List<Integer>) request.get("targetTeeth");
+            
+            // Validate target teeth
+            if (targetTeeth == null || targetTeeth.isEmpty()) {
+                return ResponseEntity.badRequest().body(Map.of(
+                        "success", false,
+                        "message", "At least one tooth must be selected"
+                ));
+            }
+
+            List<Long> createdExaminationIds = new ArrayList<>();
+            
+            // Create examination for each selected tooth
+            for (Integer toothNumber : targetTeeth) {
+                // Create a new examination copying basic clinical details
+                ToothClinicalExamination duplicate = new ToothClinicalExamination();
+                duplicate.setPatient(existing.getPatient());
+                duplicate.setExaminationClinic(existing.getExaminationClinic());
+                
+                // Set the specific tooth number for this duplicate
+                duplicate.setToothNumber(ToothNumber.valueOf("TOOTH_" + toothNumber));
+                duplicate.setOpdDoctor(null); // Never copy OPD doctor
+
+                // Conditionally copy treating doctor
+                if (copyTreatingDoctor) {
+                    duplicate.setAssignedDoctor(existing.getAssignedDoctor());
+                } else {
+                    duplicate.setAssignedDoctor(null);
+                }
+
+                // Copy clinical attributes (always copied)
+                duplicate.setChiefComplaints(existing.getChiefComplaints());
+                duplicate.setExaminationNotes(existing.getExaminationNotes());
+                duplicate.setBleedingOnProbing(existing.getBleedingOnProbing());
+                duplicate.setExistingRestoration(existing.getExistingRestoration());
+                duplicate.setFurcationInvolvement(existing.getFurcationInvolvement());
+                duplicate.setGingivalRecession(existing.getGingivalRecession());
+                duplicate.setPeriapicalCondition(existing.getPeriapicalCondition());
+                duplicate.setPlaqueScore(existing.getPlaqueScore());
+                duplicate.setPocketDepth(existing.getPocketDepth());
+                duplicate.setToothCondition(existing.getToothCondition());
+                duplicate.setToothMobility(existing.getToothMobility());
+                duplicate.setToothSensitivity(existing.getToothSensitivity());
+                duplicate.setToothVitality(existing.getToothVitality());
+                duplicate.setAdvised(existing.getAdvised());
+
+                // Copy images (both legacy paths) - always copied
+                duplicate.setUpperDenturePicturePath(existing.getUpperDenturePicturePath());
+                duplicate.setLowerDenturePicturePath(existing.getLowerDenturePicturePath());
+                duplicate.setXrayPicturePath(existing.getXrayPicturePath());
+
+                // Conditionally copy procedure
+                if (copyProcedure) {
+                    duplicate.setProcedure(existing.getProcedure());
+                    duplicate.setTotalProcedureAmount(existing.getTotalProcedureAmount());
+                } else {
+                    duplicate.setProcedure(null);
+                    duplicate.setTotalProcedureAmount(null);
+                }
+
+                // Reset fields that should NOT be duplicated
+                duplicate.setProcedureStatus(ProcedureStatus.OPEN);
+                duplicate.setTreatmentStartingDate(null);
+
+                // Dates
+                duplicate.setExaminationDate(LocalDateTime.now());
+                duplicate.setCreatedAt(LocalDateTime.now());
+                duplicate.setUpdatedAt(LocalDateTime.now());
+
+                ToothClinicalExamination saved = toothClinicalExaminationRepository.save(duplicate);
+                createdExaminationIds.add(saved.getId());
+
+                // Conditionally copy media files (attachments) for each examination
+                if (copyAttachments) {
+                    try {
+                        List<MediaFile> mediaFiles = mediaFileRepository.findByExamination_Id(existing.getId());
+                        for (MediaFile mf : mediaFiles) {
+                            MediaFile clone = new MediaFile();
+                            clone.setExamination(saved);
+                            clone.setFilePath(mf.getFilePath());
+                            clone.setFileType(mf.getFileType());
+                            clone.setUploadedAt(LocalDateTime.now());
+                            mediaFileRepository.save(clone);
+                        }
+                    } catch (Exception mediaEx) {
+                        log.warn("Failed to copy media files for examination {} -> {}: {}", existing.getId(), saved.getId(), mediaEx.getMessage());
+                    }
+                }
+            }
+
+            return ResponseEntity.ok(Map.of(
+                    "success", true,
+                    "createdExaminationIds", createdExaminationIds,
+                    "teethCount", targetTeeth.size(),
+                    "message", "Successfully created " + targetTeeth.size() + " examinations for teeth: " + targetTeeth
             ));
         } catch (Exception e) {
             log.error("Error duplicating examination {}: {}", examinationId, e.getMessage(), e);
@@ -1782,13 +2115,13 @@ public class PatientController {
                     .collect(java.util.stream.Collectors.toList()));
             }
 
-            // Block all transitions except FOLLOW_UP_COMPLETED, REOPEN->IN_PROGRESS, and status changes for already CLOSED cases if there are active follow-ups
+            // Block all transitions except Next-Sitting Completed, REOPEN->IN_PROGRESS, and status changes for already CLOSED cases if there are active follow-ups
             boolean isReopenToInProgress = (currentStatus == ProcedureStatus.REOPEN && newStatus == ProcedureStatus.IN_PROGRESS);
             boolean isFollowUpCompleted = (newStatus == ProcedureStatus.FOLLOW_UP_COMPLETED);
             boolean isAlreadyClosed = (currentStatus == ProcedureStatus.CLOSED);
             
             log.info("Is REOPEN->IN_PROGRESS transition: {}", isReopenToInProgress);
-            log.info("Is FOLLOW_UP_COMPLETED transition: {}", isFollowUpCompleted);
+            log.info("Is Next-Sitting Completed transition: {}", isFollowUpCompleted);
             log.info("Is already CLOSED: {}", isAlreadyClosed);
             
             if (hasActiveFollowUps && !isFollowUpCompleted && !isReopenToInProgress && !isAlreadyClosed) {
@@ -2059,8 +2392,8 @@ public class PatientController {
             case IN_PROGRESS -> "Procedure currently in progress";
             case ON_HOLD -> "Procedure temporarily on hold";
             case COMPLETED -> "Procedure fully completed";
-            case FOLLOW_UP_SCHEDULED -> "Follow-up appointment scheduled";
-            case FOLLOW_UP_COMPLETED -> "Follow-up appointment completed";
+            case FOLLOW_UP_SCHEDULED -> "Next-sitting appointment scheduled";
+            case FOLLOW_UP_COMPLETED -> "Next-sitting appointment completed";
             case CLOSED -> "Procedure has been closed with X-ray";
             case CANCELLED -> "Procedure has been cancelled";
             case REOPEN -> "Case has been reopened for additional treatment";
@@ -2767,6 +3100,8 @@ public class PatientController {
             String appointmentDate = request.get("appointmentDate").toString();
             String appointmentTime = request.get("appointmentTime").toString();
             String notes = request.get("notes") != null ? request.get("notes").toString() : "";
+            Long doctorId = request.get("doctorId") != null && !request.get("doctorId").toString().isEmpty() ? 
+                Long.parseLong(request.get("doctorId").toString()) : null;
             
             // Parse date and time
             LocalDateTime appointmentDateTime = LocalDateTime.parse(appointmentDate + "T" + appointmentTime);
@@ -2796,6 +3131,14 @@ public class PatientController {
             appointment.setClinic(clinic);
             appointment.setAppointmentBookedBy(currentUser);
             appointment.setNotes(notes);
+            
+            // Set the assigned doctor if provided
+            if (doctorId != null) {
+                User doctor = userRepository.findById(doctorId).orElse(null);
+                if (doctor != null && doctor.getClinic().equals(clinic)) {
+                    appointment.setDoctor(doctor);
+                }
+            }
             
             // Save appointment
             Appointment savedAppointment = appointmentRepository.save(appointment);
@@ -2870,6 +3213,319 @@ public class PatientController {
             errorResponse.put("error", "An error occurred while loading appointments");
             errorResponse.put("message", e.getMessage());
             return ResponseEntity.status(HttpStatus.INTERNAL_SERVER_ERROR).body(errorResponse);
+        }
+    }
+
+    @GetMapping("/examination/{examinationId}/payment-history")
+    @ResponseBody
+    public Map<String, Object> getExaminationPaymentHistory(@PathVariable Long examinationId) {
+        Map<String, Object> response = new HashMap<>();
+        
+        try {
+            // Get the current user's clinic
+            String clinicId = PeriDeskUtils.getCurrentClinicModel().getClinicId();
+            
+            // Get the examination
+            Optional<ToothClinicalExamination> examinationOpt = toothClinicalExaminationRepository.findById(examinationId);
+            if (examinationOpt.isEmpty()) {
+                response.put("success", false);
+                response.put("message", "Examination not found");
+                return response;
+            }
+            
+            ToothClinicalExamination examination = examinationOpt.get();
+            
+            // Verify the examination belongs to the current clinic
+            if (!examination.getExaminationClinic().getClinicId().equals(clinicId)) {
+                response.put("success", false);
+                response.put("message", "You don't have permission to view this examination");
+                return response;
+            }
+            
+            // Create examination data
+            Map<String, Object> examinationData = new HashMap<>();
+            examinationData.put("id", examination.getId());
+            examinationData.put("toothNumber", examination.getToothNumber() != null ? examination.getToothNumber().toString() : "");
+            examinationData.put("examinationDate", examination.getExaminationDate());
+            examinationData.put("totalProcedureAmount", examination.getTotalProcedureAmount());
+            
+            // Add procedure info if available
+            if (examination.getProcedure() != null) {
+                Map<String, Object> procedureData = new HashMap<>();
+                procedureData.put("id", examination.getProcedure().getId());
+                procedureData.put("procedureName", examination.getProcedure().getProcedureName());
+                procedureData.put("price", examination.getProcedure().getPrice());
+                examinationData.put("procedure", procedureData);
+            }
+            
+            // Get payment entries
+            List<Map<String, Object>> paymentData = new ArrayList<>();
+            double totalPaid = 0.0;
+            double totalRefunded = 0.0;
+            
+            if (examination.getPaymentEntries() != null) {
+                for (PaymentEntry entry : examination.getPaymentEntries()) {
+                    Map<String, Object> payment = new HashMap<>();
+                    payment.put("id", entry.getId());
+                    payment.put("amount", entry.getAmount());
+                    payment.put("paymentMode", entry.getPaymentMode().toString());
+                    payment.put("paymentDate", entry.getPaymentDate().toString());
+                    payment.put("notes", entry.getRemarks());
+                    payment.put("transactionType", entry.getTransactionType() != null ? entry.getTransactionType().toString() : "CAPTURE");
+                    
+                    // Add recorded by info if available
+                    if (entry.getRecordedBy() != null) {
+                        payment.put("recordedBy", entry.getRecordedBy().getFirstName() + " " + entry.getRecordedBy().getLastName());
+                    }
+                    
+                    if (entry.getAmount() != null) {
+                        TransactionType transactionType = entry.getTransactionType();
+                        if (transactionType == TransactionType.REFUND) {
+                            totalRefunded += entry.getAmount();
+                        } else {
+                            totalPaid += entry.getAmount();
+                        }
+                    }
+                    
+                    paymentData.add(payment);
+                }
+            }
+            
+            // Sort payments by date (oldest first - chronological order)
+            paymentData.sort((a, b) -> {
+                String dateA = a.get("paymentDate").toString();
+                String dateB = b.get("paymentDate").toString();
+                return dateA.compareTo(dateB);
+            });
+            
+            // Create summary
+            Map<String, Object> summary = new HashMap<>();
+            summary.put("totalProcedureAmount", examination.getTotalProcedureAmount() != null ? examination.getTotalProcedureAmount() : 0);
+            summary.put("totalPaid", totalPaid);
+            summary.put("totalRefunded", totalRefunded);
+            summary.put("netAmount", totalPaid - totalRefunded);
+            summary.put("remaining", (examination.getTotalProcedureAmount() != null ? examination.getTotalProcedureAmount() : 0) - (totalPaid - totalRefunded));
+            
+            response.put("success", true);
+            response.put("examination", examinationData);
+            response.put("payments", paymentData);
+            response.put("summary", summary);
+            
+        } catch (Exception e) {
+            log.error("Error loading payment history for examination {}: {}", examinationId, e.getMessage(), e);
+            response.put("success", false);
+            response.put("message", "Error loading payment history: " + e.getMessage());
+        }
+        
+        return response;
+    }
+
+    /**
+     * Quick Add Examination endpoint - creates multiple examinations for selected teeth with a single procedure
+     */
+    @PostMapping("/{patientId}/examinations/quick-add")
+    @ResponseBody
+    @Transactional
+    public ResponseEntity<?> quickAddExaminations(
+            @PathVariable Long patientId,
+            @RequestParam("procedureId") Long procedureId,
+            @RequestParam("teethNumbers") String teethNumbers) {
+        try {
+            // Get current user and clinic
+            User currentUser = getCurrentUser();
+            ClinicModel clinic = currentUser.getClinic();
+            
+            if (clinic == null) {
+                return ResponseEntity.badRequest().body(Map.of(
+                    "success", false,
+                    "message", "User clinic not found"
+                ));
+            }
+
+            // Validate patient exists
+            Optional<Patient> patientOptional = patientRepository.findById(patientId);
+            if (patientOptional.isEmpty()) {
+                return ResponseEntity.badRequest().body(Map.of(
+                    "success", false,
+                    "message", "Patient not found"
+                ));
+            }
+            Patient patient = patientOptional.get();
+
+            // Validate procedure exists
+            ProcedurePriceDTO procedureDTO = procedurePriceService.getProcedureById(procedureId);
+            if (procedureDTO == null) {
+                return ResponseEntity.badRequest().body(Map.of(
+                    "success", false,
+                    "message", "Procedure not found"
+                ));
+            }
+            
+            // Get the actual ProcedurePrice entity for setting in examination
+            Optional<ProcedurePrice> procedureOpt = procedurePriceRepository.findById(procedureId);
+            if (!procedureOpt.isPresent()) {
+                return ResponseEntity.badRequest().body(Map.of(
+                    "success", false,
+                    "message", "Procedure entity not found"
+                ));
+            }
+            ProcedurePrice procedure = procedureOpt.get();
+
+            // Parse teeth numbers
+            String[] teethArray = teethNumbers.split(",");
+            List<ToothNumber> selectedTeeth = new ArrayList<>();
+            
+            for (String toothStr : teethArray) {
+                try {
+                    int toothNum = Integer.parseInt(toothStr.trim());
+                    // Convert number to ToothNumber enum
+                    String toothEnumName = "TOOTH_" + toothNum;
+                    try {
+                        ToothNumber toothNumber = ToothNumber.valueOf(toothEnumName);
+                        selectedTeeth.add(toothNumber);
+                    } catch (IllegalArgumentException e) {
+                        log.warn("Invalid tooth number: {}", toothNum);
+                    }
+                } catch (NumberFormatException e) {
+                    log.warn("Invalid tooth number format: {}", toothStr);
+                }
+            }
+
+            if (selectedTeeth.isEmpty()) {
+                return ResponseEntity.badRequest().body(Map.of(
+                    "success", false,
+                    "message", "No valid teeth selected"
+                ));
+            }
+
+            // Create examinations for each selected tooth
+            List<ToothClinicalExamination> createdExaminations = new ArrayList<>();
+            LocalDateTime now = LocalDateTime.now();
+
+            for (ToothNumber toothNumber : selectedTeeth) {
+                ToothClinicalExamination examination = new ToothClinicalExamination();
+                examination.setPatient(patient);
+                examination.setExaminationClinic(clinic);
+                examination.setToothNumber(toothNumber);
+                examination.setProcedure(procedure);
+                examination.setTotalProcedureAmount(procedure.getPrice());
+                examination.setProcedureStatus(ProcedureStatus.OPEN);
+                examination.setExaminationDate(now);
+                examination.setCreatedAt(now);
+                examination.setUpdatedAt(now);
+                
+                // Set default values for required fields
+                examination.setChiefComplaints("Quick Add - " + procedureDTO.getProcedureName());
+                examination.setExaminationNotes("Created via Quick Add for tooth " + toothNumber.toString());
+                
+                ToothClinicalExamination saved = toothClinicalExaminationRepository.save(examination);
+                createdExaminations.add(saved);
+                
+                log.info("Created examination {} for patient {} tooth {} with procedure {}", 
+                    saved.getId(), patientId, toothNumber.toString(), procedureDTO.getProcedureName());
+            }
+
+            return ResponseEntity.ok(Map.of(
+                "success", true,
+                "message", "Successfully created " + createdExaminations.size() + " examination(s)",
+                "examinationCount", createdExaminations.size(),
+                "examinationIds", createdExaminations.stream().map(ToothClinicalExamination::getId).collect(Collectors.toList())
+            ));
+
+        } catch (Exception e) {
+            log.error("Error creating quick add examinations for patient {}: {}", patientId, e.getMessage(), e);
+            return ResponseEntity.badRequest().body(Map.of(
+                "success", false,
+                "message", "Error creating examinations: " + e.getMessage()
+            ));
+        }
+    }
+
+    @DeleteMapping("/examination/{examinationId}/delete")
+    @ResponseBody
+    @Transactional
+    public ResponseEntity<?> deleteExamination(@PathVariable Long examinationId) {
+        try {
+            log.info("Delete examination request for examination ID: {}", examinationId);
+
+            // Get current user
+            User currentUser = getCurrentUser();
+            
+            if (currentUser == null) {
+                return ResponseEntity.badRequest().body(Map.of(
+                    "success", false,
+                    "message", "User not found"
+                ));
+            }
+
+            // Check if user has permission to delete examinations
+            if (!currentUser.getCanDeleteExamination()) {
+                return ResponseEntity.status(HttpStatus.FORBIDDEN).body(Map.of(
+                    "success", false,
+                    "message", "You do not have permission to delete examinations"
+                ));
+            }
+
+            // Find the examination
+            Optional<ToothClinicalExamination> examinationOpt = toothClinicalExaminationRepository.findById(examinationId);
+            if (!examinationOpt.isPresent()) {
+                return ResponseEntity.badRequest().body(Map.of(
+                    "success", false,
+                    "message", "Examination not found"
+                ));
+            }
+
+            ToothClinicalExamination examination = examinationOpt.get();
+
+            // Check if examination has any payments collected using the correct method
+            Double totalPaid = examination.getTotalPaidAmount();
+            boolean hasPayments = totalPaid != null && totalPaid > 0;
+            
+            if (hasPayments) {
+                return ResponseEntity.badRequest().body(Map.of(
+                    "success", false,
+                    "message", "Cannot delete examination with collected payments. Amount paid: ₹" + totalPaid
+                ));
+            }
+
+            // Check if examination has any procedure lifecycle transitions (started procedures)
+            List<ProcedureLifecycleTransition> transitions = procedureLifecycleTransitionRepository.findByExaminationOrderByTransitionTimeAsc(examination);
+            if (!transitions.isEmpty()) {
+                return ResponseEntity.badRequest().body(Map.of(
+                    "success", false,
+                    "message", "Cannot delete examination with started procedures. Please complete or cancel procedures first."
+                ));
+            }
+
+            // Delete associated media files first
+            List<MediaFile> mediaFiles = mediaFileRepository.findByExamination_Id(examinationId);
+            for (MediaFile mediaFile : mediaFiles) {
+                try {
+                    // Delete physical file
+                    fileStorageService.deleteFile(mediaFile.getFilePath());
+                } catch (Exception e) {
+                    log.warn("Failed to delete physical file: {}", mediaFile.getFilePath(), e);
+                }
+                mediaFileRepository.delete(mediaFile);
+            }
+
+            // Delete the examination
+            toothClinicalExaminationRepository.delete(examination);
+
+            log.info("Successfully deleted examination {} for patient {} tooth {}", 
+                examinationId, examination.getPatient().getId(), examination.getToothNumber());
+
+            return ResponseEntity.ok(Map.of(
+                "success", true,
+                "message", "Examination deleted successfully"
+            ));
+
+        } catch (Exception e) {
+            log.error("Error deleting examination {}: {}", examinationId, e.getMessage(), e);
+            return ResponseEntity.status(HttpStatus.INTERNAL_SERVER_ERROR).body(Map.of(
+                "success", false,
+                "message", "Error deleting examination: " + e.getMessage()
+            ));
         }
     }
 }

@@ -28,6 +28,8 @@ public class UserDTO {
     private String address;
     private String bio;
     private Boolean isActive;
+    private Boolean canRefund;
+    private Boolean canDeleteExamination;
     
     private UserRole role;
     @JsonManagedReference

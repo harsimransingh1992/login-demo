@@ -20,5 +20,7 @@ public class CheckInRecordDTO {
 
     private ClinicDTO clinic;
 
+    private UserDTO assignedDoctor;
+
     private CheckInStatus status;
 }

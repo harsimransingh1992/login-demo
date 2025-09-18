@@ -464,6 +464,12 @@
                             Search
                         </button>
                     </div>
+                    <div class="form-group">
+                        <button type="button" class="btn btn-success" onclick="exportReport()">
+                            <i class="fas fa-download"></i>
+                            Export Report
+                        </button>
+                    </div>
                 </form>
             </div>
             
@@ -581,6 +587,7 @@
                                 <option value="20" ${pageSize == 20 ? 'selected' : ''}>20</option>
                                 <option value="50" ${pageSize == 50 ? 'selected' : ''}>50</option>
                                 <option value="100" ${pageSize == 100 ? 'selected' : ''}>100</option>
+                                <option value="all" ${pageSize > 1000 ? 'selected' : ''}>All</option>
                             </select>
                         </div>
                         <c:if test="${currentPage > 0}">
@@ -630,8 +637,14 @@
             thirtyDaysAgo.setDate(today.getDate() - 30);
             document.getElementById('endDate').value = today.toISOString().split('T')[0];
             document.getElementById('startDate').value = thirtyDaysAgo.toISOString().split('T')[0];
-            // Initial search
-            // searchAppointments(0); // This function is no longer needed
+            
+            // Show stats if we have data
+            <c:if test="${not empty stats}">
+                displayStats({
+                    noShow: ${stats.noShow},
+                    cancelled: ${stats.cancelled}
+                });
+            </c:if>
         });
         
         // The following functions are no longer needed as pagination is server-side
@@ -680,14 +693,56 @@
         // function goToPage(page) {
         //     searchAppointments(page);
         // }
-        // function changePageSize(size) {
-        //     searchAppointments(0, size);
-        // }
+        function changePageSize(size) {
+            // Get current URL parameters
+            const urlParams = new URLSearchParams(window.location.search);
+            
+            // Handle "all" option by setting a very large page size
+            if (size === 'all') {
+                urlParams.set('pageSize', '10000');
+            } else {
+                urlParams.set('pageSize', size);
+            }
+            
+            // Reset to first page
+            urlParams.set('page', '0');
+            
+            // Redirect to the same page with updated parameters
+            window.location.href = window.location.pathname + '?' + urlParams.toString();
+        }
         
         function displayStats(stats) {
             document.getElementById('noShowCount').textContent = stats.noShow || 0;
             document.getElementById('cancelledCount').textContent = stats.cancelled || 0;
             document.getElementById('statsSection').style.display = 'grid';
+        }
+        
+        function exportReport() {
+            try {
+                // Get current filter parameters from the form
+                const form = document.getElementById('filterForm');
+                const formData = new FormData(form);
+                const urlParams = new URLSearchParams();
+                
+                // Add form parameters to URL
+                for (let [key, value] of formData.entries()) {
+                    if (value && value.trim() !== '') {
+                        urlParams.append(key, value);
+                    }
+                }
+                
+                // Create export URL with current filters
+                const exportUrl = '${pageContext.request.contextPath}/receptionist/appointments/tracking/export?' + urlParams.toString();
+                
+                console.log('Export URL:', exportUrl); // Debug log
+                
+                // Use window.open for better error handling
+                window.open(exportUrl, '_blank');
+                
+            } catch (error) {
+                console.error('Error exporting report:', error);
+                alert('Error exporting report. Please try again.');
+            }
         }
         
         // The following functions are no longer needed as pagination is server-side
@@ -783,87 +838,82 @@
         //     }
         // }
         
-        // The following functions are no longer needed as pagination is server-side
-        // function showNotesInput(appointmentId) {
-        //     const button = event.target.closest('button');
+        function showNotesInput(appointmentId) {
+            const button = event.target.closest('button');
             
-        //     // Check if button is disabled (completed appointment)
-        //     if (button.disabled) {
-        //         return;
-        //     }
+            // Check if button is disabled (completed appointment)
+            if (button.disabled) {
+                return;
+            }
             
-        //     const row = button.closest('tr');
-        //     const notesCell = row.querySelector('.notes-cell');
-        //     const currentNotes = notesCell.querySelector('.notes-text') ? 
-        //         notesCell.querySelector('.notes-text').textContent : '';
+            const row = button.closest('tr');
+            const notesCell = row.querySelector('.notes-cell');
+            const currentNotes = notesCell.querySelector('.notes-text') ? 
+                notesCell.querySelector('.notes-text').textContent : '';
             
-        //     notesCell.innerHTML = 
-        //         '<textarea class="notes-input" placeholder="Enter follow-up notes...">' + currentNotes + '</textarea>' +
-        //         '<div style="margin-top: 10px;">' +
-        //             '<button class="btn btn-success btn-sm" onclick="saveNotes(' + appointmentId + ', this)">' +
-        //                 '<i class="fas fa-save"></i> Save' +
-        //             '</button>' +
-        //             '<button class="btn btn-secondary btn-sm" onclick="cancelNotes(this)" style="margin-left: 5px;">' +
-        //                 '<i class="fas fa-times"></i> Cancel' +
-        //             '</button>' +
-        //         '</div>';
-        // }
+            notesCell.innerHTML = 
+                '<textarea class="notes-input" placeholder="Enter follow-up notes...">' + currentNotes + '</textarea>' +
+                '<div style="margin-top: 10px;">' +
+                    '<button class="btn btn-success btn-sm" onclick="saveNotes(' + appointmentId + ', this)">' +
+                        '<i class="fas fa-save"></i> Save' +
+                    '</button>' +
+                    '<button class="btn btn-secondary btn-sm" onclick="cancelNotes(this)" style="margin-left: 5px;">' +
+                        '<i class="fas fa-times"></i> Cancel' +
+                    '</button>' +
+                '</div>';
+        }
         
-        // The following functions are no longer needed as pagination is server-side
-        // function saveNotes(appointmentId, button) {
-        //     const row = button.closest('tr');
-        //     const notesCell = row.querySelector('.notes-cell');
-        //     const notesInput = notesCell.querySelector('.notes-input');
-        //     const notes = notesInput.value.trim();
+        function saveNotes(appointmentId, button) {
+            const row = button.closest('tr');
+            const notesCell = row.querySelector('.notes-cell');
+            const notesInput = notesCell.querySelector('.notes-input');
+            const notes = notesInput.value.trim();
             
-        //     if (!notes) {
-        //         alert('Please enter some notes');
-        //         return;
-        //     }
+            if (!notes) {
+                alert('Please enter some notes');
+                return;
+            }
             
-        //     const requestData = {
-        //         appointmentId: appointmentId,
-        //         notes: notes
-        //     };
+            const requestData = {
+                appointmentId: appointmentId,
+                notes: notes
+            };
             
-        //     fetch('${pageContext.request.contextPath}/receptionist/appointments/save-notes', {
-        //         method: 'POST',
-        //         headers: {
-        //             'Content-Type': 'application/json',
-        //             'X-CSRF-TOKEN': document.querySelector("meta[name='_csrf']").content
-        //         },
-        //         body: JSON.stringify(requestData)
-        //     })
-        //     .then(response => response.json())
-        //     .then(data => {
-        //         if (data.success) {
-        //             // Update the display
-        //             notesCell.innerHTML = '<div class="notes-text">' + notes + '</div>';
+            fetch('${pageContext.request.contextPath}/receptionist/appointments/save-notes', {
+                method: 'POST',
+                headers: {
+                    'Content-Type': 'application/json',
+                    'X-CSRF-TOKEN': document.querySelector("meta[name='_csrf']").content
+                },
+                body: JSON.stringify(requestData)
+            })
+            .then(response => response.json())
+            .then(data => {
+                if (data.success) {
+                    // Update the display
+                    notesCell.innerHTML = '<div class="notes-text">' + notes + '</div>';
                     
-        //             // Disable the Add Notes button
-        //             const actionCell = row.querySelector('.action-buttons');
-        //             const addNotesButton = actionCell.querySelector('button');
-        //             addNotesButton.disabled = true;
-        //             addNotesButton.className = 'btn btn-secondary btn-sm';
-        //             addNotesButton.title = 'Notes already added - cannot edit further';
-                    
-        //             alert('Notes saved successfully!');
-        //         } else {
-        //             alert('Error: ' + data.message);
-        //         }
-        //     })
-        //     .catch(error => {
-        //         console.error('Error:', error);
-        //         alert('Error saving notes');
-        //     });
-        // }
+                    // Disable the Add Notes button
+                    const actionCell = row.querySelector('.action-buttons');
+                    const addNotesButton = actionCell.querySelector('button');
+                    addNotesButton.disabled = true;
+                    addNotesButton.className = 'btn btn-secondary btn-sm';
+                    addNotesButton.title = 'Notes already added - cannot edit further';
+                } else {
+                    alert('Error: ' + data.message);
+                }
+            })
+            .catch(error => {
+                console.error('Error:', error);
+                alert('Error saving notes');
+            });
+        }
         
-        // The following functions are no longer needed as pagination is server-side
-        // function cancelNotes(button) {
-        //     const row = button.closest('tr');
-        //     const notesCell = row.querySelector('.notes-cell');
-        //     notesCell.innerHTML = '<em style="color: #7f8c8d;">No notes</em>';
-        // }
+        function cancelNotes(button) {
+            const row = button.closest('tr');
+            const notesCell = row.querySelector('.notes-cell');
+            notesCell.innerHTML = '<em style="color: #7f8c8d;">No notes</em>';
+        }
     </script>
 </body>
-</html> 
+</html>

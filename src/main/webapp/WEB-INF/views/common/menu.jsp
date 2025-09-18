@@ -52,7 +52,7 @@
     </a>
     <div class="menu-divider"></div>
 
-    <sec:authorize access="hasAnyRole('RECEPTIONIST', 'DOCTOR')">
+    <sec:authorize access="hasAnyRole('RECEPTIONIST', 'DOCTOR', 'OPD_DOCTOR')">
         <c:set var="isActive" value="${pageContext.request.requestURI == pageContext.request.contextPath.concat('/appointments/management')}" />
         <a href="${pageContext.request.contextPath}/appointments/management" class="action-card${isActive ? ' active' : ''}">
             <i class="fas fa-calendar-alt"></i>
@@ -71,7 +71,7 @@
             </div>
         </a>
     </sec:authorize>
-    <sec:authorize access="hasAnyRole('DOCTOR', 'RECEPTIONIST')">
+    <sec:authorize access="hasAnyRole('DOCTOR', 'OPD_DOCTOR', 'RECEPTIONIST')">
         <c:set var="isActive" value="${pageContext.request.requestURI == pageContext.request.contextPath.concat('/visits')}" />
         <a href="${pageContext.request.contextPath}/visits" class="action-card${isActive ? ' active' : ''}">
             <i class="fas fa-calendar-check"></i>
@@ -79,6 +79,16 @@
                 <h3>Patient Visits</h3>
             </div>
         </a>
+    </sec:authorize>
+    <sec:authorize access="hasRole('OPD_DOCTOR')">
+        <c:set var="isActive" value="${pageContext.request.requestURI == pageContext.request.contextPath.concat('/clinical-files')}" />
+        <div class="action-card disabled-menu-item" style="cursor: not-allowed; opacity: 0.6; pointer-events: none;">
+            <i class="fas fa-folder-open"></i>
+            <div class="card-text">
+                <h3>Clinical Files</h3>
+                <small style="color: #f39c12; font-weight: 500;">(Under Construction)</small>
+            </div>
+        </div>
     </sec:authorize>
     <div class="menu-divider"></div>
 
@@ -98,9 +108,19 @@
             </div>
         </a>
     </sec:authorize>
+    <sec:authorize access="hasRole('ADMIN') or hasRole('CLINIC_OWNER') or hasRole('DOCTOR') or hasRole('OPD_DOCTOR') or hasRole('STAFF')">
+        <c:set var="isActive" value="${pageContext.request.requestURI == pageContext.request.contextPath.concat('/payment-management')}" />
+        <div class="action-card disabled-menu-item" style="cursor: not-allowed; opacity: 0.6; pointer-events: none;">
+            <i class="fas fa-credit-card"></i>
+            <div class="card-text">
+                <h3>Payment Management</h3>
+                <small style="color: #f39c12; font-weight: 500;">(Under Construction)</small>
+            </div>
+        </div>
+    </sec:authorize>
     <div class="menu-divider"></div>
 
-    <sec:authorize access="hasRole('DOCTOR')">
+    <sec:authorize access="hasRole('DOCTOR') or hasRole('OPD_DOCTOR')">
         <c:set var="isActive" value="${pageContext.request.requestURI == pageContext.request.contextPath.concat('/doctor/dashboard')}" />
         <a href="${pageContext.request.contextPath}/doctor/dashboard" class="action-card${isActive ? ' active' : ''}">
             <i class="fas fa-chart-line"></i>
@@ -145,7 +165,7 @@
 
     <c:set var="isActive" value="${pageContext.request.requestURI == pageContext.request.contextPath.concat('/logout')}" />
     <a href="${pageContext.request.contextPath}/logout" class="action-card${isActive ? ' active' : ''}">
-        <i class="fas fa-sign-out-alt"></i>
+        <i class="fas fa-power-off"></i>
         <div class="card-text">
             <h3>Logout</h3>
         </div>
@@ -175,4 +195,4 @@
             });
         }
     });
-</script> 
+</script>

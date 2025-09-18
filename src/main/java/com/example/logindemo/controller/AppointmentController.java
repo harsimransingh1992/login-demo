@@ -23,6 +23,8 @@ import java.time.LocalDateTime;
 import java.time.format.DateTimeFormatter;
 import java.util.List;
 import java.util.Map;
+import java.util.ArrayList;
+import com.example.logindemo.dto.UserDTO;
 
 @Controller
 @RequestMapping("/appointments")
@@ -43,7 +45,11 @@ public class AppointmentController {
     @GetMapping("/create")
     public String showCreateForm(Model model) {
         model.addAttribute("appointment", new Appointment());
-        model.addAttribute("doctors", userService.getUsersByRole(UserRole.DOCTOR));
+        List<UserDTO> opdDoctors = userService.getUsersByRole(UserRole.OPD_DOCTOR);
+        List<UserDTO> allDoctors = new ArrayList<>();
+        allDoctors.addAll(userService.getUsersByRole(UserRole.DOCTOR));
+        allDoctors.addAll(opdDoctors);
+        model.addAttribute("doctors", allDoctors);
         model.addAttribute("patients", userService.getUsersByRole(UserRole.STAFF));
         model.addAttribute("clinics", clinicService.getAllClinics());
         return "appointments/create";

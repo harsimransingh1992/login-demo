@@ -52,7 +52,7 @@ public class SecurityConfig {
     public SecurityFilterChain filterChain(HttpSecurity http) throws Exception {
         http
             .csrf()
-                .ignoringAntMatchers("/css/**", "/js/**", "/images/**", "/api/mobile/**", "/patients/update-procedure-status", "/patients/test-simple-update")
+                .ignoringAntMatchers("/css/**", "/js/**", "/images/**", "/api/mobile/**", "/patients/update-procedure-status", "/patients/test-simple-update", "/patients/uncheck/**")
             .and()
             .addFilterBefore(forcePasswordChangeFilter, UsernamePasswordAuthenticationFilter.class)
             .authorizeRequests()
@@ -75,16 +75,17 @@ public class SecurityConfig {
                 .antMatchers("/clinic/dashboard/**", "/clinic/manage/**").hasAnyRole("CLINIC_OWNER", "MODERATOR")
                 
                 // Doctor specific pages
-                .antMatchers("/doctor/dashboard/**", "/patients/examination/*/procedures/**", "/examination/*/procedures/**").hasAnyRole("DOCTOR", "MODERATOR")
+                .antMatchers("/doctor/dashboard/**", "/patients/examination/*/procedures/**", "/examination/*/procedures/**").hasAnyRole("DOCTOR", "OPD_DOCTOR", "MODERATOR")
                 
                 // Receptionist specific pages
-                .antMatchers("/appointments/management/**").hasAnyRole("RECEPTIONIST", "ADMIN", "DOCTOR", "MODERATOR")
+                .antMatchers("/appointments/management/**").hasAnyRole("RECEPTIONIST", "ADMIN", "DOCTOR", "OPD_DOCTOR", "MODERATOR")
+                .antMatchers("/receptionist/**").hasAnyRole("RECEPTIONIST", "ADMIN", "MODERATOR")
                 
                 // Patient management - accessible to all staff
-                .antMatchers("/patients/**").hasAnyRole("DOCTOR", "STAFF", "RECEPTIONIST", "ADMIN", "CLINIC_OWNER", "MODERATOR")
+                .antMatchers("/patients/**").hasAnyRole("DOCTOR", "OPD_DOCTOR", "STAFF", "RECEPTIONIST", "ADMIN", "CLINIC_OWNER", "MODERATOR")
                 
                 // Follow-up management - accessible to all staff
-                .antMatchers("/follow-up/**").hasAnyRole("DOCTOR", "STAFF", "RECEPTIONIST", "ADMIN", "CLINIC_OWNER", "MODERATOR")
+                .antMatchers("/follow-up/**").hasAnyRole("DOCTOR", "OPD_DOCTOR", "STAFF", "RECEPTIONIST", "ADMIN", "CLINIC_OWNER", "MODERATOR")
                 
                 // Payments - accessible to receptionists and moderators (read-only for moderators)
                 .antMatchers("/payments/**").hasAnyRole("RECEPTIONIST", "ADMIN", "MODERATOR")
@@ -125,4 +126,4 @@ public class SecurityConfig {
         
         return http.build();
     }
-} 
+}

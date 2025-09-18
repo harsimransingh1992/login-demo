@@ -17,6 +17,7 @@
     <link rel="stylesheet" href="https://cdnjs.cloudflare.com/ajax/libs/font-awesome/6.4.0/css/all.min.css">
     <link rel="stylesheet" href="https://code.jquery.com/ui/1.13.2/themes/base/jquery-ui.css">
     <link rel="stylesheet" href="https://cdnjs.cloudflare.com/ajax/libs/jquery-ui-timepicker-addon/1.6.3/jquery-ui-timepicker-addon.min.css">
+    <link rel="stylesheet" href="${pageContext.request.contextPath}/css/patient/print.css">
     <script src="https://code.jquery.com/jquery-3.6.4.min.js"></script>
     <script src="https://code.jquery.com/ui/1.13.2/jquery-ui.min.js"></script>
     <script src="https://cdnjs.cloudflare.com/ajax/libs/jquery-ui-timepicker-addon/1.6.3/jquery-ui-timepicker-addon.min.js"></script>
@@ -56,13 +57,93 @@
                 alert('Could not determine examination ID for duplication.');
                 return;
             }
-            duplicateExamination(examId);
+            
+            // Fetch examination details to populate modal
+            fetch(joinUrl(contextPath, '/patients/examination/' + examId + '/details'), {
+                method: 'GET',
+                headers: {
+                    'Content-Type': 'application/json',
+                    'X-CSRF-TOKEN': document.querySelector('meta[name="_csrf"]').content
+                }
+            })
+            .then(response => {
+                if (!response.ok) {
+                    throw new Error('Network response was not ok');
+                }
+                return response.json();
+            })
+            .then(data => {
+                if (data.success) {
+                    // Show the modal first
+                    document.getElementById('duplicateExaminationModal').style.display = 'block';
+                    
+                    // Wait a moment for the modal to render, then update content
+                    setTimeout(() => {
+                        // Update modal content with examination details
+                        const attachmentCount = document.getElementById('attachmentCount');
+                        const treatingDoctorName = document.getElementById('treatingDoctorName');
+                        const procedureName = document.getElementById('procedureName');
+                        
+                        // Reset checkboxes to enabled and unchecked state by default
+                        document.getElementById('duplicateAttachments').disabled = false;
+                        document.getElementById('duplicateAttachments').checked = false;
+                        document.getElementById('duplicateTreatingDoctor').disabled = false;
+                        document.getElementById('duplicateTreatingDoctor').checked = false;
+                        document.getElementById('duplicateProcedure').disabled = false;
+                        document.getElementById('duplicateProcedure').checked = false;
+                        
+                        // Set attachment count
+                        if (data.attachmentCount > 0) {
+                            const countText = '(' + data.attachmentCount + ' files)';
+                            attachmentCount.textContent = countText;
+                        } else {
+                            attachmentCount.textContent = '(No attachments)';
+                            document.getElementById('duplicateAttachments').checked = false;
+                            document.getElementById('duplicateAttachments').disabled = true;
+                        }
+                        
+                        // Set treating doctor name
+                        if (data.treatingDoctorName && data.treatingDoctorName.trim() !== '') {
+                            treatingDoctorName.textContent = data.treatingDoctorName;
+                        } else {
+                            treatingDoctorName.textContent = '(Not assigned)';
+                            document.getElementById('duplicateTreatingDoctor').checked = false;
+                            document.getElementById('duplicateTreatingDoctor').disabled = true;
+                        }
+                        
+                        // Set procedure name
+                        if (data.procedureName && data.procedureName.trim()) {
+                            procedureName.textContent = data.procedureName;
+                        } else {
+                            procedureName.textContent = 'Not assigned';
+                            document.getElementById('duplicateProcedure').checked = false;
+                            document.getElementById('duplicateProcedure').disabled = true;
+                        }
+                        
+                        // Set procedure price
+                        const procedurePrice = document.getElementById('procedurePrice');
+                        if (data.procedurePrice && data.procedurePrice > 0) {
+                            const priceText = '(₹' + data.procedurePrice + ')';
+                            procedurePrice.textContent = priceText;
+                        } else {
+                            procedurePrice.textContent = '';
+                        }
+                        
+                        // Store examination ID for later use
+                        document.getElementById('duplicateExaminationModal').setAttribute('data-examination-id', examId);
+                    }, 100);
+                } else {
+                    // Fallback to old behavior if details endpoint doesn't exist
+                    duplicateExamination(examId);
+                }
+            })
+            .catch(error => {
+                // Fallback to old behavior if there's an error
+                duplicateExamination(examId);
+            });
         }
 
         async function duplicateExamination(examId) {
-            if (!confirm('Create a duplicate examination with the same tooth number and doctor?')) {
-                return;
-            }
             try {
                 const token = document.querySelector('meta[name="_csrf"]').content;
                 const url = joinUrl(contextPath, '/patients/examination/' + encodeURIComponent(examId) + '/duplicate');
@@ -74,7 +155,6 @@
                 let result;
                 try { result = JSON.parse(text); } catch (_) { result = { success: res.ok, message: text }; }
                 if (result.success) {
-                    alert('Duplicated successfully');
                     // Reload patient details to show new examination
                     window.location.reload();
                 } else {
@@ -84,6 +164,411 @@
                 alert('Error: ' + e.message);
             }
         }
+
+        // Clinical File Creation Functions
+        function formatDateTime12Hour(dateTimeStr) {
+            try {
+                const date = new Date(dateTimeStr);
+                const day = String(date.getDate()).padStart(2, '0');
+                const month = String(date.getMonth() + 1).padStart(2, '0');
+                const year = date.getFullYear();
+                
+                let hours = date.getHours();
+                const minutes = String(date.getMinutes()).padStart(2, '0');
+                const ampm = hours >= 12 ? 'PM' : 'AM';
+                
+                hours = hours % 12;
+                hours = hours ? hours : 12; // the hour '0' should be '12'
+                
+                return day + '/' + month + '/' + year + ' ' + hours + ':' + minutes + ' ' + ampm;
+            } catch (e) {
+                // Fallback to original format if parsing fails
+                return dateTimeStr;
+            }
+        }
+
+        function showCreateFileModal() {
+            populateExaminationSelection();
+            document.getElementById('createFileModal').style.display = 'block';
+        }
+
+        function closeCreateFileModal() {
+            document.getElementById('createFileModal').style.display = 'none';
+            document.getElementById('createFileForm').reset();
+        }
+
+        function populateExaminationSelection() {
+            const tableBody = document.getElementById('examinationSelectionTable');
+            
+            // Get all examination rows from the main table
+            const examinationRows = document.querySelectorAll('#examinationHistoryTable tbody tr');
+            let html = '';
+            let totalCount = 0;
+
+            examinationRows.forEach(row => {
+                const examId = row.querySelector('.exam-id-col').textContent.trim();
+                const toothCell = row.querySelector('[data-tooth]');
+                const dateCell = row.querySelector('[data-date]');
+                const procedureCell = row.querySelector('td:nth-child(5)');
+                const doctorCell = row.querySelector('td:nth-child(8)');
+                const statusCell = row.querySelector('td:nth-child(4)');
+
+                if (toothCell && dateCell) {
+                    const tooth = toothCell.getAttribute('data-tooth');
+                    const dateStr = dateCell.getAttribute('data-date');
+                    
+                    // Check if this examination is already part of a clinical file
+                    // We'll need to check this from the backend, but for now we'll show all examinations
+                    // TODO: Add backend check for clinical file attachment
+                    
+                    totalCount++;
+                    const toothDisplay = tooth === 'GENERAL_CONSULTATION' ? 'General Consultation' : tooth.replace('TOOTH_', '');
+                    const procedure = procedureCell ? procedureCell.textContent.trim() : 'No procedure';
+                    const doctor = doctorCell ? doctorCell.textContent.trim() : 'Not Assigned';
+                    const status = statusCell ? statusCell.textContent.trim() : 'Unknown';
+                    
+                    // Format date and time in 12-hour format
+                    const formattedDateTime = formatDateTime12Hour(dateStr);
+                    
+                    // Get status class
+                    const statusClass = getStatusClass(status);
+                    
+                    html += '<tr>' +
+                        '<td><input type="checkbox" name="selectedExaminations" value="' + examId + '" class="exam-checkbox"></td>' +
+                        '<td>' + toothDisplay + '</td>' +
+                        '<td>' + formattedDateTime + '</td>' +
+                        '<td>' + procedure + '</td>' +
+                        '<td>' + doctor + '</td>' +
+                        '<td><span class="status-badge ' + statusClass + '">' + status + '</span></td>' +
+                        '</tr>';
+                }
+            });
+
+            if (totalCount === 0) {
+                html = '<tr><td colspan="6" class="text-center text-muted">No examinations found for this patient</td></tr>';
+            }
+
+            tableBody.innerHTML = html;
+            document.getElementById('totalCount').textContent = totalCount;
+            updateSelectedCount();
+            
+            // Generate auto file name
+            generateAutoFileName();
+        }
+
+        function generateAutoFileName() {
+            const patientName = '${patient.firstName} ${patient.lastName}';
+            const today = new Date();
+            const dateStr = today.toLocaleDateString('en-GB'); // DD/MM/YYYY format
+            const timeStr = today.toLocaleTimeString('en-US', { 
+                hour12: false, 
+                hour: '2-digit', 
+                minute: '2-digit' 
+            });
+            
+            // Get selected examinations count for counter
+            const selectedCount = document.querySelectorAll('.exam-checkbox:checked').length;
+            const totalCount = document.getElementById('totalCount').textContent;
+            
+            // Generate file name: PatientName_Date_Time_Examinations
+            const fileName = patientName + '_ClinicalFile_' + dateStr.replace(/\//g, '-') + '_' + timeStr.replace(':', '-') + '_' + (selectedCount || totalCount) + 'Exams';
+            
+            document.getElementById('fileTitle').value = fileName;
+        }
+
+        function getStatusClass(status) {
+            switch(status.toLowerCase()) {
+                case 'open': return 'status-open';
+                case 'in progress': return 'status-in-progress';
+                case 'completed': return 'status-completed';
+                case 'closed': return 'status-closed';
+                default: return 'status-closed';
+            }
+        }
+
+        function updateSelectedCount() {
+            const selectedCheckboxes = document.querySelectorAll('.exam-checkbox:checked');
+            const selectedCount = selectedCheckboxes.length;
+            document.getElementById('selectedCount').textContent = selectedCount;
+            
+            // Update auto file name when selection changes
+            generateAutoFileName();
+        }
+
+                function toggleSelectAll() {
+            const selectAllCheckbox = document.getElementById('selectAll');
+            const examCheckboxes = document.querySelectorAll('.exam-checkbox');
+
+            examCheckboxes.forEach(checkbox => {
+                checkbox.checked = selectAllCheckbox.checked;
+            });
+            updateSelectedCount();
+        }
+
+        // Step navigation functions
+        function nextStep() {
+            const step1 = document.getElementById('step1');
+            const step2 = document.getElementById('step2');
+            const stepIndicator1 = document.querySelector('.step[data-step="1"]');
+            const stepIndicator2 = document.querySelector('.step[data-step="2"]');
+
+            // Hide step 1, show step 2
+            step1.classList.remove('active');
+            step2.classList.add('active');
+            stepIndicator1.classList.remove('active');
+            stepIndicator2.classList.add('active');
+        }
+
+        function prevStep() {
+            const step1 = document.getElementById('step1');
+            const step2 = document.getElementById('step2');
+            const stepIndicator1 = document.querySelector('.step[data-step="1"]');
+            const stepIndicator2 = document.querySelector('.step[data-step="2"]');
+
+            // Hide step 2, show step 1
+            step2.classList.remove('active');
+            step1.classList.add('active');
+            stepIndicator2.classList.remove('active');
+            stepIndicator1.classList.add('active');
+        }
+
+        // Handle form submission
+        // Add event listener for checkbox changes to update count
+        document.addEventListener('change', function(e) {
+            if (e.target.classList.contains('exam-checkbox')) {
+                updateSelectedCount();
+            }
+            if (e.target.classList.contains('examination-checkbox')) {
+                updateTableSelectionCount();
+            }
+        });
+
+        // Table examination selection functions
+        function toggleSelectAllExaminations() {
+            const selectAllCheckbox = document.getElementById('selectAllExaminations');
+            const examinationCheckboxes = document.querySelectorAll('.examination-checkbox');
+
+            examinationCheckboxes.forEach(checkbox => {
+                checkbox.checked = selectAllCheckbox.checked;
+            });
+            updateTableSelectionCount();
+        }
+
+        function updateTableSelectionCount() {
+            const selectedCheckboxes = document.querySelectorAll('.examination-checkbox:checked');
+            const selectedCount = selectedCheckboxes.length;
+            const selectedCountDisplay = document.getElementById('selectedCountDisplay');
+            const createFileBtn = document.getElementById('createFileFromTableBtn');
+            const selectedCountSpan = document.getElementById('selectedExaminationCount');
+
+            selectedCountSpan.textContent = selectedCount;
+
+            if (selectedCount > 0) {
+                selectedCountDisplay.style.display = 'inline';
+                createFileBtn.style.display = 'inline-block';
+            } else {
+                selectedCountDisplay.style.display = 'none';
+                createFileBtn.style.display = 'none';
+            }
+        }
+
+        function createClinicalFileFromTable() {
+            const selectedCheckboxes = document.querySelectorAll('.examination-checkbox:checked');
+            const selectedExaminationIds = Array.from(selectedCheckboxes).map(checkbox => checkbox.value);
+
+            if (selectedExaminationIds.length === 0) {
+                showAlertModal('Please select at least one examination to create a clinical file.', 'warning');
+                return;
+            }
+
+            // Generate auto file name
+            const patientName = '${patient.firstName} ${patient.lastName}';
+            const today = new Date();
+            const dateStr = today.toLocaleDateString('en-GB');
+            const timeStr = today.toLocaleTimeString('en-US', { 
+                hour12: false, 
+                hour: '2-digit', 
+                minute: '2-digit' 
+            });
+            
+            const fileName = patientName + '_ClinicalFile_' + dateStr.replace(/\//g, '-') + '_' + timeStr.replace(':', '-') + '_' + selectedExaminationIds.length + 'Exams';
+
+            const formData = {
+                title: fileName,
+                status: 'ACTIVE',
+                notes: 'Clinical file created from examination table',
+                patientId: '${patient.id}',
+                examinationIds: selectedExaminationIds
+            };
+
+            // Show confirmation modal
+            showConfirmationModal(
+                'Create Clinical File',
+                'Are you sure you want to create a clinical file with <strong>' + selectedExaminationIds.length + ' selected examinations</strong>?<br><br><strong>File Name:</strong> ' + fileName,
+                'Create File',
+                'Cancel',
+                () => createClinicalFile(formData)
+            );
+        }
+
+        function createClinicalFile(formData) {
+            try {
+                const token = document.querySelector('meta[name="_csrf"]').content;
+                fetch(joinUrl(contextPath, '/clinical-files/create-with-examinations'), {
+                    method: 'POST',
+                    headers: {
+                        'Content-Type': 'application/json',
+                        'X-CSRF-TOKEN': token
+                    },
+                    body: JSON.stringify(formData)
+                })
+                .then(response => response.json())
+                .then(result => {
+                    if (result.success) {
+                        showAlertModal('Clinical file created successfully!', 'success');
+                        // Optionally redirect to the created file after a short delay
+                        setTimeout(() => {
+                            window.location.href = joinUrl(contextPath, '/clinical-files/' + result.file.id);
+                        }, 1500);
+                    } else {
+                        showAlertModal('Error: ' + (result.message || 'Failed to create clinical file'), 'error');
+                    }
+                })
+                .catch(error => {
+                    showAlertModal('An error occurred while creating the clinical file.', 'error');
+                });
+            } catch (error) {
+                showAlertModal('An error occurred while creating the clinical file.', 'error');
+            }
+        }
+
+        const createFileForm = document.getElementById('createFileForm');
+        if (createFileForm) {
+            createFileForm.addEventListener('submit', async function(e) {
+            e.preventDefault();
+            
+            const selectedExaminations = Array.from(document.querySelectorAll('.exam-checkbox:checked'))
+                .map(checkbox => checkbox.value);
+            
+            if (selectedExaminations.length === 0) {
+                alert('Please select at least one examination to include in the clinical file.');
+                return;
+            }
+
+            const formData = {
+                title: document.getElementById('fileTitle').value,
+                status: document.getElementById('fileStatus').value,
+                notes: document.getElementById('fileNotes').value,
+                patientId: '${patient.id}',
+                examinationIds: selectedExaminations
+            };
+
+            try {
+                const token = document.querySelector('meta[name="_csrf"]').content;
+                const response = await fetch(joinUrl(contextPath, '/clinical-files/create-with-examinations'), {
+                    method: 'POST',
+                    headers: {
+                        'Content-Type': 'application/json',
+                        'X-CSRF-TOKEN': token
+                    },
+                    body: JSON.stringify(formData)
+                });
+
+                const result = await response.json();
+                
+                if (result.success) {
+                    alert('Clinical file created successfully!');
+                    closeCreateFileModal();
+                    // Optionally redirect to the created file
+                    window.location.href = joinUrl(contextPath, '/clinical-files/' + result.file.id);
+                } else {
+                    alert('Error: ' + (result.message || 'Failed to create clinical file'));
+                }
+            } catch (error) {
+                alert('An error occurred while creating the clinical file.');
+            }
+        });
+        }
+
+        // Modal Functions
+        function showAlertModal(message, type = 'info') {
+            const modal = document.getElementById('alertModal');
+            const title = document.getElementById('alertTitle');
+            const messageEl = document.getElementById('alertMessage');
+            const icon = document.getElementById('alertIcon');
+
+            // Set title based on type
+            switch(type) {
+                case 'success':
+                    title.textContent = 'Success';
+                    icon.innerHTML = '<i class="fas fa-check-circle"></i>';
+                    icon.className = 'alert-icon success';
+                    break;
+                case 'warning':
+                    title.textContent = 'Warning';
+                    icon.innerHTML = '<i class="fas fa-exclamation-triangle"></i>';
+                    icon.className = 'alert-icon warning';
+                    break;
+                case 'error':
+                    title.textContent = 'Error';
+                    icon.innerHTML = '<i class="fas fa-times-circle"></i>';
+                    icon.className = 'alert-icon error';
+                    break;
+                default:
+                    title.textContent = 'Information';
+                    icon.innerHTML = '<i class="fas fa-info-circle"></i>';
+                    icon.className = 'alert-icon info';
+            }
+
+            messageEl.textContent = message;
+            modal.style.display = 'block';
+        }
+
+        function closeAlertModal() {
+            document.getElementById('alertModal').style.display = 'none';
+        }
+
+        function showConfirmationModal(title, message, confirmText = 'Confirm', cancelText = 'Cancel', onConfirm) {
+            const modal = document.getElementById('confirmationModal');
+            const titleEl = document.getElementById('confirmationTitle');
+            const messageEl = document.getElementById('confirmationMessage');
+            const confirmBtn = document.getElementById('confirmBtn');
+
+            titleEl.textContent = title;
+            messageEl.innerHTML = message;
+            confirmBtn.textContent = confirmText;
+
+            // Remove existing event listeners
+            const newConfirmBtn = confirmBtn.cloneNode(true);
+            confirmBtn.parentNode.replaceChild(newConfirmBtn, confirmBtn);
+
+            // Add new event listener
+            newConfirmBtn.addEventListener('click', () => {
+                closeConfirmationModal();
+                if (onConfirm) onConfirm();
+            });
+
+            modal.style.display = 'block';
+        }
+
+        function closeConfirmationModal() {
+            document.getElementById('confirmationModal').style.display = 'none';
+        }
+
+        // Close modals when clicking outside
+        window.onclick = function(event) {
+            const alertModal = document.getElementById('alertModal');
+            const confirmationModal = document.getElementById('confirmationModal');
+            
+            if (event.target === alertModal) {
+                closeAlertModal();
+            }
+            if (event.target === confirmationModal) {
+                closeConfirmationModal();
+            }
+        }
+
+
     </script>
     
     <!-- Include common menu styles -->
@@ -193,21 +678,40 @@
             font-weight: 600;
         }
         
+        /* Customer Ledger Color Coding */
+        .ledger-capture-row {
+            background-color: rgba(40, 167, 69, 0.05);
+            border-left: 3px solid #28a745;
+        }
+        
+        .ledger-refund-row {
+            background-color: rgba(220, 53, 69, 0.05);
+            border-left: 3px solid #dc3545;
+        }
+        
+        .ledger-capture-row:hover {
+            background-color: rgba(40, 167, 69, 0.1);
+        }
+        
+        .ledger-refund-row:hover {
+            background-color: rgba(220, 53, 69, 0.1);
+        }
+        
         /* Additional styles for patient details page */
         .patient-details-container {
             background: white;
-            border-radius: 12px;
-            box-shadow: 0 5px 15px rgba(0, 0, 0, 0.03);
-            padding: 25px;
-            margin-bottom: 20px;
+            border-radius: 8px;
+            box-shadow: 0 2px 6px rgba(0, 0, 0, 0.05);
+            padding: 15px;
+            margin-bottom: 12px;
         }
         
         .patient-header {
             display: flex;
             justify-content: space-between;
             align-items: center;
-            margin-bottom: 20px;
-            padding-bottom: 15px;
+            margin-bottom: 12px;
+            padding-bottom: 10px;
             border-bottom: 1px solid #eee;
         }
         
@@ -224,25 +728,25 @@
         
         .patient-info {
             display: grid;
-            grid-template-columns: repeat(auto-fill, minmax(300px, 1fr));
-            gap: 20px;
+            grid-template-columns: repeat(auto-fill, minmax(280px, 1fr));
+            gap: 12px;
         }
         
         .info-section {
-            margin-bottom: 20px;
+            margin-bottom: 12px;
         }
         
         .info-section h3 {
             color: #3498db;
-            font-size: 1.1rem;
-            margin-bottom: 15px;
+            font-size: 1rem;
+            margin-bottom: 10px;
             font-weight: 600;
             border-bottom: 1px solid #f0f0f0;
-            padding-bottom: 8px;
+            padding-bottom: 6px;
         }
         
         .info-item {
-            margin-bottom: 12px;
+            margin-bottom: 8px;
         }
         
         .info-label {
@@ -285,13 +789,397 @@
         
         /* Styles for Examination History section */
         .examination-history-section {
-            margin-top: 30px;
+            margin-top: 15px;
+        }
+        
+        /* Quick Add Examination Button Styles */
+        .quick-add-examination-section {
+            margin: 20px 0;
+            background: linear-gradient(135deg, #667eea 0%, #764ba2 100%);
+            border: none;
+            box-shadow: 0 8px 25px rgba(102, 126, 234, 0.3);
+        }
+        
+        .quick-add-container {
+            display: flex;
+            justify-content: center;
+            align-items: center;
+            padding: 10px;
+        }
+        
+        .quick-add-btn {
+            background: linear-gradient(135deg, #667eea 0%, #764ba2 100%);
+            border: none;
+            border-radius: 12px;
+            padding: 20px 40px;
+            color: white;
+            font-size: 1.1rem;
+            font-weight: 600;
+            text-transform: uppercase;
+            letter-spacing: 0.5px;
+            box-shadow: 0 8px 25px rgba(102, 126, 234, 0.3);
+            transition: all 0.3s ease;
+            display: flex;
+            flex-direction: column;
+            align-items: center;
+            gap: 8px;
+            min-width: 280px;
+            cursor: pointer;
+        }
+        
+        .quick-add-btn:hover {
+            transform: translateY(-3px);
+            box-shadow: 0 12px 35px rgba(102, 126, 234, 0.4);
+            background: linear-gradient(135deg, #5a6fd8 0%, #6a4190 100%);
+        }
+        
+        .quick-add-btn:active {
+            transform: translateY(-1px);
+        }
+        
+        .quick-add-btn i {
+            font-size: 2rem;
+            margin-bottom: 5px;
+        }
+        
+        .btn-text {
+            font-size: 1.2rem;
+            font-weight: 700;
+        }
+        
+        .btn-subtitle {
+            font-size: 0.85rem;
+            opacity: 0.9;
+            font-weight: 400;
+            text-transform: none;
+            letter-spacing: normal;
+        }
+        
+        @media (max-width: 768px) {
+            .quick-add-btn {
+                min-width: 250px;
+                padding: 18px 30px;
+            }
+            
+            .btn-text {
+                font-size: 1.1rem;
+            }
+        }
+        
+        /* Quick Add Modal Styles */
+        .quick-add-modal {
+            display: none;
+            position: fixed;
+            z-index: 1000;
+            left: 0;
+            top: 0;
+            width: 100%;
+            height: 100%;
+            background-color: rgba(0,0,0,0.5);
+            overflow-y: auto;
+        }
+        
+        .quick-add-modal .modal-content {
+            background-color: #fefefe;
+            margin: 2% auto;
+            padding: 30px;
+            border: none;
+            border-radius: 12px;
+            width: 90%;
+            max-width: 800px;
+            max-height: 90vh;
+            overflow-y: auto;
+            box-shadow: 0 10px 30px rgba(0,0,0,0.3);
+        }
+        
+        .tooth-selection-section .tooth-grid {
+            margin: 20px 0;
+        }
+        
+        .jaw-section {
+            margin-bottom: 25px;
+        }
+        
+        .jaw-section h4 {
+            color: #2c3e50;
+            margin-bottom: 10px;
+            font-size: 1.1rem;
+        }
+        
+        .teeth-row {
+            display: flex;
+            flex-wrap: wrap;
+            gap: 8px;
+            justify-content: center;
+            margin-bottom: 15px;
+        }
+        
+        .tooth-selector {
+            width: 45px;
+            height: 45px;
+            border: 2px solid #e0e0e0;
+            border-radius: 8px;
+            display: flex;
+            align-items: center;
+            justify-content: center;
+            cursor: pointer;
+            transition: all 0.3s ease;
+            background: white;
+            font-weight: 600;
+            color: #666;
+        }
+        
+        .tooth-selector:hover {
+            border-color: #3498db;
+            background: #f8f9fa;
+            transform: translateY(-2px);
+        }
+        
+        .tooth-selector.selected {
+            background: linear-gradient(135deg, #3498db, #2980b9);
+            border-color: #2980b9;
+            color: white;
+            transform: translateY(-2px);
+            box-shadow: 0 4px 12px rgba(52, 152, 219, 0.3);
+        }
+        
+        .tooth-number {
+            font-size: 0.9rem;
+        }
+        
+        .selected-teeth-info {
+            margin-top: 15px;
+            padding: 15px;
+            background: #f8f9fa;
+            border-radius: 8px;
+            text-align: center;
+        }
+        
+        .selected-teeth-list {
+            margin-top: 10px;
+            font-size: 0.9rem;
+            color: #666;
+        }
+        
+        /* Compact Tooth Selection Styles for Duplicate Modal */
+        .tooth-selection-container {
+            margin: 15px 0;
+            padding: 20px;
+            background: #f8f9fa;
+            border-radius: 8px;
+            border: 1px solid #e0e0e0;
+        }
+        
+        .compact-dental-chart {
+            display: flex;
+            flex-direction: column;
+            align-items: center;
+            gap: 10px;
+        }
+        
+        .compact-teeth-row {
+            display: flex;
+            gap: 5px;
+            justify-content: center;
+        }
+        
+        .compact-tooth {
+            width: 35px;
+            height: 35px;
+            border: 2px solid #ddd;
+            border-radius: 6px;
+            display: flex;
+            align-items: center;
+            justify-content: center;
+            font-size: 11px;
+            font-weight: 600;
+            cursor: pointer;
+            background: white;
+            transition: all 0.2s ease;
+            color: #666;
+        }
+        
+        .compact-tooth:hover {
+            border-color: #3498db;
+            background: #e3f2fd;
+            transform: translateY(-1px);
+        }
+        
+        .compact-tooth.selected {
+            background: #3498db;
+            border-color: #2980b9;
+            color: white;
+            transform: translateY(-1px);
+            box-shadow: 0 2px 4px rgba(52, 152, 219, 0.3);
+        }
+        
+        .section-label {
+            font-weight: 600;
+            color: #2c3e50;
+            margin-bottom: 10px;
+            display: block;
+        }
+        
+        .selected-count {
+            font-weight: 600;
+            color: #2c3e50;
+        }
+        
+        .selected-teeth-list {
+            margin-top: 10px;
+            font-size: 0.9rem;
+            color: #666;
+        }
+        
+        .autocomplete-container {
+            position: relative;
+        }
+        
+        .autocomplete-dropdown {
+            position: absolute;
+            top: 100%;
+            left: 0;
+            right: 0;
+            background: white;
+            border: 1px solid #e0e0e0;
+            border-top: none;
+            border-radius: 0 0 8px 8px;
+            max-height: 200px;
+            overflow-y: auto;
+            z-index: 1001;
+            display: none;
+        }
+        
+        .autocomplete-item {
+            padding: 12px 15px;
+            cursor: pointer;
+            border-bottom: 1px solid #f0f0f0;
+            transition: background-color 0.2s ease;
+        }
+        
+        .autocomplete-item:hover,
+        .autocomplete-item.highlighted {
+            background-color: #f8f9fa;
+        }
+        
+        .autocomplete-item:last-child {
+            border-bottom: none;
+        }
+        
+        .procedure-name {
+            font-weight: 600;
+            color: #2c3e50;
+        }
+        
+        .procedure-price {
+            font-size: 0.9rem;
+            color: #27ae60;
+            margin-top: 2px;
+        }
+        
+        .selected-procedure-info {
+            margin-top: 15px;
+        }
+        
+        .selected-procedure-info .procedure-card {
+            background: #f8f9fa;
+            padding: 15px;
+            border-radius: 8px;
+            border-left: 4px solid #3498db;
+        }
+        
+        .selected-procedure-info h4 {
+            margin: 0 0 5px 0;
+            color: #2c3e50;
+            font-size: 1.1rem;
+        }
+        
+        .selected-procedure-info .procedure-price {
+            margin: 0;
+            font-size: 1.1rem;
+            font-weight: 600;
+            color: #27ae60;
+        }
+        
+        .summary-section {
+            background: #f8f9fa;
+            padding: 20px;
+            border-radius: 8px;
+            margin-top: 20px;
+        }
+        
+        .summary-content {
+            display: grid;
+            grid-template-columns: 1fr 1fr;
+            gap: 15px;
+        }
+        
+        .summary-item {
+            display: flex;
+            justify-content: space-between;
+            align-items: center;
+            padding: 10px 0;
+            border-bottom: 1px solid #e0e0e0;
+        }
+        
+        .summary-item:last-child {
+            border-bottom: none;
+        }
+        
+        .summary-label {
+            font-weight: 600;
+            color: #2c3e50;
+        }
+        
+        .summary-value {
+            font-weight: 600;
+            color: #3498db;
+        }
+        
+        .form-section {
+            margin-bottom: 25px;
+        }
+        
+        .form-section h3 {
+            color: #2c3e50;
+            margin-bottom: 10px;
+            font-size: 1.2rem;
+            display: flex;
+            align-items: center;
+            gap: 8px;
+        }
+        
+        .section-description {
+            color: #666;
+            font-size: 0.9rem;
+            margin-bottom: 15px;
+        }
+        
+        @media (max-width: 768px) {
+            .quick-add-modal .modal-content {
+                width: 95%;
+                margin: 5% auto;
+                padding: 20px;
+            }
+            
+            .teeth-row {
+                gap: 6px;
+            }
+            
+            .tooth-selector {
+                width: 40px;
+                height: 40px;
+            }
+            
+            .summary-content {
+                grid-template-columns: 1fr;
+            }
         }
         
         .sort-controls {
             display: flex;
             justify-content: space-between;
-            margin-bottom: 20px;
+            margin-bottom: 12px;
             padding: 15px;
             background: #f8f9fa;
             border-radius: 8px;
@@ -334,13 +1222,13 @@
             background: #f8f9fa;
             color: #2c3e50;
             font-weight: 600;
-            padding: 15px;
+            padding: 10px 12px;
             text-align: left;
             border-bottom: 2px solid #e0e0e0;
         }
         
         .table td {
-            padding: 12px 15px;
+            padding: 8px 12px;
             border-bottom: 1px solid #e0e0e0;
             color: #4b5563;
         }
@@ -425,6 +1313,20 @@
             background-color: #f0f7ff;
         }
         
+        .file-id-badge {
+            background: #3498db;
+            color: white;
+            padding: 4px 8px;
+            border-radius: 12px;
+            font-size: 0.8rem;
+            font-weight: 500;
+        }
+
+        .no-file {
+            color: #6c757d;
+            font-style: italic;
+        }
+
         .btn-sm {
             padding: 5px 10px;
             border-radius: 4px;
@@ -1638,6 +2540,645 @@
             margin-right: 5px;
         }
 
+                /* Clinical File Modal Styles */
+        .file-actions {
+            margin-left: auto;
+        }
+
+        .file-actions .btn {
+            margin-left: 10px;
+        }
+
+        /* Step Indicator */
+        .step-indicator {
+            display: flex;
+            align-items: center;
+            justify-content: center;
+            margin: 20px 0;
+            gap: 15px;
+        }
+
+        .step {
+            display: flex;
+            flex-direction: column;
+            align-items: center;
+            gap: 5px;
+            opacity: 0.5;
+            transition: all 0.3s ease;
+        }
+
+        .step.active {
+            opacity: 1;
+        }
+
+        .step-number {
+            width: 30px;
+            height: 30px;
+            border-radius: 50%;
+            background: #e9ecef;
+            color: #6c757d;
+            display: flex;
+            align-items: center;
+            justify-content: center;
+            font-weight: 600;
+            font-size: 0.9rem;
+            transition: all 0.3s ease;
+        }
+
+        .step.active .step-number {
+            background: linear-gradient(135deg, #3498db, #2980b9);
+            color: white;
+        }
+
+        .step-label {
+            font-size: 0.8rem;
+            font-weight: 500;
+            color: #6c757d;
+        }
+
+        .step.active .step-label {
+            color: #495057;
+        }
+
+        .step-line {
+            width: 40px;
+            height: 2px;
+            background: #e9ecef;
+            border-radius: 1px;
+        }
+
+        /* Form Steps */
+        .form-step {
+            display: none;
+        }
+
+        .form-step.active {
+            display: block;
+        }
+
+        /* Section Headers */
+        .section-header-with-counter {
+            display: flex;
+            justify-content: space-between;
+            align-items: center;
+            margin-bottom: 20px;
+            padding-bottom: 10px;
+            border-bottom: 1px solid #eee;
+        }
+
+        .section-header-with-counter h3 {
+            margin: 0;
+            color: #2c3e50;
+            font-size: 1.2rem;
+            font-weight: 600;
+        }
+
+        .section-header-with-counter h3 i {
+            color: #3498db;
+            margin-right: 8px;
+        }
+
+        .selection-counter {
+            background: #e3f2fd;
+            padding: 6px 12px;
+            border-radius: 15px;
+            font-size: 0.85rem;
+            color: #1976d2;
+            font-weight: 500;
+        }
+
+        /* Info Alert */
+        .info-alert {
+            display: flex;
+            align-items: flex-start;
+            gap: 12px;
+            background: #f8f9fa;
+            padding: 15px;
+            border-radius: 6px;
+            border-left: 4px solid #3498db;
+            margin-bottom: 20px;
+        }
+
+        .info-alert i {
+            color: #3498db;
+            font-size: 1.1rem;
+            margin-top: 2px;
+        }
+
+        .info-content strong {
+            display: block;
+            margin-bottom: 5px;
+            color: #2c3e50;
+            font-size: 0.9rem;
+        }
+
+        .info-content p {
+            margin: 0;
+            color: #6c757d;
+            font-size: 0.85rem;
+        }
+
+        /* Examination Selection */
+        .examination-selection {
+            margin-top: 15px;
+        }
+
+        .select-all-container {
+            margin-bottom: 15px;
+            padding: 10px;
+            background: #f8f9fa;
+            border-radius: 4px;
+        }
+
+        .select-all-checkbox {
+            display: flex;
+            align-items: center;
+            gap: 8px;
+            cursor: pointer;
+            font-weight: 500;
+            color: #495057;
+            margin: 0;
+        }
+
+        .select-all-checkbox input[type="checkbox"] {
+            display: none;
+        }
+
+        .checkmark {
+            width: 18px;
+            height: 18px;
+            border: 2px solid #dee2e6;
+            border-radius: 3px;
+            position: relative;
+            transition: all 0.3s ease;
+        }
+
+        .select-all-checkbox input[type="checkbox"]:checked + .checkmark {
+            background: #3498db;
+            border-color: #3498db;
+        }
+
+        .select-all-checkbox input[type="checkbox"]:checked + .checkmark::after {
+            content: '✓';
+            position: absolute;
+            top: 50%;
+            left: 50%;
+            transform: translate(-50%, -50%);
+            color: white;
+            font-size: 11px;
+            font-weight: bold;
+        }
+
+        /* Examination Table */
+        .examination-table-container {
+            max-height: 300px;
+            overflow-y: auto;
+            border: 1px solid #dee2e6;
+            border-radius: 4px;
+        }
+
+        .examination-table {
+            margin-bottom: 0;
+        }
+
+        .examination-table th {
+            background-color: #f8f9fa;
+            position: sticky;
+            top: 0;
+            z-index: 1;
+            font-weight: 600;
+            color: #495057;
+        }
+
+        .examination-table td {
+            vertical-align: middle;
+        }
+
+        .exam-checkbox {
+            margin: 0;
+        }
+
+        .status-badge {
+            padding: 3px 8px;
+            border-radius: 12px;
+            font-size: 0.75rem;
+            font-weight: 600;
+            color: white;
+            text-transform: uppercase;
+        }
+
+        .status-open { background-color: #28a745; }
+        .status-in-progress { background-color: #ffc107; color: #212529; }
+        .status-completed { background-color: #17a2b8; }
+        .status-closed { background-color: #6c757d; }
+
+        /* Table Header Actions */
+        .table-header-actions {
+            display: flex;
+            justify-content: space-between;
+            align-items: center;
+            margin-bottom: 10px;
+        }
+
+        .clinical-file-actions-row {
+            margin-top: 10px;
+            padding: 8px 0;
+            border-top: 1px solid #e9ecef;
+            display: flex;
+            justify-content: flex-end;
+        }
+
+        .clinical-file-actions {
+            display: flex;
+            align-items: center;
+            gap: 15px;
+        }
+
+        .table-header-actions {
+            margin-bottom: 5px;
+        }
+
+        .selected-count {
+            background: #e3f2fd;
+            padding: 5px 12px;
+            border-radius: 15px;
+            font-size: 0.85rem;
+            color: #1976d2;
+            font-weight: 500;
+        }
+
+        /* Examination Checkbox Styles */
+        .examination-checkbox {
+            margin: 0;
+            cursor: pointer;
+        }
+
+        .examination-row:hover {
+            background-color: #f8f9fa;
+        }
+
+        .examination-row td:first-child {
+            text-align: center;
+        }
+
+        /* Alert Modal Styles */
+        .alert-modal {
+            max-width: 500px !important;
+        }
+
+        .alert-content {
+            display: flex;
+            align-items: flex-start;
+            gap: 15px;
+            padding: 10px 0;
+        }
+
+        .alert-icon {
+            font-size: 2rem;
+            margin-top: 5px;
+        }
+
+        .alert-icon.success {
+            color: #28a745;
+        }
+
+        .alert-icon.warning {
+            color: #ffc107;
+        }
+
+        .alert-icon.error {
+            color: #dc3545;
+        }
+
+        .alert-icon.info {
+            color: #17a2b8;
+        }
+
+        /* Confirmation Modal Styles */
+        .confirmation-modal {
+            max-width: 600px !important;
+        }
+
+        .confirmation-content {
+            display: flex;
+            align-items: flex-start;
+            gap: 15px;
+            padding: 10px 0;
+        }
+
+        /* Duplicate Examination Modal Styles */
+        .checkbox-container {
+            display: flex;
+            align-items: center;
+            margin-bottom: 15px;
+            cursor: pointer;
+            position: relative;
+            padding-left: 35px;
+            user-select: none;
+        }
+
+        .checkbox-container input[type="checkbox"] {
+            position: absolute;
+            opacity: 0;
+            cursor: pointer;
+            height: 0;
+            width: 0;
+        }
+
+        .checkmark {
+            position: absolute;
+            top: 0;
+            left: 0;
+            height: 20px;
+            width: 20px;
+            background-color: #eee;
+            border: 2px solid #ddd;
+            border-radius: 4px;
+            transition: all 0.3s ease;
+        }
+
+        .checkbox-container:hover input ~ .checkmark {
+            background-color: #ccc;
+        }
+
+        .checkbox-container input:checked ~ .checkmark {
+            background-color: #007bff;
+            border-color: #007bff;
+        }
+
+        .checkmark:after {
+            content: "";
+            position: absolute;
+            display: none;
+        }
+
+        .checkbox-container input:checked ~ .checkmark:after {
+            display: block;
+        }
+
+        .checkbox-container .checkmark:after {
+            left: 6px;
+            top: 2px;
+            width: 6px;
+            height: 10px;
+            border: solid white;
+            border-width: 0 3px 3px 0;
+            transform: rotate(45deg);
+        }
+
+        .checkbox-label {
+            font-weight: 500;
+            color: #333;
+        }
+
+        .detail-count {
+            color: #6c757d;
+            font-size: 0.9em;
+            font-weight: normal;
+        }
+
+        .detail-price {
+            color: #28a745;
+            font-size: 0.9em;
+            font-weight: 600;
+            margin-left: 8px;
+        }
+
+        .detail-name {
+            color: #007bff;
+            font-size: 0.9em;
+            font-weight: normal;
+        }
+
+        .confirmation-icon {
+            font-size: 2.5rem;
+            color: #3498db;
+            margin-top: 5px;
+        }
+
+        .confirmation-message {
+            flex: 1;
+            line-height: 1.6;
+        }
+
+        .confirmation-message strong {
+            color: #2c3e50;
+        }
+
+        /* Clinical Files Section Styles */
+        .clinical-files-section {
+            margin-bottom: 30px;
+        }
+
+        .collapsible-header {
+            cursor: pointer;
+            transition: all 0.3s ease;
+        }
+
+        .collapsible-header:hover {
+            background-color: #f8f9fa;
+        }
+
+        .collapsible-header h2 {
+            display: flex;
+            align-items: center;
+            gap: 10px;
+            margin: 0;
+        }
+
+        .file-count {
+            font-size: 0.9rem;
+            color: #6c757d;
+            font-weight: normal;
+        }
+
+        .toggle-icon {
+            margin-left: auto;
+            transition: transform 0.3s ease;
+        }
+
+        .toggle-icon.rotated {
+            transform: rotate(180deg);
+        }
+
+        .clinical-files-container {
+            margin-top: 15px;
+            border-top: 1px solid #e9ecef;
+            padding-top: 15px;
+        }
+
+        .clinical-files-list {
+            display: flex;
+            flex-direction: column;
+            gap: 8px;
+        }
+
+        .clinical-file-entry {
+            display: flex;
+            justify-content: space-between;
+            align-items: center;
+            padding: 12px 16px;
+            background: white;
+            border: 1px solid #e9ecef;
+            border-radius: 8px;
+            transition: all 0.3s ease;
+        }
+
+        .clinical-file-entry:hover {
+            box-shadow: 0 2px 8px rgba(0, 0, 0, 0.1);
+            border-color: #3498db;
+        }
+
+        .file-info {
+            flex: 1;
+            display: flex;
+            flex-direction: column;
+            gap: 6px;
+        }
+
+        .file-main {
+            display: flex;
+            align-items: center;
+            gap: 15px;
+        }
+
+        .file-number {
+            font-weight: 700;
+            color: #2c3e50;
+            font-size: 1.1rem;
+            min-width: 50px;
+            background: #f8f9fa;
+            padding: 4px 8px;
+            border-radius: 6px;
+            text-align: center;
+            border: 2px solid #e9ecef;
+        }
+
+        .file-title {
+            font-weight: 500;
+            color: #2c3e50;
+            flex: 1;
+        }
+
+        .file-status {
+            padding: 4px 12px;
+            border-radius: 20px;
+            font-size: 0.75rem;
+            font-weight: 500;
+            text-transform: uppercase;
+            white-space: nowrap;
+        }
+
+        .status-active {
+            background: #e8f5e8;
+            color: #27ae60;
+        }
+
+        .status-closed {
+            background: #fff3cd;
+            color: #856404;
+        }
+
+        .status-archived {
+            background: #f8d7da;
+            color: #721c24;
+        }
+
+        .status-pending_review {
+            background: #d1ecf1;
+            color: #0c5460;
+        }
+
+        .file-details {
+            display: flex;
+            gap: 20px;
+            font-size: 0.85rem;
+            color: #6c757d;
+        }
+
+        .detail-item {
+            display: flex;
+            align-items: center;
+            gap: 5px;
+        }
+
+        .detail-item i {
+            color: #3498db;
+            width: 14px;
+        }
+
+        .file-actions {
+            display: flex;
+            gap: 8px;
+            align-items: center;
+        }
+
+        .file-actions .btn {
+            font-size: 0.8rem;
+            padding: 6px 12px;
+            white-space: nowrap;
+        }
+
+        /* Pagination Styles */
+        .pagination-container {
+            display: flex;
+            justify-content: space-between;
+            align-items: center;
+            margin-top: 20px;
+            padding: 15px;
+            background: #f8f9fa;
+            border-radius: 8px;
+            border: 1px solid #e9ecef;
+        }
+
+        .pagination-info {
+            font-size: 0.9rem;
+            color: #6c757d;
+        }
+
+        .pagination-controls {
+            display: flex;
+            gap: 8px;
+            align-items: center;
+        }
+
+        .pagination-button {
+            display: inline-flex;
+            align-items: center;
+            justify-content: center;
+            padding: 8px 12px;
+            border: 1px solid #dee2e6;
+            background: white;
+            color: #495057;
+            text-decoration: none;
+            border-radius: 4px;
+            font-size: 0.9rem;
+            transition: all 0.2s ease;
+            min-width: 40px;
+        }
+
+        .pagination-button:hover {
+            background: #e9ecef;
+            border-color: #adb5bd;
+            color: #495057;
+            text-decoration: none;
+        }
+
+        .pagination-button:disabled {
+            background: #f8f9fa;
+            color: #adb5bd;
+            cursor: not-allowed;
+            border-color: #dee2e6;
+        }
+
+        .pagination-button.active {
+            background: #3498db;
+            color: white;
+            border-color: #3498db;
+        }
+
+
+
     </style>
 </head>
 <body>
@@ -1721,6 +3262,12 @@
                     <a href="${pageContext.request.contextPath}/patients/edit/${patient.id}" class="btn btn-secondary">
                         <i class="fas fa-edit"></i> Edit
                     </a>
+                    <button onclick="printRegistrationDetails()" class="btn btn-primary" style="margin-left: 10px;">
+                        <i class="fas fa-print"></i> Print Registration
+                    </button>
+                    <button onclick="openCustomerLedger()" class="btn btn-info" style="margin-left: 10px;">
+                        <i class="fas fa-file-invoice-dollar"></i> Customer Ledger
+                    </button>
                 </div>
             </div>
             
@@ -1829,7 +3376,7 @@
                         <span class="info-value">
                             <c:choose>
                                 <c:when test="${not empty patient.createdBy}">
-                                    <i class="fas fa-user-plus"></i> ${patient.createdBy}
+                                    <i class="fas fa-user-plus"></i> ${patient.createdBy.firstName} ${patient.createdBy.lastName}
                                 </c:when>
                                 <c:otherwise>
                                     <span style="color: #6c757d; font-style: italic;">Not recorded</span>
@@ -1842,7 +3389,7 @@
                         <span class="info-value">
                             <c:choose>
                                 <c:when test="${not empty patient.registeredClinic}">
-                                    <i class="fas fa-hospital"></i> ${patient.registeredClinic}
+                                    <i class="fas fa-hospital"></i> ${patient.registeredClinic.clinicName}
                                 </c:when>
                                 <c:otherwise>
                                     <span style="color: #6c757d; font-style: italic;">Not recorded</span>
@@ -2172,6 +3719,77 @@
             </div>
         </div>
         
+        <!-- Clinical Files Section -->
+        <div class="patient-details-container clinical-files-section">
+            <div class="patient-header collapsible-header" onclick="toggleClinicalFiles()">
+                <h2><i class="fas fa-folder-medical"></i> Clinical Files 
+                    <span class="file-count">(${not empty clinicalFiles ? fn:length(clinicalFiles) : 0})</span>
+                    <i class="fas fa-chevron-down toggle-icon" id="clinicalFilesToggleIcon"></i>
+                </h2>
+            </div>
+            
+            <div class="clinical-files-container" id="clinicalFilesContainer" style="display: none;">
+                <c:choose>
+                    <c:when test="${not empty clinicalFiles}">
+                        <div class="clinical-files-list">
+                            <c:forEach items="${clinicalFiles}" var="file">
+                                <div class="clinical-file-entry">
+                                    <div class="file-info">
+                                        <div class="file-main">
+                                            <div class="file-number">${file.fileNumber}</div>
+                                            <div class="file-title">${not empty file.title ? file.title : 'Untitled File'}</div>
+                                            <div class="file-status status-${not empty file.status ? file.status.name().toLowerCase() : 'active'}">${not empty file.status ? file.status.name() : 'ACTIVE'}</div>
+                                        </div>
+                                        <div class="file-details">
+                                            <span class="detail-item">
+                                                <i class="fas fa-calendar"></i>
+                                                ${not empty file.createdAtFormatted ? file.createdAtFormatted : 'Not available'}
+                                            </span>
+                                            <span class="detail-item">
+                                                <i class="fas fa-list"></i>
+                                                ${not empty file.examinationCount ? file.examinationCount : 0} examinations
+                                            </span>
+                                            <c:if test="${not empty file.totalAmount and file.totalAmount != null}">
+                                                <span class="detail-item">
+                                                    <i class="fas fa-rupee-sign"></i>
+                                                    ₹${file.totalAmount}
+                                                </span>
+                                            </c:if>
+                                        </div>
+                                    </div>
+                                    <div class="file-actions">
+                                        <a href="${pageContext.request.contextPath}/clinical-files/${file.id}" 
+                                           class="btn btn-sm btn-primary">
+                                            <i class="fas fa-eye"></i> View
+                                        </a>
+                                        <c:if test="${not empty file.status and file.status.name() == 'ACTIVE'}">
+                                            <button type="button" class="btn btn-sm btn-warning" 
+                                                    onclick="closeClinicalFile(${file.id})">
+                                                <i class="fas fa-lock"></i> Close
+                                            </button>
+                                        </c:if>
+                                        <c:if test="${not empty file.status and file.status.name() == 'CLOSED'}">
+                                            <button type="button" class="btn btn-sm btn-success" 
+                                                    onclick="reopenClinicalFile(${file.id})">
+                                                <i class="fas fa-unlock"></i> Reopen
+                                            </button>
+                                        </c:if>
+                                    </div>
+                                </div>
+                            </c:forEach>
+                        </div>
+                    </c:when>
+                    <c:otherwise>
+                        <div class="no-records-message">
+                            <i class="fas fa-folder-open"></i> No clinical files found for this patient.
+                        </div>
+                    </c:otherwise>
+                </c:choose>
+            </div>
+        </div>
+
+
+
         <!-- Examination History Section -->
         <div class="patient-details-container examination-history-section">
             <div class="patient-header">
@@ -2208,6 +3826,24 @@
                     </select>
                 </div>
                 
+                <div class="filter-group">
+                    <label for="fileIdDropdown">Filter by File ID:</label>
+                    <select id="fileIdDropdown" class="custom-select" onchange="filterByFileId(this.value)">
+                        <option value="all">All Files</option>
+                        <option value="no-file">No File</option>
+                        <c:set var="fileIdsSeen" value="" />
+                        <c:forEach items="${examinationHistory}" var="exam">
+                            <c:if test="${not empty exam.clinicalFile}">
+                                <c:set var="fileId" value="${exam.clinicalFile.id}" />
+                                <c:if test="${!fn:contains(fileIdsSeen, fileId)}">
+                                    <c:set var="fileIdsSeen" value="${fileIdsSeen}${fileId}," />
+                                    <option value="${fileId}">File ${fileId}</option>
+                                </c:if>
+                            </c:if>
+                        </c:forEach>
+                    </select>
+                </div>
+                
                 <div class="sort-group">
                     <label for="sortDropdown">Sort by:</label>
                     <select id="sortDropdown" class="custom-select" onchange="sortTable(this.value)">
@@ -2217,30 +3853,62 @@
                         <option value="toothNumberDesc">Tooth Number (Descending)</option>
                     </select>
                 </div>
+                
+                <!-- Clinical File Creation - Only for OPD Doctors -->
+                <sec:authorize access="hasRole('OPD_DOCTOR')">
+                    <div class="file-actions">
+                        <button type="button" class="btn btn-primary" disabled>
+                            <i class="fas fa-folder-medical"></i> New Clinical File (Under Construction)
+                        </button>
+                    </div>
+                </sec:authorize>
             </div>
             
-            <div class="table-info">
-                <small>
-                    <c:choose>
-                        <c:when test="${empty examinationHistory}">
-                            No examinations found
-                        </c:when>
-                        <c:otherwise>
-                            Showing ${fn:length(examinationHistory)} of ${fn:length(examinationHistory)} records
-                        </c:otherwise>
-                    </c:choose>
-                </small>
+                                <div class="table-info">
+                        <div class="table-header-actions">
+                            <small>
+                                <c:choose>
+                                    <c:when test="${empty examinationHistory}">
+                                        No examinations found
+                                    </c:when>
+                                    <c:otherwise>
+                                        Showing ${fn:length(examinationHistory)} of ${fn:length(examinationHistory)} records
+                                    </c:otherwise>
+                                </c:choose>
+                            </small>
+                        </div>
+                        
+                        <sec:authorize access="hasRole('OPD_DOCTOR')">
+                            <div class="clinical-file-actions-row">
+                                <div class="clinical-file-actions">
+                                    <span id="selectedCountDisplay" class="selected-count" style="display: none;">
+                                        <span id="selectedExaminationCount">0</span> examinations selected
+                                    </span>
+                                    <button type="button" id="createFileFromTableBtn" class="btn btn-primary btn-sm" 
+                                            onclick="createClinicalFileFromTable()" style="display: none;">
+                                        <i class="fas fa-folder-medical"></i> Create Clinical File
+                                    </button>
+                                </div>
+                            </div>
+                        </sec:authorize>
                     </div>
 
                     <div class="table-responsive">
                 <table id="examinationHistoryTable" class="table">
                             <thead>
                             <tr>
+                                <th width="50">
+                                    <sec:authorize access="hasRole('OPD_DOCTOR')">
+                                        <input type="checkbox" id="selectAllExaminations" onchange="toggleSelectAllExaminations()">
+                                    </sec:authorize>
+                                </th>
                                 <th>Exam ID</th>
+                                <th>File ID</th>
                                 <th>Tooth</th>
                                 <th>Examination Date</th>
                                 <th>Treatment Start Date</th>
                                 <th>Procedure</th>
+                                <th>Procedure Status</th>
                                 <th>Notes</th>
                                 <th>Clinic</th>
                                 <th>Treating Doctor</th>
@@ -2250,7 +3918,22 @@
                             <tbody>
                         <c:forEach items="${examinationHistory}" var="exam" varStatus="status">
                             <tr class="examination-row" onclick="openExaminationDetails('${exam.id}')">
+                                <td>
+                                    <sec:authorize access="hasRole('OPD_DOCTOR')">
+                                        <input type="checkbox" class="examination-checkbox" value="${exam.id}" onclick="event.stopPropagation();">
+                                    </sec:authorize>
+                                </td>
                                 <td class="exam-id-col">${exam.id}</td>
+                                <td data-file-id="${not empty exam.clinicalFile ? exam.clinicalFile.id : ''}">
+                                    <c:choose>
+                                        <c:when test="${not empty exam.clinicalFile}">
+                                            <span class="file-id-badge">${exam.clinicalFile.id}</span>
+                                        </c:when>
+                                        <c:otherwise>
+                                            <span class="no-file">-</span>
+                                        </c:otherwise>
+                                    </c:choose>
+                                </td>
                                 <td data-tooth="${exam.toothNumber}">
                                     <c:choose>
                                         <c:when test="${exam.toothNumber == 'GENERAL_CONSULTATION'}">
@@ -2270,14 +3953,22 @@
                                             <c:set var="month" value="${fn:substring(datePart, 5, 7)}" />
                                             <c:set var="day" value="${fn:substring(datePart, 8, 10)}" />
                                             
-                                    ${day}/${month}/${year} ${timePart}
+                                            <c:set var="hourStr" value="${fn:substring(timePart, 0, 2)}" />
+                                            <c:set var="minuteStr" value="${fn:substring(timePart, 3, 5)}" />
+                                            <c:set var="hour" value="${fn:substring(hourStr, 0, 1) == '0' ? fn:substring(hourStr, 1, 2) : hourStr}" />
+                                            <c:set var="hourNum" value="${fn:substring(hourStr, 0, 1) == '0' ? fn:substring(hourStr, 1, 2) : hourStr}" />
+                                            <c:set var="ampm" value="${hourNum >= 12 ? 'PM' : 'AM'}" />
+                                            <c:set var="displayHour" value="${hourNum >= 12 ? (hourNum - 12) : hourNum}" />
+                                            <c:set var="displayHour" value="${displayHour == 0 ? 12 : displayHour}" />
+                                            
+                                    ${day}/${month}/${year} ${displayHour}:${minuteStr} ${ampm}
                                     </td>
                                 <td>
                                     <c:set var="rawDate" value="${exam.treatmentStartingDate}"/>
                                     <c:choose>
                                         <c:when test="${not empty rawDate}">
                                             <fmt:parseDate value="${rawDate}" pattern="yyyy-MM-dd'T'HH:mm" var="parsedDate"/>
-                                            <fmt:formatDate value="${parsedDate}" pattern="dd/MM/yyyy HH:mm"/>
+                                            <fmt:formatDate value="${parsedDate}" pattern="dd/MM/yyyy hh:mm a"/>
                                         </c:when>
                                         <c:otherwise>
                                             <span class="not-started">Not Started</span>
@@ -2296,6 +3987,16 @@
                                 </td>
                                 <td>
                                     <c:choose>
+                                        <c:when test="${not empty exam.procedureStatus}">
+                                            ${exam.procedureStatus.name()}
+                                        </c:when>
+                                        <c:otherwise>
+                                            <span class="no-data">No status</span>
+                                        </c:otherwise>
+                                    </c:choose>
+                                </td>
+                                <td>
+                                    <c:choose>
                                         <c:when test="${not empty exam.examinationNotes}">
                                             <a href="#" class="view-notes-link" onclick="showNotesPopup('${fn:escapeXml(exam.examinationNotes)}', '${exam.id}'); return false;">
                                                 VIEW
@@ -2309,7 +4010,7 @@
                                 <td data-clinic-id="${not empty exam.examinationClinic ? exam.examinationClinic.clinicId : ''}">
                                     <c:choose>
                                         <c:when test="${not empty exam.examinationClinic}">
-                                            <span class="clinic-code">${exam.examinationClinic.clinicName}</span>
+                                            <span class="clinic-code">${exam.examinationClinic.clinicId}</span>
                                         </c:when>
                                         <c:otherwise>
                                             <span class="text-muted">-</span>
@@ -2346,6 +4047,18 @@
                                                 <c:if test="${!canDup}">disabled style="opacity:0.6; cursor:not-allowed;"</c:if>>
                                             <i class="fas fa-clone"></i>
                                         </button>
+                                        
+                                        <!-- Delete button - only show if user has canDeleteExamination permission -->
+                                        <c:if test="${currentUser.canDeleteExamination}">
+                                            <c:set var="canDelete" value="${exam.totalPaidAmount == 0}"/>
+                                            <button class="btn btn-sm btn-danger has-tooltip" 
+                                                    data-tooltip="${canDelete ? 'Delete Examination' : 'Cannot delete - payment collected'}" 
+                                                    data-exam-id="${exam.id}"
+                                                    onclick="event.stopPropagation(); if(this.disabled){return false;} confirmDeleteExamination(${exam.id}, '${exam.toothNumber}', '${exam.examinationDate}')"
+                                                    <c:if test="${!canDelete}">disabled style="opacity:0.6; cursor:not-allowed;"</c:if>>
+                                                <i class="fas fa-trash"></i>
+                                            </button>
+                                        </c:if>
                                     </div>
                                 </td>
                             </tr>
@@ -2359,8 +4072,49 @@
                     <i class="fas fa-info-circle"></i> No examination records found for this patient.
                     </div>
             </c:if>
+
+            <!-- Pagination Controls -->
+            <c:if test="${not empty examinationHistory and totalPages > 1}">
+                <div class="pagination-container">
+                    <div class="pagination-info">
+                        Showing ${(currentPage * pageSize) + 1} to ${(currentPage * pageSize) + fn:length(examinationHistory)} of ${totalItems} examinations
+                    </div>
+                    <div class="pagination-controls">
+                        <!-- Previous button -->
+                        <c:if test="${currentPage > 0}">
+                            <a href="?page=${currentPage - 1}&size=${pageSize}" class="pagination-button">
+                                <i class="fas fa-chevron-left"></i> Previous
+                            </a>
+                        </c:if>
+                        
+                        <!-- Page numbers -->
+                        <c:forEach begin="0" end="${totalPages - 1}" var="pageNum">
+                            <c:choose>
+                                <c:when test="${pageNum == currentPage}">
+                                    <span class="pagination-button active">${pageNum + 1}</span>
+                                </c:when>
+                                <c:when test="${pageNum == 0 or pageNum == totalPages - 1 or (pageNum >= currentPage - 2 and pageNum <= currentPage + 2)}">
+                                    <a href="?page=${pageNum}&size=${pageSize}" class="pagination-button">${pageNum + 1}</a>
+                                </c:when>
+                                <c:when test="${pageNum == currentPage - 3 or pageNum == currentPage + 3}">
+                                    <span class="pagination-button">...</span>
+                                </c:when>
+                            </c:choose>
+                        </c:forEach>
+                        
+                        <!-- Next button -->
+                        <c:if test="${currentPage < totalPages - 1}">
+                            <a href="?page=${currentPage + 1}&size=${pageSize}" class="pagination-button">
+                                Next <i class="fas fa-chevron-right"></i>
+                            </a>
+                        </c:if>
+                    </div>
+                </div>
+            </c:if>
                     </div>
     </div>
+
+
     <!-- General Consultation Modal - Only show for non-receptionists -->
     <c:if test="${currentUserRole != 'RECEPTIONIST'}">
     <div id="consultationModal" class="modal consultation-modal">
@@ -2590,5 +4344,1023 @@
 <!-- Chairside Note Component -->
 <jsp:include page="/WEB-INF/views/common/chairside-note-component.jsp" />
 
+        <!-- Clinical File Creation Modal -->
+        <div id="createFileModal" class="modal">
+            <div class="modal-content">
+                <div class="modal-header">
+                    <h2><i class="fas fa-folder-medical"></i> Create Clinical File</h2>
+                    <span class="close" onclick="closeCreateFileModal()">&times;</span>
+                </div>
+                
+                <div class="modal-body">
+                    <form id="createFileForm">
+                        <!-- Step Indicator -->
+                        <div class="step-indicator">
+                            <div class="step active" data-step="1">
+                                <div class="step-number">1</div>
+                                <div class="step-label">File Details</div>
+                            </div>
+                            <div class="step-line"></div>
+                            <div class="step" data-step="2">
+                                <div class="step-number">2</div>
+                                <div class="step-label">Select Examinations</div>
+                            </div>
+                        </div>
+
+                        <!-- Step 1: File Information -->
+                        <div class="form-step active" id="step1">
+                            <div class="form-section">
+                                <h3><i class="fas fa-info-circle"></i> File Information</h3>
+                                
+                                <div class="form-group">
+                                    <label for="fileTitle">
+                                        <i class="fas fa-tag"></i>
+                                        File Title
+                                    </label>
+                                    <input type="text" id="fileTitle" name="title" class="form-control" readonly
+                                           placeholder="Auto-generated file name">
+                                    <small class="form-help">File name is automatically generated based on patient, date, and selected examinations</small>
+                                </div>
+                                
+                                <div class="form-grid">
+                                    <div class="form-column">
+                                        <div class="form-group">
+                                            <label for="fileStatus">
+                                                <i class="fas fa-toggle-on"></i>
+                                                Status
+                                            </label>
+                                            <select id="fileStatus" name="status" class="form-control">
+                                                <option value="ACTIVE">Active</option>
+                                                <option value="PENDING_REVIEW">Pending Review</option>
+                                            </select>
+                                        </div>
+                                    </div>
+                                    <div class="form-column">
+                                        <div class="form-group">
+                                            <label for="fileNotes">
+                                                <i class="fas fa-sticky-note"></i>
+                                                Notes
+                                            </label>
+                                            <textarea id="fileNotes" name="notes" class="form-control" rows="3"
+                                                      placeholder="Any additional notes or observations..."></textarea>
+                                        </div>
+                                    </div>
+                                </div>
+                            </div>
+                            
+                            <div class="form-actions">
+                                <button type="button" class="btn btn-primary" onclick="nextStep()">
+                                    <i class="fas fa-arrow-right"></i>
+                                    Next: Select Examinations
+                                </button>
+                                <button type="button" class="btn btn-secondary" onclick="closeCreateFileModal()">
+                                    <i class="fas fa-times"></i>
+                                    Cancel
+                                </button>
+                            </div>
+                        </div>
+
+                        <!-- Step 2: Examination Selection -->
+                        <div class="form-step" id="step2">
+                            <div class="form-section">
+                                <div class="section-header-with-counter">
+                                    <h3><i class="fas fa-list-check"></i> Select Examinations</h3>
+                                    <div class="selection-counter">
+                                        <span id="selectedCount">0</span> of <span id="totalCount">0</span> selected
+                                    </div>
+                                </div>
+                                
+                                <div class="info-alert">
+                                    <i class="fas fa-info-circle"></i>
+                                    <div class="info-content">
+                                        <strong>Available Examinations</strong>
+                                        <p>All patient examinations that are not already part of a clinical file are available for selection</p>
+                                    </div>
+                                </div>
+
+                                <div class="examination-selection">
+                                    <div class="select-all-container">
+                                        <label class="select-all-checkbox">
+                                            <input type="checkbox" id="selectAll" onchange="toggleSelectAll()">
+                                            <span class="checkmark"></span>
+                                            Select All Examinations
+                                        </label>
+                                    </div>
+                                    
+                                    <div class="examination-table-container">
+                                        <table class="table table-hover examination-table">
+                                            <thead>
+                                                <tr>
+                                                    <th width="50">Select</th>
+                                                    <th>Tooth</th>
+                                                    <th>Date & Time</th>
+                                                    <th>Procedure</th>
+                                                    <th>Doctor</th>
+                                                    <th>Status</th>
+                                                </tr>
+                                            </thead>
+                                            <tbody id="examinationSelectionTable">
+                                                <!-- Examinations will be populated here -->
+                                            </tbody>
+                                        </table>
+                                    </div>
+                                </div>
+                            </div>
+                            
+                            <div class="form-actions">
+                                <button type="button" class="btn btn-secondary" onclick="prevStep()">
+                                    <i class="fas fa-arrow-left"></i>
+                                    Back to File Details
+                                </button>
+                                <button type="submit" class="btn btn-primary">
+                                    <i class="fas fa-save"></i>
+                                    Create Clinical File
+                                </button>
+                            </div>
+                        </div>
+                    </form>
+                </div>
+            </div>
+        </div>
+
+    <!-- Alert Modal -->
+    <div id="alertModal" class="modal">
+        <div class="modal-content alert-modal">
+            <div class="modal-header">
+                <h2 id="alertTitle">Alert</h2>
+                <span class="close" onclick="closeAlertModal()">&times;</span>
+            </div>
+            <div class="modal-body">
+                <div class="alert-content">
+                    <div id="alertIcon" class="alert-icon"></div>
+                    <p id="alertMessage">This is an alert message.</p>
+                </div>
+            </div>
+            <div class="modal-footer">
+                <button type="button" class="btn btn-primary" onclick="closeAlertModal()">OK</button>
+            </div>
+        </div>
+    </div>
+
+    <!-- Confirmation Modal -->
+    <div id="confirmationModal" class="modal">
+        <div class="modal-content confirmation-modal">
+            <div class="modal-header">
+                <h2 id="confirmationTitle">Confirm Action</h2>
+                <span class="close" onclick="closeConfirmationModal()">&times;</span>
+            </div>
+            <div class="modal-body">
+                <div class="confirmation-content">
+                    <div class="confirmation-icon">
+                        <i class="fas fa-question-circle"></i>
+                    </div>
+                    <div id="confirmationMessage" class="confirmation-message">
+                        Are you sure you want to proceed?
+                    </div>
+                </div>
+            </div>
+            <div class="modal-footer">
+                <button type="button" id="confirmBtn" class="btn btn-primary">Confirm</button>
+                <button type="button" class="btn btn-secondary" onclick="closeConfirmationModal()">Cancel</button>
+            </div>
+        </div>
+    </div>
+
+    <!-- Duplicate Examination Selection Modal -->
+    <div id="duplicateExaminationModal" class="modal">
+        <div class="modal-content">
+            <div class="modal-header">
+                <h2>Duplicate Examination</h2>
+                <span class="close" onclick="closeDuplicateExaminationModal()">&times;</span>
+            </div>
+            <div class="modal-body">
+                <p>Select which details you want to duplicate:</p>
+                
+                <!-- Tooth Selection Section -->
+                <div class="form-group">
+                    <label class="section-label">Select Target Teeth:</label>
+                    <div class="tooth-selection-container">
+                        <div class="compact-dental-chart">
+                            <!-- Upper Teeth -->
+                            <div class="compact-teeth-row upper">
+                                <div class="compact-tooth" data-tooth-number="18" onclick="toggleToothSelection(this, 18)">18</div>
+                                <div class="compact-tooth" data-tooth-number="17" onclick="toggleToothSelection(this, 17)">17</div>
+                                <div class="compact-tooth" data-tooth-number="16" onclick="toggleToothSelection(this, 16)">16</div>
+                                <div class="compact-tooth" data-tooth-number="15" onclick="toggleToothSelection(this, 15)">15</div>
+                                <div class="compact-tooth" data-tooth-number="14" onclick="toggleToothSelection(this, 14)">14</div>
+                                <div class="compact-tooth" data-tooth-number="13" onclick="toggleToothSelection(this, 13)">13</div>
+                                <div class="compact-tooth" data-tooth-number="12" onclick="toggleToothSelection(this, 12)">12</div>
+                                <div class="compact-tooth" data-tooth-number="11" onclick="toggleToothSelection(this, 11)">11</div>
+                                <div class="compact-tooth" data-tooth-number="21" onclick="toggleToothSelection(this, 21)">21</div>
+                                <div class="compact-tooth" data-tooth-number="22" onclick="toggleToothSelection(this, 22)">22</div>
+                                <div class="compact-tooth" data-tooth-number="23" onclick="toggleToothSelection(this, 23)">23</div>
+                                <div class="compact-tooth" data-tooth-number="24" onclick="toggleToothSelection(this, 24)">24</div>
+                                <div class="compact-tooth" data-tooth-number="25" onclick="toggleToothSelection(this, 25)">25</div>
+                                <div class="compact-tooth" data-tooth-number="26" onclick="toggleToothSelection(this, 26)">26</div>
+                                <div class="compact-tooth" data-tooth-number="27" onclick="toggleToothSelection(this, 27)">27</div>
+                                <div class="compact-tooth" data-tooth-number="28" onclick="toggleToothSelection(this, 28)">28</div>
+                            </div>
+                            <!-- Lower Teeth -->
+                            <div class="compact-teeth-row lower">
+                                <div class="compact-tooth" data-tooth-number="48" onclick="toggleToothSelection(this, 48)">48</div>
+                                <div class="compact-tooth" data-tooth-number="47" onclick="toggleToothSelection(this, 47)">47</div>
+                                <div class="compact-tooth" data-tooth-number="46" onclick="toggleToothSelection(this, 46)">46</div>
+                                <div class="compact-tooth" data-tooth-number="45" onclick="toggleToothSelection(this, 45)">45</div>
+                                <div class="compact-tooth" data-tooth-number="44" onclick="toggleToothSelection(this, 44)">44</div>
+                                <div class="compact-tooth" data-tooth-number="43" onclick="toggleToothSelection(this, 43)">43</div>
+                                <div class="compact-tooth" data-tooth-number="42" onclick="toggleToothSelection(this, 42)">42</div>
+                                <div class="compact-tooth" data-tooth-number="41" onclick="toggleToothSelection(this, 41)">41</div>
+                                <div class="compact-tooth" data-tooth-number="31" onclick="toggleToothSelection(this, 31)">31</div>
+                                <div class="compact-tooth" data-tooth-number="32" onclick="toggleToothSelection(this, 32)">32</div>
+                                <div class="compact-tooth" data-tooth-number="33" onclick="toggleToothSelection(this, 33)">33</div>
+                                <div class="compact-tooth" data-tooth-number="34" onclick="toggleToothSelection(this, 34)">34</div>
+                                <div class="compact-tooth" data-tooth-number="35" onclick="toggleToothSelection(this, 35)">35</div>
+                                <div class="compact-tooth" data-tooth-number="36" onclick="toggleToothSelection(this, 36)">36</div>
+                                <div class="compact-tooth" data-tooth-number="37" onclick="toggleToothSelection(this, 37)">37</div>
+                                <div class="compact-tooth" data-tooth-number="38" onclick="toggleToothSelection(this, 38)">38</div>
+                            </div>
+                        </div>
+                        <div class="selected-teeth-info">
+                            <span class="selected-count">Selected: <span id="selectedTeethCount">0</span> teeth</span>
+                            <div class="selected-teeth-list" id="selectedTeethList"></div>
+                        </div>
+                    </div>
+                </div>
+                
+                <div class="form-group">
+                    <label class="checkbox-container">
+                        <input type="checkbox" id="duplicateAttachments">
+                        <span class="checkmark"></span>
+                        <span class="checkbox-label">
+                            Attachments (Media Files)
+                            <span id="attachmentCount" class="detail-count"></span>
+                        </span>
+                    </label>
+                </div>
+                <div class="form-group">
+                    <label class="checkbox-container">
+                        <input type="checkbox" id="duplicateTreatingDoctor">
+                        <span class="checkmark"></span>
+                        <span class="checkbox-label">
+                            Treating Doctor
+                            <span id="treatingDoctorName" class="detail-name"></span>
+                        </span>
+                    </label>
+                </div>
+                <div class="form-group">
+                    <label class="checkbox-container">
+                        <input type="checkbox" id="duplicateProcedure">
+                        <span class="checkmark"></span>
+                        <span class="checkbox-label">
+                            Procedure
+                            <span id="procedureName" class="detail-name"></span>
+                            <span id="procedurePrice" class="detail-price"></span>
+                        </span>
+                    </label>
+                </div>
+            </div>
+            <div class="modal-footer">
+                <button type="button" class="btn btn-primary" id="confirmDuplicateBtn" onclick="confirmDuplicateExamination()">
+                    <i class="fas fa-copy"></i>
+                    <span class="btn-text">Duplicate Examination</span>
+                    <span class="btn-loader" style="display: none;">
+                        <i class="fas fa-spinner fa-spin"></i>
+                        Duplicating...
+                    </span>
+                </button>
+                <button type="button" class="btn btn-secondary" onclick="closeDuplicateExaminationModal()">Cancel</button>
+            </div>
+        </div>
+    </div>
+
+    <script>
+        // Clinical File Functions
+        function toggleClinicalFiles() {
+            const container = document.getElementById('clinicalFilesContainer');
+            const icon = document.getElementById('clinicalFilesToggleIcon');
+            
+            if (container.style.display === 'none') {
+                container.style.display = 'block';
+                icon.classList.add('rotated');
+            } else {
+                container.style.display = 'none';
+                icon.classList.remove('rotated');
+            }
+        }
+
+        function closeClinicalFile(fileId) {
+            showConfirmationModal(
+                'Close Clinical File',
+                'Are you sure you want to close this clinical file? This action cannot be undone.',
+                'Close File',
+                'Cancel',
+                () => {
+                    fetch(joinUrl(contextPath, '/clinical-files/' + fileId + '/close'), {
+                        method: 'POST',
+                        headers: {
+                            'Content-Type': 'application/json',
+                            'X-CSRF-TOKEN': document.querySelector('meta[name="_csrf"]').content
+                        }
+                    })
+                    .then(response => response.json())
+                    .then(result => {
+                        if (result.success) {
+                            showAlertModal('Clinical file closed successfully!', 'success');
+                            setTimeout(() => window.location.reload(), 1500);
+                        } else {
+                            showAlertModal('Error: ' + (result.message || 'Failed to close clinical file'), 'error');
+                        }
+                    })
+                    .catch(error => {
+                        showAlertModal('An error occurred while closing the clinical file.', 'error');
+                    });
+                }
+            );
+        }
+
+        function reopenClinicalFile(fileId) {
+            showConfirmationModal(
+                'Reopen Clinical File',
+                'Are you sure you want to reopen this clinical file?',
+                'Reopen File',
+                'Cancel',
+                () => {
+                    fetch(joinUrl(contextPath, '/clinical-files/' + fileId + '/reopen'), {
+                        method: 'POST',
+                        headers: {
+                            'Content-Type': 'application/json',
+                            'X-CSRF-TOKEN': document.querySelector('meta[name="_csrf"]').content
+                        }
+                    })
+                    .then(response => response.json())
+                    .then(result => {
+                        if (result.success) {
+                            showAlertModal('Clinical file reopened successfully!', 'success');
+                            setTimeout(() => window.location.reload(), 1500);
+                        } else {
+                            showAlertModal('Error: ' + (result.message || 'Failed to reopen clinical file'), 'error');
+                        }
+                    })
+                    .catch(error => {
+                        showAlertModal('An error occurred while reopening the clinical file.', 'error');
+                    });
+                }
+            );
+        }
+
+        // Filter Functions
+        function filterByDoctor(doctorId) {
+            const rows = document.querySelectorAll('#examinationHistoryTable tbody tr');
+            rows.forEach(row => {
+                const doctorCell = row.querySelector('[data-doctor]');
+                if (doctorCell) {
+                    const rowDoctorId = doctorCell.getAttribute('data-doctor');
+                    if (doctorId === 'all' || rowDoctorId === doctorId || 
+                        (doctorId === 'unassigned' && (!rowDoctorId || rowDoctorId === ''))) {
+                        row.style.display = '';
+                    } else {
+                        row.style.display = 'none';
+                    }
+                }
+            });
+        }
+
+        function filterByClinic(clinicId) {
+            const rows = document.querySelectorAll('#examinationHistoryTable tbody tr');
+            rows.forEach(row => {
+                const clinicCell = row.querySelector('[data-clinic-id]');
+                if (clinicCell) {
+                    const rowClinicId = clinicCell.getAttribute('data-clinic-id');
+                    if (clinicId === 'all' || rowClinicId === clinicId) {
+                        row.style.display = '';
+                    } else {
+                        row.style.display = 'none';
+                    }
+                }
+            });
+        }
+
+        function filterByFileId(fileId) {
+            const rows = document.querySelectorAll('#examinationHistoryTable tbody tr');
+            rows.forEach(row => {
+                const fileIdCell = row.querySelector('[data-file-id]');
+                if (fileIdCell) {
+                    const rowFileId = fileIdCell.getAttribute('data-file-id');
+                    if (fileId === 'all' || 
+                        (fileId === 'no-file' && (!rowFileId || rowFileId === '')) ||
+                        rowFileId === fileId) {
+                        row.style.display = '';
+                    } else {
+                        row.style.display = 'none';
+                    }
+                }
+            });
+        }
+    </script>
+
+
+
+    <script>
+        // Close modal when clicking outside
+        window.onclick = function(event) {
+            const duplicateModal = document.getElementById('duplicateExaminationModal');
+            if (event.target === duplicateModal) {
+                closeDuplicateExaminationModal();
+            }
+        }
+
+        // Duplicate Examination Modal Functions
+        let selectedTeeth = [];
+        
+        function toggleToothSelection(element, toothNumber) {
+            const index = selectedTeeth.indexOf(toothNumber);
+            
+            if (index > -1) {
+                // Remove tooth from selection
+                selectedTeeth.splice(index, 1);
+                element.classList.remove('selected');
+            } else {
+                // Add tooth to selection
+                selectedTeeth.push(toothNumber);
+                element.classList.add('selected');
+            }
+            
+            updateSelectedTeethDisplay();
+        }
+        
+        function updateSelectedTeethDisplay() {
+            const countElement = document.getElementById('selectedTeethCount');
+            const listElement = document.getElementById('selectedTeethList');
+            
+            countElement.textContent = selectedTeeth.length;
+            
+            if (selectedTeeth.length > 0) {
+                const sortedTeeth = selectedTeeth.sort((a, b) => a - b);
+                listElement.textContent = 'Teeth: ' + sortedTeeth.join(', ');
+            } else {
+                listElement.textContent = '';
+            }
+        }
+        
+        function closeDuplicateExaminationModal() {
+            document.getElementById('duplicateExaminationModal').style.display = 'none';
+            
+            // Reset checkboxes to unchecked and enable them
+            document.getElementById('duplicateAttachments').checked = false;
+            document.getElementById('duplicateAttachments').disabled = false;
+            document.getElementById('duplicateTreatingDoctor').checked = false;
+            document.getElementById('duplicateTreatingDoctor').disabled = false;
+            document.getElementById('duplicateProcedure').checked = false;
+            document.getElementById('duplicateProcedure').disabled = false;
+            
+            // Reset tooth selection
+            selectedTeeth = [];
+            document.querySelectorAll('.compact-tooth').forEach(tooth => {
+                tooth.classList.remove('selected');
+            });
+            updateSelectedTeethDisplay();
+            
+            // Reset button state if it was in loading state
+            resetDuplicateButton();
+        }
+
+        function confirmDuplicateExamination() {
+            // Check if at least one tooth is selected
+            if (selectedTeeth.length === 0) {
+                showAlertModal('Please select at least one tooth to duplicate the examination to.', 'warning');
+                return;
+            }
+            
+            // Prevent multiple clicks by checking if already processing
+            const confirmBtn = document.getElementById('confirmDuplicateBtn');
+            if (confirmBtn.disabled) {
+                return;
+            }
+            
+            // Show loader and disable button
+            confirmBtn.disabled = true;
+            confirmBtn.querySelector('.btn-text').style.display = 'none';
+            confirmBtn.querySelector('.btn-loader').style.display = 'inline';
+            
+            const modal = document.getElementById('duplicateExaminationModal');
+            const examinationId = modal.getAttribute('data-examination-id');
+            
+            const duplicateAttachments = document.getElementById('duplicateAttachments').checked;
+            const duplicateTreatingDoctor = document.getElementById('duplicateTreatingDoctor').checked;
+            const duplicateProcedure = document.getElementById('duplicateProcedure').checked;
+            
+            // Call the new selective duplication endpoint with JSON data including selected teeth
+            fetch(joinUrl(contextPath, '/patients/examination/' + examinationId + '/duplicate-selective'), {
+                method: 'POST',
+                headers: {
+                    'Content-Type': 'application/json',
+                    'X-CSRF-TOKEN': document.querySelector('meta[name="_csrf"]').content
+                },
+                body: JSON.stringify({
+                    'duplicateAttachments': duplicateAttachments,
+                    'duplicateTreatingDoctor': duplicateTreatingDoctor,
+                    'duplicateProcedure': duplicateProcedure,
+                    'targetTeeth': selectedTeeth
+                })
+            })
+            .then(response => response.json())
+            .then(result => {
+                if (result.success) {
+                    closeDuplicateExaminationModal();
+                    showAlertModal(`Successfully duplicated examination to ${selectedTeeth.length} teeth.`, 'success');
+                    setTimeout(() => {
+                        window.location.reload();
+                    }, 1500);
+                } else {
+                    showAlertModal('Error: ' + (result.message || 'Failed to duplicate examination'), 'error');
+                    // Reset button state on error
+                    resetDuplicateButton();
+                }
+            })
+            .catch(error => {
+                showAlertModal('An error occurred while duplicating the examination.', 'error');
+                // Reset button state on error
+                resetDuplicateButton();
+            });
+        }
+        
+        function resetDuplicateButton() {
+            const confirmBtn = document.getElementById('confirmDuplicateBtn');
+            confirmBtn.disabled = false;
+            confirmBtn.querySelector('.btn-text').style.display = 'inline';
+            confirmBtn.querySelector('.btn-loader').style.display = 'none';
+        }
+        
+        // Delete examination functionality
+        function confirmDeleteExamination(examId, toothNumber, examinationDate) {
+            const toothDisplay = toothNumber === 'GENERAL_CONSULTATION' ? 'General Consultation' : toothNumber.replace('TOOTH_', '');
+            const formattedDate = formatDateTime12Hour(examinationDate);
+            
+            showConfirmationModal(
+                'Delete Examination',
+                `Are you sure you want to delete the examination for ${toothDisplay} on ${formattedDate}? This action cannot be undone.`,
+                'Delete',
+                'Cancel',
+                function() {
+                    deleteExamination(examId);
+                }
+            );
+        }
+        
+        async function deleteExamination(examId) {
+            try {
+                const response = await fetch(joinUrl(contextPath, '/patients/examination/' + examId + '/delete'), {
+                    method: 'DELETE',
+                    headers: {
+                        'Content-Type': 'application/json',
+                        'X-CSRF-TOKEN': document.querySelector('meta[name="_csrf"]').content
+                    }
+                });
+                
+                const result = await response.json();
+                
+                if (result.success) {
+                    showAlertModal('Examination deleted successfully.', 'success');
+                    setTimeout(() => {
+                        window.location.reload();
+                    }, 1500);
+                } else {
+                    showAlertModal('Error: ' + (result.message || 'Failed to delete examination'), 'error');
+                }
+            } catch (error) {
+                showAlertModal('An error occurred while deleting the examination.', 'error');
+            }
+        }
+        
+        // Print Registration Details Function
+        function printRegistrationDetails() {
+            // Show the print content temporarily
+            const printContent = document.getElementById('printContent');
+            const originalDisplay = printContent.style.display;
+            
+            // Make print content visible
+            printContent.style.display = 'block';
+            
+            // Hide all other content
+            const allElements = document.querySelectorAll('body > *:not(#printContent)');
+            const originalStyles = [];
+            
+            allElements.forEach((element, index) => {
+                originalStyles[index] = element.style.display;
+                element.style.display = 'none';
+            });
+            
+            // Print the page
+            window.print();
+            
+            // Restore original styles
+            printContent.style.display = originalDisplay;
+            allElements.forEach((element, index) => {
+                element.style.display = originalStyles[index];
+            });
+        }
+        
+        function formatCurrentDate() {
+            const now = new Date();
+            const options = { 
+                year: 'numeric', 
+                month: 'long', 
+                day: 'numeric',
+                hour: '2-digit',
+                minute: '2-digit'
+            };
+            return now.toLocaleDateString('en-US', options);
+        }
+        
+        // Customer Ledger functionality
+        function openCustomerLedger() {
+            const modal = document.getElementById('customerLedgerModal');
+            modal.style.display = 'block';
+            loadCustomerLedger();
+        }
+        
+        function closeCustomerLedger() {
+            const modal = document.getElementById('customerLedgerModal');
+            modal.style.display = 'none';
+        }
+        
+        function loadCustomerLedger() {
+            const patientId = ${patient.id};
+            const loadingDiv = document.getElementById('ledgerLoading');
+            const contentDiv = document.getElementById('ledgerContent');
+            const errorDiv = document.getElementById('ledgerError');
+            
+            console.log('=== CUSTOMER LEDGER DEBUG ===');
+            console.log('Loading customer ledger for patient ID:', patientId);
+            
+            // Show loading state
+            loadingDiv.style.display = 'block';
+            contentDiv.style.display = 'none';
+            errorDiv.style.display = 'none';
+            
+            fetch('/payment-management/patient/' + patientId + '/transactions')
+                .then(response => {
+                    console.log('API Response status:', response.status);
+                    console.log('API Response headers:', response.headers);
+                    return response.json();
+                })
+                .then(data => {
+                    console.log('Raw API response data:', data);
+                    console.log('Data type:', typeof data);
+                    console.log('Data length:', data ? data.length : 'null/undefined');
+                    
+                    loadingDiv.style.display = 'none';
+                    if (data && data.length > 0) {
+                        console.log('Processing', data.length, 'transactions');
+                        displayLedgerData(data);
+                        contentDiv.style.display = 'block';
+                    } else {
+                        errorDiv.innerHTML = '<p>No payment transactions found for this patient.</p>';
+                        errorDiv.style.display = 'block';
+                    }
+                })
+                .catch(error => {
+                    loadingDiv.style.display = 'none';
+                    errorDiv.innerHTML = '<p>Error loading payment transactions. Please try again.</p>';
+                    errorDiv.style.display = 'block';
+                });
+        }
+        
+        function displayLedgerData(transactions) {
+            const tableBody = document.getElementById('ledgerTableBody');
+            tableBody.innerHTML = '';
+            
+            let totalAmount = 0;
+            let totalPaid = 0;
+            let totalRefunded = 0;
+            
+            transactions.forEach((transaction, index) => {
+                const row = document.createElement('tr');
+                
+                // Use the refund flag from backend instead of transaction type string comparison
+                const isRefund = transaction.refund || false;
+                const amount = parseFloat(transaction.amount || 0);
+                
+                // Ensure amount is a valid number
+                const validAmount = isNaN(amount) ? 0 : amount;
+                const absAmount = Math.abs(validAmount);
+                
+                // Calculate totals based on the actual amount (which should already be signed correctly)
+                if (isRefund) {
+                    totalRefunded += absAmount; // Track absolute refund amount
+                } else {
+                    totalPaid += absAmount; // Track absolute payment amount
+                }
+                
+                const formattedDate = new Date(transaction.paymentDate).toLocaleDateString('en-IN');
+                
+                // Display transaction type clearly
+                const displayTransactionType = isRefund ? 'REFUND' : 'CAPTURE';
+                
+                // Format amount display with proper sign
+                const amountDisplay = isRefund ? '-₹' + absAmount.toFixed(2) : '₹' + absAmount.toFixed(2);
+                
+                console.log('Amount display string:', amountDisplay);
+                console.log('Formatted date:', formattedDate);
+                console.log('Display transaction type:', displayTransactionType);
+                
+                row.innerHTML = `
+                    <td>` + formattedDate + `</td>
+                    <td>` + (transaction.procedureName || 'N/A') + `</td>
+                    <td class="` + (isRefund ? 'text-danger' : 'text-success') + `" style="font-weight: 600;">
+                        ` + amountDisplay + `
+                    </td>
+                    <td><span class="badge badge-` + (isRefund ? 'danger' : 'success') + `">` + displayTransactionType + `</span></td>
+                    <td>` + (transaction.paymentMode || 'N/A') + `</td>
+                    <td>` + (transaction.refundReason || '-') + `</td>
+                    <td>` + (transaction.remarks || '-') + `</td>
+                `;
+                
+                // Add row-level color coding
+                row.className = isRefund ? 'ledger-refund-row' : 'ledger-capture-row';
+                
+                console.log('Generated row HTML:', row.innerHTML);
+                
+                tableBody.appendChild(row);
+            });
+            
+            // Update summary with correct calculations
+            const netAmount = totalPaid - totalRefunded;
+            
+            console.log('=== SUMMARY CALCULATIONS ===');
+            console.log('Total Paid:', totalPaid);
+            console.log('Total Refunded:', totalRefunded);
+            console.log('Net Amount:', netAmount);
+            
+            document.getElementById('totalPaid').textContent = '₹' + totalPaid.toFixed(2);
+            document.getElementById('totalRefunded').textContent = '₹' + totalRefunded.toFixed(2);
+            document.getElementById('netAmount').textContent = '₹' + netAmount.toFixed(2);
+            
+            console.log('Updated summary elements:');
+            console.log('totalPaid element:', document.getElementById('totalPaid').textContent);
+            console.log('totalRefunded element:', document.getElementById('totalRefunded').textContent);
+            console.log('netAmount element:', document.getElementById('netAmount').textContent);
+            
+            // Apply color coding to net amount
+            const netAmountElement = document.getElementById('netAmount');
+            if (netAmount >= 0) {
+                netAmountElement.className = 'text-success';
+            } else {
+                netAmountElement.className = 'text-danger';
+            }
+            
+            console.log('Applied CSS class to net amount:', netAmountElement.className);
+            console.log('=== END DISPLAY LEDGER DATA DEBUG ===');
+        }
+        
+        function downloadLedgerCSV() {
+            const patientId = ${patient.id};
+            const patientName = '${patient.firstName} ${patient.lastName}';
+            
+            fetch('/payment-management/patient/' + patientId + '/transactions')
+                .then(response => response.json())
+                .then(data => {
+                    if (data && data.length > 0) {
+                        generateCSV(data, patientName);
+                    } else {
+                        alert('No data available to download.');
+                    }
+                })
+                .catch(error => {
+                    alert('Error downloading CSV. Please try again.');
+                });
+        }
+        
+        function generateCSV(transactions, patientName) {
+            const headers = ['Date', 'Procedure', 'Amount', 'Transaction Type', 'Payment Mode', 'Refund Reason', 'Remarks'];
+            let csvContent = headers.join(',') + '\n';
+            
+            transactions.forEach(transaction => {
+                const formattedDate = new Date(transaction.paymentDate).toLocaleDateString('en-IN');
+                
+                // Use the refund flag to determine transaction type and amount display
+                const isRefund = transaction.refund || false;
+                const amount = parseFloat(transaction.amount || 0);
+                const validAmount = isNaN(amount) ? 0 : amount;
+                const absAmount = Math.abs(validAmount);
+                const transactionType = isRefund ? 'REFUND' : 'CAPTURE';
+                const csvAmountDisplay = isRefund ? `-${absAmount}` : `${absAmount}`;
+                
+                const row = [
+                    formattedDate,
+                    '"' + (transaction.procedureName || 'N/A').replace(/"/g, '""') + '"',
+                    csvAmountDisplay,
+                    transactionType,
+                    transaction.paymentMode || 'N/A',
+                    '"' + (transaction.refundReason || '').replace(/"/g, '""') + '"',
+                    '"' + (transaction.remarks || '').replace(/"/g, '""') + '"'
+                ];
+                csvContent += row.join(',') + '\n';
+            });
+            
+            // Create and download file
+            const blob = new Blob([csvContent], { type: 'text/csv;charset=utf-8;' });
+            const link = document.createElement('a');
+            const url = URL.createObjectURL(blob);
+            const currentDate = new Date().toISOString().split('T')[0];
+            const fileName = 'customer_ledger_' + patientName.replace(/\s+/g, '_') + '_' + currentDate + '.csv';
+            link.setAttribute('href', url);
+            link.setAttribute('download', fileName);
+            link.style.visibility = 'hidden';
+            document.body.appendChild(link);
+            link.click();
+            document.body.removeChild(link);
+        }
+        
+        // Close modal when clicking outside
+        window.onclick = function(event) {
+            const modal = document.getElementById('customerLedgerModal');
+            if (event.target === modal) {
+                closeCustomerLedger();
+            }
+        }
+    </script>
+     
+     <!-- Hidden Print Content -->
+     <div class="print-content" id="printContent">
+         <div class="print-header">
+             <h1 class="print-title">Patient Registration Details</h1>
+         </div>
+         
+         <div class="registration-details">
+             <div class="detail-column">
+                 <div class="detail-section">
+                     <h3 class="section-title">Personal Information</h3>
+                     <div class="detail-item">
+                         <span class="detail-label">Full Name:</span>
+                         <span class="detail-value">${patient.firstName} ${patient.lastName}</span>
+                     </div>
+                     <div class="detail-item">
+                         <span class="detail-label">Date of Birth:</span>
+                         <span class="detail-value">
+                             <fmt:formatDate value="${patient.dateOfBirth}" pattern="dd/MM/yyyy"/>
+                         </span>
+                     </div>
+                     <div class="detail-item">
+                         <span class="detail-label">Age:</span>
+                         <span class="detail-value">${patient.age} years</span>
+                     </div>
+                     <div class="detail-item">
+                         <span class="detail-label">Gender:</span>
+                         <span class="detail-value">${patient.gender}</span>
+                     </div>
+                     <div class="detail-item">
+                         <span class="detail-label">Occupation:</span>
+                         <span class="detail-value">${not empty patient.occupation ? patient.occupation.displayName : 'Not specified'}</span>
+                     </div>
+                 </div>
+                 
+                 <div class="detail-section">
+                     <h3 class="section-title">Contact Information</h3>
+                     <div class="detail-item">
+                         <span class="detail-label">Phone Number:</span>
+                         <span class="detail-value">${patient.phoneNumber}</span>
+                     </div>
+                     <div class="detail-item">
+                         <span class="detail-label">Email:</span>
+                         <span class="detail-value">${not empty patient.email ? patient.email : 'Not provided'}</span>
+                     </div>
+                 </div>
+             </div>
+             
+             <div class="detail-column">
+                 <div class="detail-section">
+                     <h3 class="section-title">Address Information</h3>
+                     <div class="detail-item">
+                         <span class="detail-label">Street Address:</span>
+                         <span class="detail-value">${not empty patient.streetAddress ? patient.streetAddress : 'Not provided'}</span>
+                     </div>
+                     <div class="detail-item">
+                         <span class="detail-label">City:</span>
+                         <span class="detail-value">${not empty patient.city ? patient.city : 'Not provided'}</span>
+                     </div>
+                     <div class="detail-item">
+                         <span class="detail-label">State:</span>
+                         <span class="detail-value">${not empty patient.state ? patient.state : 'Not provided'}</span>
+                     </div>
+                     <div class="detail-item">
+                         <span class="detail-label">Pincode:</span>
+                         <span class="detail-value">${not empty patient.pincode ? patient.pincode : 'Not provided'}</span>
+                     </div>
+                 </div>
+                 
+                 <div class="detail-section">
+                     <h3 class="section-title">Medical Information</h3>
+                     <div class="detail-item">
+                         <span class="detail-label">Medical History:</span>
+                         <span class="detail-value">${not empty patient.medicalHistory ? patient.medicalHistory : 'None reported'}</span>
+                     </div>
+                 </div>
+             </div>
+         </div>
+         
+         <div class="registration-code">
+             Registration Code: ${patient.registrationCode}
+         </div>
+         
+         <div class="slip-footer">
+             <p>Generated using PeriDesk Developed by Navtech Labs</p>
+         </div>
+     </div>
+
+     <!-- Customer Ledger Modal -->
+     <div id="customerLedgerModal" class="modal" style="display: none;">
+         <div class="modal-content" style="max-width: 1000px; width: 90%;">
+             <div class="modal-header">
+                 <h2><i class="fas fa-file-invoice-dollar"></i> Customer Ledger - ${patient.firstName} ${patient.lastName}</h2>
+                 <span class="close" onclick="closeCustomerLedger()">&times;</span>
+             </div>
+             
+             <div class="modal-body">
+                 <!-- Loading State -->
+                 <div id="ledgerLoading" style="display: none; text-align: center; padding: 20px;">
+                     <i class="fas fa-spinner fa-spin fa-2x"></i>
+                     <p>Loading payment transactions...</p>
+                 </div>
+                 
+                 <!-- Error State -->
+                 <div id="ledgerError" style="display: none; text-align: center; padding: 20px; color: #dc3545;">
+                     <!-- Error message will be inserted here -->
+                 </div>
+                 
+                 <!-- Content -->
+                 <div id="ledgerContent" style="display: none;">
+                     <!-- Summary Cards -->
+                     <div class="ledger-summary" style="display: flex; gap: 20px; margin-bottom: 20px;">
+                         <div class="summary-card" style="flex: 1; background: #e8f5e8; padding: 15px; border-radius: 8px; text-align: center;">
+                             <h4 style="margin: 0; color: #27ae60;">Total Paid</h4>
+                             <p id="totalPaid" style="font-size: 1.5em; font-weight: bold; margin: 5px 0; color: #27ae60;">₹0.00</p>
+                         </div>
+                         <div class="summary-card" style="flex: 1; background: #fff3cd; padding: 15px; border-radius: 8px; text-align: center;">
+                             <h4 style="margin: 0; color: #856404;">Total Refunded</h4>
+                             <p id="totalRefunded" style="font-size: 1.5em; font-weight: bold; margin: 5px 0; color: #856404;">₹0.00</p>
+                         </div>
+                         <div class="summary-card" style="flex: 1; background: #d1ecf1; padding: 15px; border-radius: 8px; text-align: center;">
+                             <h4 style="margin: 0; color: #0c5460;">Net Amount</h4>
+                             <p id="netAmount" style="font-size: 1.5em; font-weight: bold; margin: 5px 0; color: #0c5460;">₹0.00</p>
+                         </div>
+                     </div>
+                     
+                     <!-- Download Button -->
+                     <div style="text-align: right; margin-bottom: 15px;">
+                         <button onclick="downloadLedgerCSV()" class="btn btn-success">
+                             <i class="fas fa-download"></i> Download CSV
+                         </button>
+                     </div>
+                     
+                     <!-- Transactions Table -->
+                     <div class="table-responsive">
+                         <table class="table" style="margin-bottom: 0;">
+                             <thead>
+                                 <tr>
+                                     <th>Date</th>
+                                     <th>Procedure</th>
+                                     <th>Amount</th>
+                                     <th>Transaction Type</th>
+                                     <th>Payment Mode</th>
+                                     <th>Refund Reason</th>
+                                     <th>Remarks</th>
+                                 </tr>
+                             </thead>
+                             <tbody id="ledgerTableBody">
+                                 <!-- Transaction rows will be inserted here -->
+                             </tbody>
+                         </table>
+                     </div>
+                 </div>
+             </div>
+         </div>
+     </div>
+
+     <style>
+         .transaction-type {
+             padding: 3px 8px;
+             border-radius: 12px;
+             font-size: 0.8em;
+             font-weight: 500;
+             text-transform: uppercase;
+         }
+         
+         .transaction-type.capture {
+             background: #e8f5e8;
+             color: #27ae60;
+         }
+         
+         .transaction-type.refund {
+             background: #fff3cd;
+             color: #856404;
+         }
+         
+         .ledger-summary .summary-card h4 {
+             font-size: 0.9em;
+             text-transform: uppercase;
+             letter-spacing: 0.5px;
+         }
+     </style>
 </body>
 </html>

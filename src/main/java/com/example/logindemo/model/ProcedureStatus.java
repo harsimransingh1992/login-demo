@@ -25,8 +25,8 @@ public enum ProcedureStatus {
     CANCELLED("Cancelled", "Procedure was cancelled before completion"),
 
     // Post-Procedure Phase
-    FOLLOW_UP_SCHEDULED("Follow-Up Scheduled", "Follow-up appointment has been scheduled"),
-    FOLLOW_UP_COMPLETED("Follow-Up Completed", "Follow-up has been completed"),
+    FOLLOW_UP_SCHEDULED("Next Sitting Scheduled", "Next sitting appointment has been scheduled"),
+    FOLLOW_UP_COMPLETED("Next-Sitting Completed", "Next sitting has been completed"),
 
     // Closure
     CLOSED("Closed", "Procedure and follow-ups are fully completed, case closed"),

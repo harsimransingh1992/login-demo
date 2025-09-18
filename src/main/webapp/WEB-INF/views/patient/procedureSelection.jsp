@@ -1443,7 +1443,7 @@
                                         </c:forEach>
                                     </c:if>
                                     <c:if test="${empty examination.assignedDoctorId}">
-                                        Not assigned yet
+                                        Not Assigned
                                     </c:if>
                                 </c:when>
                                 <c:otherwise>
@@ -1962,14 +1962,9 @@
                 showNotification('Error: Examination data not available. Please go back and try again.', true);
             }
             
-            // Output examination details for debugging
-            console.log('Examination details available on page:');
-            console.log('  - Examination ID from hidden field:', examinationId);
-            
             // Ensure all procedure cards are displayed with grid style
             document.querySelectorAll('.procedure-card').forEach(card => {
                 card.style.display = 'grid';
-                console.log('Initialized procedure card:', card.querySelector('h3').textContent);
             });
             
             // Function to update UI based on selection state
@@ -2117,7 +2112,6 @@
                         e.preventDefault();
                         e.stopPropagation();
                         
-                        console.log('Remove button clicked in modal');
                         removeProcedure();
                         
                         // No need to call updateSelectedProceduresModal here since removeProcedure 
@@ -2342,29 +2336,23 @@
             
             // Function to fetch and display already saved procedures
             async function fetchSavedProcedures() {
-                console.log('fetchSavedProcedures called');
                 
                 // For simplicity, we're now using a single procedure approach
                 // just show the selected procedure in the modal
-                console.log('Currently selected procedure:', selectedProcedure);
                 updateSelectedProceduresModal();
                 
                 // Hide saved procedures section as we're now only working with a single procedure
                 const savedProceduresSection = document.getElementById('saved-procedures-section');
                 if (savedProceduresSection) {
-                    console.log('Hiding saved procedures section');
                     savedProceduresSection.style.display = 'none';
                 } else {
-                    console.log('Warning: savedProceduresSection element not found');
                 }
                 
                 // Show a message that only one procedure can be selected now
                 const procedureMessage = document.getElementById('no-saved-procedures-message');
                 if (procedureMessage) {
-                    console.log('Updating saved procedures message');
                     procedureMessage.textContent = 'The system now supports only one procedure per examination.';
                 } else {
-                    console.log('Warning: procedureMessage element not found');
                 }
             }
             
@@ -2435,22 +2423,9 @@
         const departmentContents = document.querySelectorAll('.department-content');
         const departmentsContent = document.querySelector('.departments-content');
         
-        // Debug: Log all department tabs and their data-dept attributes
-        console.log('All department tabs:');
-        departmentTabs.forEach(tab => {
-            console.log(`Tab: data-dept="${tab.dataset.dept}", text="${tab.textContent.trim()}"`);
-        });
-        
-        // Debug: Log all department content elements and their data-dept attributes
-        console.log('All department content elements:');
-        departmentContents.forEach(content => {
-            console.log(`Content: data-dept="${content.dataset.dept}"`);
-        });
-        
         // Function to switch tabs
         function switchTab(tabElement) {
             const dept = tabElement.dataset.dept;
-            console.log('Switching to department tab:', dept);
             
             // Remove active class from all tabs
             departmentTabs.forEach(t => t.classList.remove('active'));
@@ -2475,8 +2450,6 @@
                 });
             }
             
-            console.log('Found department content element:', content);
-            
             if (content) {
                 content.classList.add('active');
                 content.style.display = 'block'; // Explicitly show
@@ -2486,24 +2459,15 @@
                 const existingMessages = content.querySelectorAll('.no-procedures');
                 existingMessages.forEach(msg => msg.remove());
                 
-                // Debug: Log all department-content elements and their data-dept attributes
-                console.log('All department content elements:');
-                document.querySelectorAll('.department-content').forEach(el => {
-                    console.log(`  Element: data-dept="${el.dataset.dept}", visible: ${el.classList.contains('active')}`);
-                });
-                
                 // Make sure all procedure cards in this department are visible
                 const procedureCards = content.querySelectorAll('.procedure-card');
-                console.log('Found procedure cards in this department:', procedureCards.length);
                 
                 procedureCards.forEach(card => {
-                    console.log('Making card visible:', card.dataset.id);
                     card.style.display = 'grid';
                 });
                 
                 // If no cards are found, show a message
                 if (procedureCards.length === 0) {
-                    console.log('No procedure cards found, adding message');
                     const noCardMessage = document.createElement('div');
                     noCardMessage.className = 'no-procedures';
                     noCardMessage.innerHTML = '<i class="fas fa-info-circle"></i> No procedures available in this department.';
@@ -2527,7 +2491,6 @@
                 
                 // If no content found, fallback to showing the first department tab
                 if (departmentContents.length > 0) {
-                    console.log('Falling back to first department content');
                     const firstContent = departmentContents[0];
                     firstContent.classList.add('active');
                     firstContent.style.display = 'block';
@@ -2546,25 +2509,21 @@
         
         // Function to initialize tabs
         function initializeTabs() {
-            console.log('Initializing tabs on page load');
             
             // First try using the active class that might be set in JSP
             const activeTab = document.querySelector('.department-tab.active');
             const activeContent = document.querySelector('.department-content.active');
             
             if (activeTab && activeContent) {
-                console.log('Found active tab and content from JSP');
                 switchTab(activeTab);
                 return;
             }
             
             // Otherwise use the first tab
             if (departmentTabs.length > 0) {
-                console.log('Using first available tab');
                 switchTab(departmentTabs[0]);
             } else if (departmentContents.length > 0) {
                 // If no tabs but we have content, show the first content
-                console.log('No tabs found, showing first content');
                 departmentContents.forEach(content => {
                     content.classList.remove('active');
                     content.style.display = 'none';
@@ -2578,7 +2537,6 @@
             
             // Force check of all procedure cards in active content
             document.querySelectorAll('.department-content.active .procedure-card').forEach(card => {
-                console.log('Procedure card in active tab:', card.querySelector('h3').textContent);
                 card.style.display = 'grid';
             });
         }
@@ -2588,4 +2546,4 @@
         });
     </script>
 </body>
-</html> 
+</html>

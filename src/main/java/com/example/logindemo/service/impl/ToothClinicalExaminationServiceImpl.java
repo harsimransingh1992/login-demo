@@ -10,12 +10,17 @@ import java.util.stream.Collectors;
 import java.util.Map;
 
 import com.example.logindemo.dto.UserDTO;
+import com.example.logindemo.model.TransactionType;
 import org.modelmapper.ModelMapper;
 import org.springframework.beans.factory.annotation.Autowired;
 import org.springframework.stereotype.Service;
 import org.springframework.context.annotation.Primary;
 import lombok.extern.slf4j.Slf4j;
 import org.springframework.transaction.annotation.Transactional;
+import org.springframework.data.domain.Page;
+import org.springframework.data.domain.Pageable;
+import org.springframework.data.domain.PageRequest;
+import org.springframework.data.domain.Sort;
 
 import com.example.logindemo.dto.ToothClinicalExaminationDTO;
 import com.example.logindemo.model.ToothClinicalExamination;
@@ -181,6 +186,14 @@ public class ToothClinicalExaminationServiceImpl implements ToothClinicalExamina
             .map(this::convertToDTO)
             .toList();
     }
+
+    @Override
+    public Page<ToothClinicalExaminationDTO> getToothClinicalExaminationForPatientIdPaginated(Long patientId, int page, int size) {
+        Pageable pageable = PageRequest.of(page, size, Sort.by("examinationDate").descending().and(Sort.by("toothNumber").ascending()));
+        Page<ToothClinicalExamination> examinationPage = toothClinicalExaminationRepository.findByPatientId(patientId, pageable);
+        
+        return examinationPage.map(this::convertToDTO);
+    }
     
     private ToothClinicalExaminationDTO convertToDTO(ToothClinicalExamination exam) {
         ToothClinicalExaminationDTO dto = new ToothClinicalExaminationDTO();
@@ -201,6 +214,7 @@ public class ToothClinicalExaminationServiceImpl implements ToothClinicalExamina
         dto.setExaminationNotes(exam.getExaminationNotes());
         dto.setExaminationDate(exam.getExaminationDate());
         dto.setTreatmentStartingDate(exam.getTreatmentStartingDate());
+        dto.setProcedureStatus(exam.getProcedureStatus());
         dto.setFollowUpDate(exam.getFollowUpDate());
         
         // Set procedure if available
@@ -419,6 +433,7 @@ public class ToothClinicalExaminationServiceImpl implements ToothClinicalExamina
             amount,
             paymentMode,
             paymentNotes,
+            TransactionType.CAPTURE, // Default to CAPTURE for regular payments
             examination,
             recordedBy,
             notes,

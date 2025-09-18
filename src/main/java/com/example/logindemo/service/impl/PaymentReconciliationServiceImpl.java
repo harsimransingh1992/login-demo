@@ -83,13 +83,15 @@ public class PaymentReconciliationServiceImpl implements PaymentReconciliationSe
                     ReconciliationResponse.TransactionDTO dto = new ReconciliationResponse.TransactionDTO();
                     // Set examination ID
                         dto.setExaminationId(exam.getId());
-                    // Set patient name
+                    // Set patient name and registration code
                         if (exam.getPatient() != null) {
                     String firstName = exam.getPatient().getFirstName() != null ? exam.getPatient().getFirstName() : "";
                     String lastName = exam.getPatient().getLastName() != null ? exam.getPatient().getLastName() : "";
                     dto.setPatientName((firstName + " " + lastName).trim());
+                            dto.setPatientRegistrationCode(exam.getPatient().getRegistrationCode() != null ? exam.getPatient().getRegistrationCode() : "N/A");
                         } else {
                             dto.setPatientName("N/A");
+                            dto.setPatientRegistrationCode("N/A");
                         }
                     // Set procedure name
                         dto.setProcedureName(exam.getProcedure() != null && exam.getProcedure().getProcedureName() != null ?
@@ -102,6 +104,10 @@ public class PaymentReconciliationServiceImpl implements PaymentReconciliationSe
                         dto.setStatus("COMPLETED");
                     // Set collection date
                         dto.setCollectionDate(entry.getPaymentDate() != null ? entry.getPaymentDate().toString() : "");
+                    // Set transaction type
+                        dto.setTransactionType(entry.getTransactionType() != null ? entry.getTransactionType().toString() : "CAPTURE");
+                    // Set examination date
+                        dto.setExaminationDate(exam.getExaminationDate() != null ? exam.getExaminationDate().toString() : "N/A");
                     return dto;
                     });
                 })

@@ -7,4 +7,5 @@ import java.util.List;
 public interface MediaFileRepository extends JpaRepository<MediaFile, Long> {
     List<MediaFile> findByExaminationIdAndFileType(Long examinationId, String fileType);
     List<MediaFile> findByExamination_Id(Long examinationId);
-} 
+    int countByExaminationId(Long examinationId);
+}

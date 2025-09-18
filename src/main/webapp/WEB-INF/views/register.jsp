@@ -455,12 +455,12 @@
                     doctorRequiredFields.forEach(field => {
                         const input = field.closest('.form-group').querySelector('input, select');
                         if (input) {
-                            input.required = role === 'DOCTOR';
+                            input.required = role === 'DOCTOR' || role === 'OPD_DOCTOR';
                         }
                     });
                     
                     // Show fields based on role
-                    if (role === 'DOCTOR') {
+                    if (role === 'DOCTOR' || role === 'OPD_DOCTOR') {
                         if (doctorFields) doctorFields.style.display = 'block';
                         if (professionalDetails) professionalDetails.style.display = 'block';
                     } else if (role === 'STAFF' || role === 'RECEPTIONIST') {
@@ -565,9 +565,10 @@
                         <div class="form-group">
                             <label for="role">User Role <span class="required">*</span></label>
                             <form:select path="role" id="role" required="true">
-                                <form:option value="STAFF">Staff</form:option>
-                                <form:option value="DOCTOR">Doctor</form:option>
-                                <form:option value="RECEPTIONIST">Receptionist</form:option>
+                                <option value="DOCTOR">Doctor</option>
+                                <option value="OPD_DOCTOR">OPD Doctor</option>
+                                <option value="STAFF">Staff</option>
+                                <option value="RECEPTIONIST">Receptionist</option>
                             </form:select>
                             <div class="form-tip">
                                 <i class="fas fa-info-circle"></i> Select your role in the clinic

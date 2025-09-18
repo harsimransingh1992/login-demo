@@ -9,4 +9,10 @@ import java.util.List;
 @Repository
 public interface PaymentEntryRepository extends JpaRepository<PaymentEntry, Long> {
     List<PaymentEntry> findByPaymentDateBetween(LocalDateTime start, LocalDateTime end);
+    
+    List<PaymentEntry> findByExaminationIdOrderByPaymentDateDesc(Long examinationId);
+    
+    List<PaymentEntry> findByExaminationPatientIdOrderByPaymentDateDesc(Long patientId);
+    
+    List<PaymentEntry> findByOriginalPaymentId(Long originalPaymentId);
 } 

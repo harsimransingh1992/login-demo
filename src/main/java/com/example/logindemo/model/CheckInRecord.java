@@ -31,6 +31,10 @@ public class CheckInRecord {
     @JoinColumn(name = "clinic_id")
     private ClinicModel clinic;
 
+    @ManyToOne
+    @JoinColumn(name = "assigned_doctor_id")
+    private User assignedDoctor;
+
     @Column(name = "status")
     @Enumerated(EnumType.STRING)
     private CheckInStatus status = CheckInStatus.WAITING;

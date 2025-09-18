@@ -23,33 +23,33 @@ public class FollowUpController {
     private FollowUpService followUpService;
 
     /**
-     * Mark a follow-up as completed
-     */
-    @PostMapping("/complete")
-    public String completeFollowUp(
-            @RequestParam Long followUpId,
-            @RequestParam Long examinationId,
-            @RequestParam(required = false) String clinicalNotes,
-            RedirectAttributes redirectAttributes) {
+     * Mark a next sitting as completed
+ */
+@PostMapping("/complete")
+public String completeFollowUp(
+        @RequestParam Long followUpId,
+        @RequestParam Long examinationId,
+        @RequestParam(required = false) String clinicalNotes,
+        RedirectAttributes redirectAttributes) {
+    
+    try {
+        log.info("Completing next sitting ID: {} for examination ID: {}", followUpId, examinationId);
         
-        try {
-            log.info("Completing follow-up ID: {} for examination ID: {}", followUpId, examinationId);
-            
-            // Validate clinical notes
-            if (clinicalNotes == null || clinicalNotes.trim().isEmpty()) {
-                redirectAttributes.addFlashAttribute("error", "Clinical notes are required to complete a follow-up.");
-                return "redirect:/patients/examination/" + examinationId + "/lifecycle";
-            }
-            
-            // Complete the follow-up
-            FollowUpRecord followUpRecord = followUpService.completeFollowUp(followUpId, clinicalNotes);
-            
-            redirectAttributes.addFlashAttribute("success", "Follow-up marked as completed successfully!");
-            log.info("Successfully completed follow-up ID: {}", followUpId);
+        // Validate clinical notes
+        if (clinicalNotes == null || clinicalNotes.trim().isEmpty()) {
+            redirectAttributes.addFlashAttribute("error", "Clinical notes are required to complete a next sitting.");
+            return "redirect:/patients/examination/" + examinationId + "/lifecycle";
+        }
+        
+        // Complete the next sitting
+        FollowUpRecord followUpRecord = followUpService.completeFollowUp(followUpId, clinicalNotes);
+        
+        redirectAttributes.addFlashAttribute("success", "Next sitting marked as completed successfully!");
+        log.info("Successfully completed next sitting ID: {}", followUpId);
             
         } catch (Exception e) {
-            log.error("Error completing follow-up ID {}: {}", followUpId, e.getMessage(), e);
-            redirectAttributes.addFlashAttribute("error", "Error completing follow-up: " + e.getMessage());
+            log.error("Error completing next sitting ID {}: {}", followUpId, e.getMessage(), e);
+            redirectAttributes.addFlashAttribute("error", "Error completing next sitting: " + e.getMessage());
         }
         
         return "redirect:/patients/examination/" + examinationId + "/lifecycle";
@@ -125,4 +125,4 @@ public class FollowUpController {
         
         return "redirect:/patients/examination/" + examinationId + "/lifecycle";
     }
-} 
+}

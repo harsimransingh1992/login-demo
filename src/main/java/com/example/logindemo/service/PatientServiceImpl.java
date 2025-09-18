@@ -14,6 +14,8 @@ import com.example.logindemo.utils.PeriDeskUtils;
 import lombok.NonNull;
 import lombok.extern.slf4j.Slf4j;
 import org.modelmapper.ModelMapper;
+import org.springframework.cache.annotation.Cacheable;
+import org.springframework.cache.annotation.CacheEvict;
 import org.springframework.data.domain.Page;
 import org.springframework.data.domain.Pageable;
 import org.springframework.security.core.Authentication;
@@ -61,6 +63,7 @@ public class PatientServiceImpl implements PatientService{
     private UserService userService;
 
     @Override
+    @CacheEvict(value = "checkedInPatients", allEntries = true)
     public void checkInPatient(Long patientId, String currentClinicId) {
         Optional<Patient> patients = patientRepository.findById(patientId);
         final User currentClinicModel = attachCurrentClinicModel(currentClinicId);
@@ -74,16 +77,29 @@ public class PatientServiceImpl implements PatientService{
     private void addCheckInRecordOnPatient(@NonNull User currentClinicModel, @NonNull Patient patient) {
         CheckInRecord checkInRecord = new CheckInRecord();
         checkInRecord.setCheckInClinic(currentClinicModel);
+        checkInRecord.setClinic(currentClinicModel.getClinic()); // Set the clinic field for the query to work
         checkInRecord.setCheckInTime(LocalDateTime.now());
         checkInRecord.setPatient(patient);
-        checkInRecordRepository.save(checkInRecord);
+        checkInRecord.setStatus(CheckInStatus.WAITING); // Set default status
+        
+        // Save the check-in record first to get the ID
+        checkInRecord = checkInRecordRepository.save(checkInRecord);
+        
+        // Update patient relationships
         patient.getPatientCheckIns().add(checkInRecord);
         patient.setCurrentCheckInRecord(checkInRecord);
+        patient.setCheckedIn(true); // Ensure checked in status is set
+        
+        // Save the patient with updated relationships
         patientRepository.save(patient);
-        log.info("CheckIn recordID: {} added to patientID: {} ",checkInRecord.getId(), patient.getId());
+        
+        log.info("CheckIn recordID: {} added to patientID: {} with clinic: {}",
+            checkInRecord.getId(), patient.getId(), 
+            currentClinicModel.getClinic() != null ? currentClinicModel.getClinic().getClinicName() : "NULL");
     }
 
     @Override
+    @CacheEvict(value = "checkedInPatients", allEntries = true)
     public void uncheckInPatient(Long patientId) {
         try {
             // Try to find the patient using getPatientsById which should return a single patient
@@ -269,22 +285,48 @@ public class PatientServiceImpl implements PatientService{
     }
 
     @Override
+    @Cacheable(value = "checkedInPatients", key = "#root.methodName + '_' + T(org.springframework.security.core.context.SecurityContextHolder).getContext().getAuthentication().getName()")
     public List<PatientDTO> getCheckedInPatients() {
+        long startTime = System.currentTimeMillis();
+        
         Authentication authentication = SecurityContextHolder.getContext().getAuthentication();
         String username = authentication.getName();
+        log.info("DEBUG: getCheckedInPatients called by user: {}", username);
         
         User loggedInUser = userService.findByUsername(username)
             .orElseThrow(() -> new RuntimeException("User not found"));
+        log.info("DEBUG: Found user: {} with ID: {}", loggedInUser.getUsername(), loggedInUser.getId());
             
         if (loggedInUser.getClinic() == null) {
             log.warn("User {} has no clinic associated", username);
             return Collections.emptyList();
         }
         
-        List<Patient> waitingPatients = patientRepository.findByCheckedInTrueAndCurrentCheckInRecord_Clinic(loggedInUser.getClinic());
-        log.info("Found {} checked-in patients for clinic {}", waitingPatients.size(), loggedInUser.getClinic().getId());
+        log.info("DEBUG: User clinic: {} with ID: {}", loggedInUser.getClinic().getClinicName(), loggedInUser.getClinic().getId());
         
-        return waitingPatients.stream().map(patientMapper::toDto).toList();
+        // Use optimized query to avoid N+1 problem
+        List<Patient> waitingPatients = patientRepository.findCheckedInPatientsWithDetailsOptimized(loggedInUser.getClinic());
+        log.info("DEBUG: Raw query returned {} patients", waitingPatients.size());
+        
+        // Debug each patient
+        for (Patient patient : waitingPatients) {
+            log.info("DEBUG: Patient ID: {}, Name: {} {}, CheckedIn: {}, HasCheckInRecord: {}", 
+                patient.getId(), 
+                patient.getFirstName(), 
+                patient.getLastName(),
+                patient.getCheckedIn(),
+                patient.getCurrentCheckInRecord() != null);
+        }
+        
+        List<PatientDTO> result = waitingPatients.stream()
+            .map(patientMapper::toDto)
+            .toList();
+            
+        long endTime = System.currentTimeMillis();
+        log.info("Found {} checked-in patients for clinic {} in {}ms (optimized query)", 
+            result.size(), loggedInUser.getClinic().getId(), (endTime - startTime));
+        
+        return result;
     }
 
     /**
@@ -296,13 +338,24 @@ public class PatientServiceImpl implements PatientService{
         if (clinic != null) {
             CheckInRecord checkInRecord = new CheckInRecord();
             checkInRecord.setCheckInClinic(clinic);
+            checkInRecord.setClinic(clinic.getClinic()); // Set the clinic field for the query to work
             checkInRecord.setCheckInTime(LocalDateTime.now());
             checkInRecord.setPatient(patient);
-            checkInRecordRepository.save(checkInRecord);
+            checkInRecord.setStatus(CheckInStatus.WAITING); // Set default status
+            
+            // Save the check-in record first to get the ID
+            checkInRecord = checkInRecordRepository.save(checkInRecord);
+            
+            // Update patient relationships
             patient.getPatientCheckIns().add(checkInRecord);
             patient.setCurrentCheckInRecord(checkInRecord);
+            
+            // Save the patient with updated relationships
             patientRepository.save(patient);
-            log.info("Created missing CheckIn record ID: {} for patient ID: {}", checkInRecord.getId(), patient.getId());
+            
+            log.info("Created missing CheckIn record ID: {} for patient ID: {} with clinic: {}", 
+                checkInRecord.getId(), patient.getId(),
+                clinic.getClinic() != null ? clinic.getClinic().getClinicName() : "NULL");
         } else {
             log.error("Cannot create check-in record for patient ID: {} - no clinic found", patient.getId());
         }
@@ -437,8 +490,8 @@ public class PatientServiceImpl implements PatientService{
                     .orElseThrow(() -> new IllegalArgumentException("Doctor not found with ID: " + doctorId));
                 
                 // Verify the user is a doctor
-                if (doctor.getRole() != UserRole.DOCTOR) {
-                    throw new IllegalArgumentException("User ID " + doctorId + " is not a doctor");
+                if (doctor.getRole() != UserRole.DOCTOR && doctor.getRole() != UserRole.OPD_DOCTOR) {
+                    throw new IllegalArgumentException("User must be a doctor to assign to examination");
                 }
                 
                 // Update the examination with the doctor

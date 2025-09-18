@@ -78,10 +78,10 @@ public class ToothExaminationController {
             
             // Check if user is a receptionist - prevent them from adding examinations
             if (currentUser.getRole() == UserRole.RECEPTIONIST) {
-                log.warn("Receptionist {} attempted to save tooth examination", username);
-                response.put("success", false);
-                response.put("message", "Receptionists are not authorized to add tooth examinations. Please contact a doctor or staff member.");
-                return ResponseEntity.status(HttpStatus.FORBIDDEN).body(response);
+                return ResponseEntity.status(HttpStatus.FORBIDDEN).body(Map.of(
+                        "success", false,
+                        "message", "Receptionists cannot perform clinical examinations"
+                ));
             }
             
             // Check if patient is checked in before allowing tooth examination

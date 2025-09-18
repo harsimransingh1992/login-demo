@@ -135,7 +135,8 @@
             color: #2c3e50;
         }
         
-        .payment-mode-breakdown {
+        .payment-mode-breakdown,
+        .transaction-type-breakdown {
             background: #f8f9fa;
             padding: 25px;
             border-radius: 12px;
@@ -251,21 +252,24 @@
             width: 100%;
             border-collapse: separate;
             border-spacing: 0;
+            font-size: 0.9rem;
         }
         
         .transaction-table th {
             background: white;
-            padding: 12px 15px;
+            padding: 8px 10px;
             text-align: left;
             font-weight: 600;
             color: #2c3e50;
             border-bottom: 2px solid #e9ecef;
+            font-size: 0.85rem;
         }
         
         .transaction-table td {
-            padding: 12px 15px;
+            padding: 8px 10px;
             border-bottom: 1px solid #e9ecef;
             color: #4b5563;
+            font-size: 0.85rem;
         }
         
         .transaction-table tr:hover {
@@ -302,6 +306,64 @@
             text-decoration: underline;
         }
         
+        /* Transaction Type Badges */
+        .transaction-type-badge {
+            padding: 4px 10px;
+            border-radius: 15px;
+            font-size: 0.8rem;
+            font-weight: 600;
+            text-transform: uppercase;
+            letter-spacing: 0.5px;
+            display: inline-block;
+        }
+        
+        .transaction-type-capture {
+            background: #d4edda;
+            color: #155724;
+        }
+        
+        .transaction-type-refund {
+            background: #f8d7da;
+            color: #721c24;
+        }
+        
+        .transaction-type-authorization {
+            background: #fff3cd;
+            color: #856404;
+        }
+        
+        .transaction-type-void {
+            background: #e2e3e5;
+            color: #383d41;
+        }
+        
+        /* Amount styling */
+        .text-success {
+            color: #28a745 !important;
+            font-weight: 600;
+        }
+        
+        .text-danger {
+            color: #dc3545 !important;
+            font-weight: 600;
+        }
+        
+        /* Enhanced reconciliation cards */
+        .reconciliation-card.net-collections {
+            background: linear-gradient(135deg, #e8f5e9 0%, #f1f8e9 100%);
+            border-left: 4px solid #4caf50;
+        }
+        
+        .reconciliation-card.total-refunds {
+            background: linear-gradient(135deg, #ffebee 0%, #fce4ec 100%);
+            border-left: 4px solid #f44336;
+        }
+        
+        .reconciliation-card.gross-collections {
+            background: linear-gradient(135deg, #e3f2fd 0%, #e1f5fe 100%);
+            border-left: 4px solid #2196f3;
+        }
+        
         @media (max-width: 768px) {
             .main-content {
                 padding: 20px;
@@ -322,6 +384,13 @@
             .transaction-table {
                 display: block;
                 overflow-x: auto;
+                white-space: nowrap;
+            }
+            
+            .transaction-table th,
+            .transaction-table td {
+                padding: 6px 8px;
+                font-size: 0.8rem;
             }
             
             .reconciliation-actions {
@@ -358,12 +427,26 @@
                 </div>
                 
                 <div class="reconciliation-grid">
-                    <div class="reconciliation-card">
+                    <div class="reconciliation-card net-collections">
+                        <div class="card-title">
+                            <i class="fas fa-chart-line"></i>
+                            Net Collections
+                        </div>
+                        <div class="card-value">₹<span id="netCollections">0.00</span></div>
+                    </div>
+                    <div class="reconciliation-card gross-collections">
                         <div class="card-title">
                             <i class="fas fa-money-bill-wave"></i>
-                            Total Collections
+                            Gross Collections
                         </div>
-                        <div class="card-value">₹<span id="totalCollections">0.00</span></div>
+                        <div class="card-value">₹<span id="grossCollections">0.00</span></div>
+                    </div>
+                    <div class="reconciliation-card total-refunds">
+                        <div class="card-title">
+                            <i class="fas fa-undo"></i>
+                            Total Refunds
+                        </div>
+                        <div class="card-value">₹<span id="totalRefunds">0.00</span></div>
                     </div>
                     <div class="reconciliation-card">
                         <div class="card-title">
@@ -384,6 +467,16 @@
                     </div>
                 </div>
                 
+                <div class="transaction-type-breakdown">
+                    <h3 class="breakdown-title">
+                        <i class="fas fa-exchange-alt"></i>
+                        Transaction Type Summary
+                    </h3>
+                    <div class="breakdown-grid" id="transactionTypeBreakdown">
+                        <!-- Will be populated by JavaScript -->
+                    </div>
+                </div>
+                
                 <div class="transaction-list">
                     <h3 class="transaction-title">
                         <i class="fas fa-list"></i>
@@ -394,8 +487,11 @@
                             <tr>
                                 <th>Time</th>
                                 <th>Exam ID</th>
+                                <th>Exam Date</th>
                                 <th>Patient</th>
+                                <th>Registration ID</th>
                                 <th>Procedure</th>
+                                <th>Transaction Type</th>
                                 <th>Amount</th>
                                 <th>Payment Mode</th>
                                 <th>Status</th>
@@ -445,8 +541,29 @@
         }
         
         function updateReconciliationUI(data) {
+            // Calculate gross collections, refunds, and net collections
+            let grossCollections = 0;
+            let totalRefunds = 0;
+            
+            if (data.transactions) {
+                data.transactions.forEach(transaction => {
+                    const amount = parseFloat(transaction.amount);
+                    const transactionType = transaction.transactionType || 'CAPTURE';
+                    
+                    if (transactionType === 'REFUND') {
+                        totalRefunds += amount;
+                    } else if (transactionType === 'CAPTURE' || transactionType === 'AUTHORIZATION') {
+                        grossCollections += amount;
+                    }
+                });
+            }
+            
+            const netCollections = grossCollections - totalRefunds;
+            
             // Update summary cards
-            document.getElementById('totalCollections').textContent = data.totalCollections.toFixed(2);
+            document.getElementById('netCollections').textContent = netCollections.toFixed(2);
+            document.getElementById('grossCollections').textContent = grossCollections.toFixed(2);
+            document.getElementById('totalRefunds').textContent = totalRefunds.toFixed(2);
             document.getElementById('totalTransactions').textContent = data.totalTransactions;
             
             // Update payment mode breakdown
@@ -464,6 +581,42 @@
                 });
             } else {
                 breakdownContainer.innerHTML = '<div class="breakdown-item">No payment data available</div>';
+            }
+            
+            // Update transaction type breakdown
+            const transactionTypeContainer = document.getElementById('transactionTypeBreakdown');
+            transactionTypeContainer.innerHTML = '';
+            
+            let transactionTypeSummary = {
+                'CAPTURE': 0,
+                'REFUND': 0,
+                'AUTHORIZATION': 0,
+                'VOID': 0
+            };
+            
+            if (data.transactions) {
+                data.transactions.forEach(transaction => {
+                    const amount = parseFloat(transaction.amount);
+                    const transactionType = transaction.transactionType || 'CAPTURE';
+                    transactionTypeSummary[transactionType] = (transactionTypeSummary[transactionType] || 0) + amount;
+                });
+            }
+            
+            Object.entries(transactionTypeSummary).forEach(([type, amount]) => {
+                if (amount > 0) {
+                    const item = document.createElement('div');
+                    item.className = 'breakdown-item';
+                    const prefix = type === 'REFUND' ? '-₹' : '₹';
+                    const amountClass = type === 'REFUND' ? 'text-danger' : 'text-success';
+                    item.innerHTML = 
+                        '<div class="breakdown-label">' + type + '</div>' +
+                        '<div class="breakdown-amount ' + amountClass + '">' + prefix + amount.toFixed(2) + '</div>';
+                    transactionTypeContainer.appendChild(item);
+                }
+            });
+            
+            if (transactionTypeContainer.innerHTML === '') {
+                transactionTypeContainer.innerHTML = '<div class="breakdown-item">No transaction data available</div>';
             }
             
             // Update transaction list
@@ -487,12 +640,24 @@
                     
                     const statusClass = transaction.status === 'RECONCILED' ? 'status-reconciled' : 'status-pending';
                     
+                    // Determine transaction type styling
+                    const transactionType = transaction.transactionType || 'CAPTURE';
+                    const isRefund = transactionType === 'REFUND';
+                    const amountClass = isRefund ? 'text-danger' : 'text-success';
+                    const amountPrefix = isRefund ? '-₹' : '₹';
+                    
+                    // Format examination date
+                    const examDate = transaction.examinationDate ? new Date(transaction.examinationDate).toLocaleDateString('en-GB') : 'N/A';
+                    
                     row.innerHTML = 
                         '<td>' + timeString + '</td>' +
                         '<td><a href="' + contextPath + '/examination/' + transaction.examinationId + '" class="exam-link" target="_blank">' + transaction.examinationId + '</a></td>' +
+                        '<td>' + examDate + '</td>' +
                         '<td>' + transaction.patientName + '</td>' +
+                        '<td>' + (transaction.patientRegistrationCode || 'N/A') + '</td>' +
                         '<td>' + transaction.procedureName + '</td>' +
-                        '<td>₹' + parseFloat(transaction.amount).toFixed(2) + '</td>' +
+                        '<td><span class="transaction-type-badge transaction-type-' + transactionType.toLowerCase() + '">' + transactionType + '</span></td>' +
+                        '<td class="' + amountClass + '">' + amountPrefix + parseFloat(transaction.amount).toFixed(2) + '</td>' +
                         '<td>' + transaction.paymentMode + '</td>' +
                         '<td><span class="status-badge ' + statusClass + '">' + transaction.status + '</span></td>';
                     transactionList.appendChild(row);
@@ -501,7 +666,7 @@
                 // Show print button when there are transactions
                 printButton.style.display = 'inline-flex';
             } else {
-                transactionList.innerHTML = '<tr><td colspan="7" style="text-align: center;">No transactions found</td></tr>';
+                transactionList.innerHTML = '<tr><td colspan="10" style="text-align: center;">No transactions found</td></tr>';
                 
                 // Hide print button when no transactions
                 printButton.style.display = 'none';

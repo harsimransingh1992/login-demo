@@ -1,6 +1,9 @@
 package com.example.logindemo.service;
 
 import com.example.logindemo.dto.CheckInRecordDTO;
+import com.example.logindemo.dto.ClinicalFileDTO;
+import com.example.logindemo.dto.ClinicModelDTO;
+import com.example.logindemo.dto.PatientDTO;
 import com.example.logindemo.dto.ProcedurePriceDTO;
 import com.example.logindemo.dto.ToothClinicalExaminationDTO;
 import com.example.logindemo.dto.UserDTO;
@@ -16,6 +19,10 @@ import org.modelmapper.ModelMapper;
 import org.springframework.stereotype.Component;
 import org.springframework.stereotype.Service;
 import org.springframework.transaction.annotation.Transactional;
+import org.springframework.data.domain.Page;
+import org.springframework.data.domain.Pageable;
+import org.springframework.data.domain.PageRequest;
+import org.springframework.data.domain.Sort;
 
 import javax.annotation.PostConstruct;
 import javax.annotation.Resource;
@@ -79,9 +86,76 @@ public class ToothClinicalExaminationServiceImpl implements ToothClinicalExamina
         });
         return toothClinicalExaminationDTOList;
     }
+
+    @Override
+    public Page<ToothClinicalExaminationDTO> getToothClinicalExaminationForPatientIdPaginated(Long patientId, int page, int size) {
+        Pageable pageable = PageRequest.of(page, size, Sort.by("examinationDate").descending().and(Sort.by("toothNumber").ascending()));
+        Page<ToothClinicalExamination> examinationPage = toothClinicalExaminationRepository.findByPatientId(patientId, pageable);
+        
+        return examinationPage.map(examination -> {
+            ToothClinicalExaminationDTO dto = convertToDTO(examination);
+            
+            // If there's a procedure and payment has been collected, get its historical price at the time of payment
+            LocalDateTime lastPaymentDate = (examination.getPaymentEntries() != null && !examination.getPaymentEntries().isEmpty())
+                ? examination.getPaymentEntries().get(examination.getPaymentEntries().size() - 1).getPaymentDate()
+                : null;
+            if (examination.getProcedure() != null && lastPaymentDate != null && dto.getProcedure() != null) {
+                Double historicalPrice = procedurePriceService.getHistoricalPrice(
+                    examination.getProcedure().getId(),
+                    lastPaymentDate
+                );
+                if (historicalPrice != null) {
+                    dto.getProcedure().setPrice(historicalPrice);
+                }
+            }
+            
+            return dto;
+        });
+    }
     
     private ToothClinicalExaminationDTO convertToDTO(ToothClinicalExamination exam) {
-        ToothClinicalExaminationDTO dto = modelMapper.map(exam, ToothClinicalExaminationDTO.class);
+        ToothClinicalExaminationDTO dto = new ToothClinicalExaminationDTO() {
+            @Override
+            public Double getTotalPaidAmount() {
+                return exam.getTotalPaidAmount();
+            }
+            
+            @Override
+            public Double getTotalRefundedAmount() {
+                return exam.getTotalRefundedAmount();
+            }
+            
+            @Override
+            public Double getNetPaidAmount() {
+                return exam.getNetPaidAmount();
+            }
+        };
+        
+        // Map basic properties
+        dto.setId(exam.getId());
+        dto.setPatientId(exam.getPatient() != null ? exam.getPatient().getId() : null);
+        dto.setToothNumber(exam.getToothNumber());
+        dto.setToothCondition(exam.getToothCondition());
+        dto.setToothMobility(exam.getToothMobility());
+        dto.setPocketDepth(exam.getPocketDepth());
+        dto.setBleedingOnProbing(exam.getBleedingOnProbing());
+        dto.setPlaqueScore(exam.getPlaqueScore());
+        dto.setGingivalRecession(exam.getGingivalRecession());
+        dto.setToothVitality(exam.getToothVitality());
+        dto.setFurcationInvolvement(exam.getFurcationInvolvement());
+        dto.setPeriapicalCondition(exam.getPeriapicalCondition());
+        dto.setToothSensitivity(exam.getToothSensitivity());
+        dto.setExistingRestoration(exam.getExistingRestoration());
+        dto.setExaminationNotes(exam.getExaminationNotes());
+        dto.setChiefComplaints(exam.getChiefComplaints());
+        dto.setAdvised(exam.getAdvised());
+        dto.setUpperDenturePicturePath(exam.getUpperDenturePicturePath());
+        dto.setLowerDenturePicturePath(exam.getLowerDenturePicturePath());
+        dto.setXrayPicturePath(exam.getXrayPicturePath());
+        dto.setExaminationDate(exam.getExaminationDate());
+        dto.setTreatmentStartingDate(exam.getTreatmentStartingDate());
+        dto.setProcedureStatus(exam.getProcedureStatus());
+        dto.setFollowUpDate(exam.getFollowUpDate());
         
         // Set doctor IDs
         if (exam.getAssignedDoctor() != null) {
@@ -89,6 +163,49 @@ public class ToothClinicalExaminationServiceImpl implements ToothClinicalExamina
         }
         if (exam.getOpdDoctor() != null) {
             dto.setOpdDoctorId(exam.getOpdDoctor().getId());
+        }
+        
+        // Map patient if present (simplified)
+        if (exam.getPatient() != null) {
+            PatientDTO patientDTO = new PatientDTO();
+            patientDTO.setId(String.valueOf(exam.getPatient().getId()));
+            patientDTO.setFirstName(exam.getPatient().getFirstName());
+            patientDTO.setLastName(exam.getPatient().getLastName());
+            patientDTO.setPhoneNumber(exam.getPatient().getPhoneNumber());
+            patientDTO.setEmail(exam.getPatient().getEmail());
+            patientDTO.setDateOfBirth(exam.getPatient().getDateOfBirth());
+            patientDTO.setGender(exam.getPatient().getGender());
+            patientDTO.setMedicalHistory(exam.getPatient().getMedicalHistory());
+            patientDTO.setRegistrationDate(exam.getPatient().getRegistrationDate());
+            dto.setPatient(patientDTO);
+        }
+        
+        // Map examination clinic if present (simplified)
+        if (exam.getExaminationClinic() != null) {
+            ClinicModelDTO clinicDTO = new ClinicModelDTO();
+            clinicDTO.setId(exam.getExaminationClinic().getId());
+            clinicDTO.setClinicId(exam.getExaminationClinic().getClinicId());
+            clinicDTO.setClinicName(exam.getExaminationClinic().getClinicName());
+            dto.setExaminationClinic(clinicDTO);
+        }
+        
+        // Map procedure if present (simplified)
+        if (exam.getProcedure() != null) {
+            ProcedurePriceDTO procedureDTO = new ProcedurePriceDTO();
+            procedureDTO.setId(exam.getProcedure().getId());
+            procedureDTO.setProcedureName(exam.getProcedure().getProcedureName());
+            procedureDTO.setPrice(exam.getProcedure().getPrice());
+            dto.setProcedure(procedureDTO);
+        }
+        
+        // Map clinical file if present
+        if (exam.getClinicalFile() != null) {
+            ClinicalFileDTO clinicalFileDTO = new ClinicalFileDTO();
+            clinicalFileDTO.setId(exam.getClinicalFile().getId());
+            clinicalFileDTO.setFileNumber(exam.getClinicalFile().getFileNumber());
+            clinicalFileDTO.setTitle(exam.getClinicalFile().getTitle());
+            clinicalFileDTO.setStatus(exam.getClinicalFile().getStatus());
+            dto.setClinicalFile(clinicalFileDTO);
         }
         
         return dto;
@@ -99,18 +216,7 @@ public class ToothClinicalExaminationServiceImpl implements ToothClinicalExamina
         ToothClinicalExamination examination = toothClinicalExaminationRepository.findById(id)
                 .orElseThrow(() -> new RuntimeException("Examination not found"));
 
-        ToothClinicalExaminationDTO dto = modelMapper.map(examination, ToothClinicalExaminationDTO.class);
-
-        // Set doctor IDs with null checks
-        if (examination.getAssignedDoctor() != null) {
-            dto.setAssignedDoctorId(examination.getAssignedDoctor().getId());
-            log.info("Set assignedDoctorId to: {} for examination: {}", examination.getAssignedDoctor().getId(), id);
-        } else {
-            log.info("No assigned doctor found for examination: {}", id);
-        }
-        if (examination.getOpdDoctor() != null) {
-            dto.setOpdDoctorId(examination.getOpdDoctor().getId());
-        }
+        ToothClinicalExaminationDTO dto = convertToDTO(examination);
 
         log.info("Final DTO assignedDoctorId: {} for examination: {}", dto.getAssignedDoctorId(), id);
         return dto;
@@ -122,7 +228,7 @@ public class ToothClinicalExaminationServiceImpl implements ToothClinicalExamina
         final LocalDateTime endOfDay = LocalDateTime.now().with(LocalTime.MAX);
         List<ToothClinicalExamination> appointments = toothClinicalExaminationRepository.findByTreatmentStartingDateBetween(startOfDay, endOfDay);
         return appointments.stream()
-                .map(appointment -> modelMapper.map(appointment, ToothClinicalExaminationDTO.class))
+                .map(this::convertToDTO)
                 .collect(Collectors.toList());
     }
 
@@ -176,7 +282,10 @@ public class ToothClinicalExaminationServiceImpl implements ToothClinicalExamina
         }
 
         // Map to DTO and return as a single item list for backwards compatibility
-        ProcedurePriceDTO procedureDTO = modelMapper.map(procedure, ProcedurePriceDTO.class);
+        ProcedurePriceDTO procedureDTO = new ProcedurePriceDTO();
+        procedureDTO.setId(procedure.getId());
+        procedureDTO.setProcedureName(procedure.getProcedureName());
+        procedureDTO.setPrice(procedure.getPrice());
         return Collections.singletonList(procedureDTO);
     }
 
@@ -436,6 +545,7 @@ public class ToothClinicalExaminationServiceImpl implements ToothClinicalExamina
             amount,
             paymentMode,
             paymentNotes,
+            TransactionType.CAPTURE, // Default to CAPTURE for regular payments
             examination,
             recordedBy,
             notes,

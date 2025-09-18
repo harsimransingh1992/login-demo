@@ -6,6 +6,7 @@ import com.example.logindemo.model.User;
 import com.example.logindemo.model.Patient;
 import com.example.logindemo.model.PaymentEntry;
 import com.example.logindemo.model.PaymentMode;
+import com.example.logindemo.model.TransactionType;
 import com.example.logindemo.dto.PatientDTO;
 import com.example.logindemo.dto.ToothClinicalExaminationDTO;
 import com.example.logindemo.service.ToothClinicalExaminationService;
@@ -168,6 +169,82 @@ public class PendingPaymentController {
         return response;
     }
 
+    @GetMapping("/examinations")
+    @PreAuthorize("hasRole('ADMIN') or hasRole('CLINIC_OWNER') or hasRole('DOCTOR') or hasRole('OPD_DOCTOR') or hasRole('STAFF') or hasRole('RECEPTIONIST')")
+    @ResponseBody
+    public List<ToothClinicalExamination> getExaminationsByPatient(@RequestParam Long patientId) {
+        try {
+            // Get the current user's clinic
+            String clinicId = PeriDeskUtils.getCurrentClinicModel().getClinicId();
+            
+            // Find all examinations for this patient in the current clinic
+            List<ToothClinicalExamination> examinations = examinationService.findByPatient_IdAndExaminationClinic_ClinicId(patientId, clinicId);
+            
+            // Calculate refund-related amounts for each examination
+            for (ToothClinicalExamination exam : examinations) {
+                // These methods are already implemented in the model
+                exam.getTotalPaidAmount();
+                exam.getTotalRefundedAmount();
+                exam.getNetPaidAmount();
+            }
+            
+            return examinations;
+        } catch (Exception e) {
+            Logger logger = LoggerFactory.getLogger(PendingPaymentController.class);
+            logger.error("Error loading examinations for patient {}: {}", patientId, e.getMessage());
+            return new ArrayList<>();
+        }
+    }
+
+    @GetMapping("/search")
+    @PreAuthorize("hasRole('ADMIN') or hasRole('CLINIC_OWNER') or hasRole('DOCTOR') or hasRole('OPD_DOCTOR') or hasRole('STAFF') or hasRole('RECEPTIONIST')")
+    @ResponseBody
+    public Map<String, Object> searchPatient(@RequestParam String registrationCode) {
+        Map<String, Object> response = new HashMap<>();
+        Logger logger = LoggerFactory.getLogger(PendingPaymentController.class);
+        
+        try {
+            // Get the current user's clinic
+            String clinicId = PeriDeskUtils.getCurrentClinicModel().getClinicId();
+            
+            // First, find the patient by registration code
+            PatientDTO patientDTO = patientService.findByRegistrationCode(registrationCode);
+            if (patientDTO == null) {
+                response.put("success", false);
+                response.put("message", "Patient not found with registration code: " + registrationCode);
+                return response;
+            }
+            
+            // Get the actual Patient entity
+            Optional<Patient> patientOpt = patientService.getPatientById(Long.parseLong(patientDTO.getId()));
+            if (patientOpt.isEmpty()) {
+                response.put("success", false);
+                response.put("message", "Patient entity not found");
+                return response;
+            }
+            
+            Patient patient = patientOpt.get();
+            
+            // Create patient info map from DTO data
+            Map<String, Object> patientInfo = new HashMap<>();
+            patientInfo.put("id", patientDTO.getId());
+            patientInfo.put("firstName", patientDTO.getFirstName());
+            patientInfo.put("lastName", patientDTO.getLastName());
+            patientInfo.put("registrationCode", patientDTO.getRegistrationCode());
+            patientInfo.put("phoneNumber", patientDTO.getPhoneNumber());
+            patientInfo.put("age", patientDTO.getAge());
+            
+            response.put("success", true);
+            response.put("patient", patientInfo);
+            
+        } catch (Exception e) {
+            response.put("success", false);
+            response.put("message", "Error searching for patient: " + e.getMessage());
+        }
+        
+        return response;
+    }
+
     @GetMapping("/search-patient")
     @PreAuthorize("hasRole('RECEPTIONIST')")
     @ResponseBody
@@ -197,44 +274,73 @@ public class PendingPaymentController {
             
             Patient patient = patientOpt.get();
             
-            // Find all examinations for this patient in the current clinic
+            // Find all examinations for this patient in the current clinic (show ALL, not just pending)
             List<ToothClinicalExamination> allExaminations = examinationService.findByPatient_IdAndExaminationClinic_ClinicId(patient.getId(), clinicId);
             logger.info("Found {} total examinations for patient {} in clinic {}", allExaminations.size(), registrationCode, clinicId);
-            // Filter to only those with pending payments
-            List<ToothClinicalExamination> pendingExaminations = allExaminations.stream()
-                .filter(exam -> exam.getTotalProcedureAmount() != null &&
-                                (exam.getTotalPaidAmount() == null || exam.getTotalProcedureAmount() > exam.getTotalPaidAmount()))
-                .collect(Collectors.toList());
-            logger.info("Filtered to {} pending examinations for patient {} in clinic {}", pendingExaminations.size(), registrationCode, clinicId);
-            for (ToothClinicalExamination exam : pendingExaminations) {
-                logger.info("Pending Exam ID: {}, totalProcedureAmount: {}, totalPaidAmount: {}", exam.getId(), exam.getTotalProcedureAmount(), exam.getTotalPaidAmount());
-            }
             
-            if (pendingExaminations.isEmpty()) {
+            // Sort examinations by date (newest first for better UX)
+            allExaminations.sort((a, b) -> {
+                if (a.getExaminationDate() == null && b.getExaminationDate() == null) return 0;
+                if (a.getExaminationDate() == null) return 1;
+                if (b.getExaminationDate() == null) return -1;
+                return b.getExaminationDate().compareTo(a.getExaminationDate());
+            });
+            
+            if (allExaminations.isEmpty()) {
                 response.put("success", false);
-                response.put("message", "No pending examinations found for patient with registration code: " + registrationCode);
+                response.put("message", "No examinations found for patient with registration code: " + registrationCode);
                 return response;
             }
             
             List<Map<String, Object>> examinationData = new ArrayList<>();
             
-            for (ToothClinicalExamination exam : pendingExaminations) {
+            for (ToothClinicalExamination exam : allExaminations) {
                 Map<String, Object> examData = new HashMap<>();
                 examData.put("id", exam.getId());
                 examData.put("toothNumber", exam.getToothNumber() != null ? exam.getToothNumber().toString() : "");
                 examData.put("examinationDate", exam.getExaminationDate());
                 examData.put("totalProcedureAmount", exam.getTotalProcedureAmount());
                 
-                // Calculate total paid amount
+                // Calculate payment amounts with transaction types
                 double totalPaid = 0.0;
+                double totalRefunded = 0.0;
+                int paymentCount = 0;
+                
                 if (exam.getPaymentEntries() != null) {
                     for (PaymentEntry entry : exam.getPaymentEntries()) {
                         if (entry.getAmount() != null) {
-                            totalPaid += entry.getAmount();
+                            paymentCount++;
+                            if (entry.getTransactionType() != null && entry.getTransactionType().toString().equals("REFUND")) {
+                                totalRefunded += entry.getAmount();
+                            } else {
+                                totalPaid += entry.getAmount();
+                            }
                         }
                     }
                 }
+                
+                double netPaid = totalPaid - totalRefunded;
+                double totalProcedureAmount = exam.getTotalProcedureAmount() != null ? exam.getTotalProcedureAmount() : 0.0;
+                double remainingAmount = totalProcedureAmount - netPaid;
+                
+                // Determine payment status
+                String paymentStatus;
+                if (totalProcedureAmount == 0) {
+                    paymentStatus = "NO_CHARGE";
+                } else if (remainingAmount <= 0) {
+                    paymentStatus = "COMPLETED";
+                } else if (netPaid > 0) {
+                    paymentStatus = "PARTIAL";
+                } else {
+                    paymentStatus = "PENDING";
+                }
+                
                 examData.put("totalPaidAmount", totalPaid);
+                examData.put("totalRefunded", totalRefunded);
+                examData.put("netPaidAmount", netPaid);
+                examData.put("remainingAmount", remainingAmount);
+                examData.put("paymentStatus", paymentStatus);
+                examData.put("paymentCount", paymentCount);
                 
                 // Add clinic info if available
                 if (exam.getExaminationClinic() != null) {
@@ -416,6 +522,7 @@ public class PendingPaymentController {
                     payment.put("paymentMode", entry.getPaymentMode().toString());
                     payment.put("paymentDate", entry.getPaymentDate().toString());
                     payment.put("notes", entry.getRemarks());
+                    payment.put("transactionType", entry.getTransactionType() != null ? entry.getTransactionType().toString() : "CAPTURE");
                     
                     if (entry.getAmount() != null) {
                         totalPaid += entry.getAmount();
@@ -425,11 +532,11 @@ public class PendingPaymentController {
                 }
             }
             
-            // Sort payments by date (newest first)
+            // Sort payments by date (oldest first - chronological order)
             paymentData.sort((a, b) -> {
                 String dateA = a.get("paymentDate").toString();
                 String dateB = b.get("paymentDate").toString();
-                return dateB.compareTo(dateA);
+                return dateA.compareTo(dateB);
             });
             
             // Create summary
@@ -456,4 +563,223 @@ public class PendingPaymentController {
         if (remaining < total) return "PARTIAL";
         return "PENDING";
     }
+
+    @GetMapping("/analytics")
+    @PreAuthorize("hasRole('RECEPTIONIST')")
+    @ResponseBody
+    public Map<String, Object> getPaymentAnalytics(
+            @RequestParam(required = false) String startDate,
+            @RequestParam(required = false) String endDate) {
+        Map<String, Object> response = new HashMap<>();
+        
+        try {
+            // Get the current user's clinic
+            String clinicId = PeriDeskUtils.getCurrentClinicModel().getClinicId();
+            
+            // Calculate date range
+            LocalDateTime start = startDate != null ? LocalDate.parse(startDate).atStartOfDay() : 
+                LocalDate.now().minusDays(30).atStartOfDay();
+            LocalDateTime end = endDate != null ? LocalDate.parse(endDate).atTime(LocalTime.MAX) : 
+                LocalDate.now().atTime(LocalTime.MAX);
+            
+            // Get all examinations for the clinic (we'll filter by date in memory for now)
+            List<ToothClinicalExamination> allExaminations = examinationService
+                .findByProcedureStatusAndExaminationClinic_ClinicId(ProcedureStatus.PAYMENT_PENDING, clinicId);
+            
+            // Add completed examinations as well for analytics
+            List<ToothClinicalExamination> completedExaminations = examinationService
+                .findByProcedureStatusAndExaminationClinic_ClinicId(ProcedureStatus.PAYMENT_COMPLETED, clinicId);
+            allExaminations.addAll(completedExaminations);
+            
+            // Filter by date range
+            List<ToothClinicalExamination> examinations = allExaminations.stream()
+                .filter(exam -> exam.getExaminationDate() != null && 
+                               exam.getExaminationDate().isAfter(start.minusSeconds(1)) && 
+                               exam.getExaminationDate().isBefore(end.plusSeconds(1)))
+                .collect(Collectors.toList());
+            
+            // Calculate analytics
+            double totalRevenue = 0.0;
+            double pendingAmount = 0.0;
+            double totalPaid = 0.0;
+            int totalExaminations = examinations.size();
+            int pendingCount = 0;
+            int completedCount = 0;
+            
+            for (ToothClinicalExamination exam : examinations) {
+                double procedureAmount = exam.getTotalProcedureAmount() != null ? exam.getTotalProcedureAmount() : 0.0;
+                double paidAmount = exam.getTotalPaidAmount();
+                double remaining = procedureAmount - paidAmount;
+                
+                totalRevenue += procedureAmount;
+                totalPaid += paidAmount;
+                
+                if (remaining > 0) {
+                    pendingAmount += remaining;
+                    pendingCount++;
+                } else {
+                    completedCount++;
+                }
+            }
+            
+            // Calculate collection rate
+            double collectionRate = totalRevenue > 0 ? (totalPaid / totalRevenue) * 100 : 0;
+            
+            // Calculate average payment
+            double avgPayment = totalExaminations > 0 ? totalPaid / totalExaminations : 0;
+            
+            Map<String, Object> analytics = new HashMap<>();
+            analytics.put("totalRevenue", totalRevenue);
+            analytics.put("pendingAmount", pendingAmount);
+            analytics.put("collectionRate", Math.round(collectionRate * 100.0) / 100.0);
+            analytics.put("avgPayment", Math.round(avgPayment * 100.0) / 100.0);
+            analytics.put("totalExaminations", totalExaminations);
+            analytics.put("pendingCount", pendingCount);
+            analytics.put("completedCount", completedCount);
+            analytics.put("totalPaid", totalPaid);
+            
+            response.put("success", true);
+            response.put("analytics", analytics);
+            
+        } catch (Exception e) {
+            response.put("success", false);
+            response.put("message", "Error loading analytics: " + e.getMessage());
+        }
+        
+        return response;
+    }
+
+    @PostMapping("/bulk-collect")
+    @PreAuthorize("hasRole('RECEPTIONIST')")
+    @ResponseBody
+    public Map<String, Object> bulkCollectPayment(@RequestBody Map<String, Object> request) {
+        Map<String, Object> response = new HashMap<>();
+        
+        try {
+            @SuppressWarnings("unchecked")
+            List<Long> examinationIds = (List<Long>) request.get("examinationIds");
+            String paymentModeStr = request.get("paymentMode").toString();
+            String notes = request.get("notes") != null ? request.get("notes").toString() : "";
+            Double amount = Double.parseDouble(request.get("amount").toString());
+            
+            PaymentMode paymentMode = PaymentMode.valueOf(paymentModeStr);
+            
+            int successCount = 0;
+            List<String> errors = new ArrayList<>();
+            
+            for (Long examinationId : examinationIds) {
+                try {
+                    Map<String, String> paymentDetails = new HashMap<>();
+                    paymentDetails.put("amount", amount.toString());
+                    
+                    examinationService.collectPayment(examinationId, paymentMode, notes, paymentDetails);
+                    successCount++;
+                } catch (Exception e) {
+                    errors.add("Examination " + examinationId + ": " + e.getMessage());
+                }
+            }
+            
+            response.put("success", true);
+            response.put("successCount", successCount);
+            response.put("totalCount", examinationIds.size());
+            response.put("errors", errors);
+            response.put("message", "Bulk payment collection completed. " + successCount + " out of " + examinationIds.size() + " payments collected successfully.");
+            
+        } catch (Exception e) {
+            response.put("success", false);
+            response.put("message", "Error in bulk payment collection: " + e.getMessage());
+        }
+        
+        return response;
+    }
+
+    @GetMapping("/export")
+    @PreAuthorize("hasRole('RECEPTIONIST')")
+    @ResponseBody
+    public Map<String, Object> exportPaymentData(
+            @RequestParam String format,
+            @RequestParam(required = false) String startDate,
+            @RequestParam(required = false) String endDate,
+            @RequestParam(defaultValue = "true") boolean includeHistory,
+            @RequestParam(defaultValue = "true") boolean includePatient,
+            @RequestParam(defaultValue = "true") boolean includeSummary) {
+        
+        Map<String, Object> response = new HashMap<>();
+        
+        try {
+            // Get the current user's clinic
+            String clinicId = PeriDeskUtils.getCurrentClinicModel().getClinicId();
+            
+            // Calculate date range
+            LocalDateTime start = startDate != null ? LocalDate.parse(startDate).atStartOfDay() : 
+                LocalDate.now().minusDays(30).atStartOfDay();
+            LocalDateTime end = endDate != null ? LocalDate.parse(endDate).atTime(LocalTime.MAX) : 
+                LocalDate.now().atTime(LocalTime.MAX);
+            
+            // Get examinations data for the clinic
+            List<ToothClinicalExamination> allExaminations = examinationService
+                .findByProcedureStatusAndExaminationClinic_ClinicId(ProcedureStatus.PAYMENT_PENDING, clinicId);
+            
+            // Add completed examinations as well for export
+            List<ToothClinicalExamination> completedExaminations = examinationService
+                .findByProcedureStatusAndExaminationClinic_ClinicId(ProcedureStatus.PAYMENT_COMPLETED, clinicId);
+            allExaminations.addAll(completedExaminations);
+            
+            // Filter by date range
+            List<ToothClinicalExamination> examinations = allExaminations.stream()
+                .filter(exam -> exam.getExaminationDate() != null && 
+                               exam.getExaminationDate().isAfter(start.minusSeconds(1)) && 
+                               exam.getExaminationDate().isBefore(end.plusSeconds(1)))
+                .collect(Collectors.toList());
+            
+            // Prepare export data
+            List<Map<String, Object>> exportData = new ArrayList<>();
+            
+            for (ToothClinicalExamination exam : examinations) {
+                Map<String, Object> examData = new HashMap<>();
+                examData.put("examinationId", exam.getId());
+                examData.put("examinationDate", exam.getExaminationDate());
+                examData.put("toothNumber", exam.getToothNumber());
+                examData.put("procedureName", exam.getProcedure() != null ? exam.getProcedure().getProcedureName() : "");
+                examData.put("totalAmount", exam.getTotalProcedureAmount());
+                examData.put("paidAmount", exam.getTotalPaidAmount());
+                examData.put("remainingAmount", (exam.getTotalProcedureAmount() != null ? exam.getTotalProcedureAmount() : 0) - exam.getTotalPaidAmount());
+                
+                if (includePatient && exam.getPatient() != null) {
+                    examData.put("patientName", exam.getPatient().getFirstName() + " " + exam.getPatient().getLastName());
+                    examData.put("registrationCode", exam.getPatient().getRegistrationCode());
+                    examData.put("phoneNumber", exam.getPatient().getPhoneNumber());
+                }
+                
+                if (includeHistory && exam.getPaymentEntries() != null) {
+                    List<Map<String, Object>> payments = new ArrayList<>();
+                    for (PaymentEntry entry : exam.getPaymentEntries()) {
+                        Map<String, Object> payment = new HashMap<>();
+                        payment.put("amount", entry.getAmount());
+                        payment.put("paymentMode", entry.getPaymentMode());
+                        payment.put("paymentDate", entry.getPaymentDate());
+                        payment.put("notes", entry.getRemarks());
+                        payments.add(payment);
+                    }
+                    examData.put("paymentHistory", payments);
+                }
+                
+                exportData.add(examData);
+            }
+            
+            response.put("success", true);
+            response.put("format", format);
+            response.put("data", exportData);
+            response.put("count", exportData.size());
+            response.put("message", "Export data prepared successfully. " + exportData.size() + " records ready for download.");
+            
+        } catch (Exception e) {
+            response.put("success", false);
+            response.put("message", "Error preparing export data: " + e.getMessage());
+        }
+        
+        return response;
+    }
+
+
 } 

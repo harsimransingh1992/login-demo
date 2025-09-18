@@ -4,6 +4,7 @@ import com.example.logindemo.dto.ProcedurePriceDTO;
 import com.example.logindemo.dto.ToothClinicalExaminationDTO;
 import com.example.logindemo.model.ToothClinicalExamination;
 import com.example.logindemo.model.ProcedureStatus;
+import org.springframework.data.domain.Page;
 import com.example.logindemo.model.PaymentMode;
 import org.springframework.transaction.annotation.Transactional;
 
@@ -24,6 +25,8 @@ public interface ToothClinicalExaminationService {
     ToothClinicalExaminationDTO assignDoctor(Long examinationId, Long doctorId);
 
     List<ToothClinicalExaminationDTO> getToothClinicalExaminationForPatientId(Long patientId);
+    
+    Page<ToothClinicalExaminationDTO> getToothClinicalExaminationForPatientIdPaginated(Long patientId, int page, int size);
     
     /**
      * Get tooth clinical examination by ID
