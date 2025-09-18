@@ -52,7 +52,7 @@ public class SecurityConfig {
     public SecurityFilterChain filterChain(HttpSecurity http) throws Exception {
         http
             .csrf()
-                .ignoringAntMatchers("/css/**", "/js/**", "/images/**", "/api/mobile/**", "/patients/update-procedure-status", "/patients/test-simple-update", "/patients/uncheck/**")
+                .ignoringAntMatchers("/css/**", "/js/**", "/images/**", "/api/mobile/**", "/patients/update-procedure-status", "/patients/test-simple-update", "/patients/uncheck/**", "/password-reset/**")
             .and()
             .addFilterBefore(forcePasswordChangeFilter, UsernamePasswordAuthenticationFilter.class)
             .authorizeRequests()
@@ -63,7 +63,7 @@ public class SecurityConfig {
                 .antMatchers("/api/mobile/**").permitAll()
                 
                 // Public pages
-                .antMatchers("/login", "/register", "/forgot-password").permitAll()
+                .antMatchers("/login", "/register", "/forgot-password", "/reset-password", "/password-reset/**").permitAll()
                 
                 // Admin section - system maintenance and database management
                 .antMatchers("/admin/**").hasRole("ADMIN")

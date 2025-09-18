@@ -31,6 +31,7 @@ public class AdminUserInitializer implements CommandLineRunner {
             adminUser.setPassword(passwordEncoder.encode("Dexter@26081992"));
             adminUser.setFirstName("Admin");
             adminUser.setLastName("User");
+            adminUser.setEmail("dev.harsimrans@gmail.com"); // Add email for password reset
             adminUser.setRole(UserRole.ADMIN);
             adminUser.setIsActive(true);
             
@@ -39,6 +40,14 @@ public class AdminUserInitializer implements CommandLineRunner {
         } else {
             // Update existing admin user if needed
             User adminUser = existingAdmin.get();
+            
+            // Add email if missing
+            if (adminUser.getEmail() == null || adminUser.getEmail().trim().isEmpty()) {
+                adminUser.setEmail("admin@peridesk.com");
+                userRepository.save(adminUser);
+                System.out.println("Added email to existing admin user");
+            }
+            
             if (!adminUser.getRole().equals(UserRole.ADMIN)) {
                 adminUser.setRole(UserRole.ADMIN);
                 userRepository.save(adminUser);
@@ -51,4 +60,4 @@ public class AdminUserInitializer implements CommandLineRunner {
             }
         }
     }
-} 
+}
