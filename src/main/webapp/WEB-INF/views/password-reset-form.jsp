@@ -300,6 +300,18 @@
             0% { transform: rotate(0deg); }
             100% { transform: rotate(360deg); }
         }
+        
+        /* Disabled button styling */
+        button:disabled {
+            background: #bdc3c7 !important;
+            cursor: not-allowed !important;
+            opacity: 0.6;
+        }
+        
+        button:disabled:hover {
+            background: #bdc3c7 !important;
+            transform: none !important;
+        }
     </style>
 </head>
 <body>
@@ -396,7 +408,7 @@
                     <i class="fas fa-spinner"></i> Updating password...
                 </div>
                 
-                <button type="submit" id="submitBtn">
+                <button type="submit" id="submitBtn" disabled>
                     <i class="fas fa-check"></i> Update Password
                 </button>
             </form>
@@ -417,7 +429,30 @@
                     $('#password-strength').hide();
                     $('#password-requirements-check').hide();
                 }
+                validateForm();
             });
+            
+            // Confirm password validation
+            $('#confirmPassword').on('input', function() {
+                validateForm();
+            });
+            
+            // Form validation function
+            function validateForm() {
+                const newPassword = $('#newPassword').val();
+                const confirmPassword = $('#confirmPassword').val();
+                
+                // Check if all password requirements are met
+                const isPasswordValid = validatePasswordStrength(newPassword) === null;
+                const doPasswordsMatch = newPassword === confirmPassword && confirmPassword.length > 0;
+                
+                // Enable button only if password is valid and passwords match
+                if (isPasswordValid && doPasswordsMatch) {
+                    $('#submitBtn').prop('disabled', false);
+                } else {
+                    $('#submitBtn').prop('disabled', true);
+                }
+            }
             
             // Form submission
             $('#resetPasswordForm').on('submit', function(e) {
