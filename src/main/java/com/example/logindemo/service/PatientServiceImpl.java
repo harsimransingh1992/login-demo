@@ -14,8 +14,7 @@ import com.example.logindemo.utils.PeriDeskUtils;
 import lombok.NonNull;
 import lombok.extern.slf4j.Slf4j;
 import org.modelmapper.ModelMapper;
-import org.springframework.cache.annotation.Cacheable;
-import org.springframework.cache.annotation.CacheEvict;
+
 import org.springframework.data.domain.Page;
 import org.springframework.data.domain.Pageable;
 import org.springframework.security.core.Authentication;
@@ -63,7 +62,6 @@ public class PatientServiceImpl implements PatientService{
     private UserService userService;
 
     @Override
-    @CacheEvict(value = "checkedInPatients", allEntries = true)
     public void checkInPatient(Long patientId, String currentClinicId) {
         Optional<Patient> patients = patientRepository.findById(patientId);
         final User currentClinicModel = attachCurrentClinicModel(currentClinicId);
@@ -99,7 +97,6 @@ public class PatientServiceImpl implements PatientService{
     }
 
     @Override
-    @CacheEvict(value = "checkedInPatients", allEntries = true)
     public void uncheckInPatient(Long patientId) {
         try {
             // Try to find the patient using getPatientsById which should return a single patient
@@ -285,7 +282,6 @@ public class PatientServiceImpl implements PatientService{
     }
 
     @Override
-    @Cacheable(value = "checkedInPatients", key = "#root.methodName + '_' + T(org.springframework.security.core.context.SecurityContextHolder).getContext().getAuthentication().getName()")
     public List<PatientDTO> getCheckedInPatients() {
         long startTime = System.currentTimeMillis();
         

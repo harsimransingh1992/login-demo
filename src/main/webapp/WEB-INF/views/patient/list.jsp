@@ -718,7 +718,6 @@
                                     if (response.ok) {
                                         const result = await response.json();
                                         if (result.success) {
-                                            alert('Patient checked in successfully!');
                                             closeCheckInModal();
                                             window.location.reload(); // Reload page on successful check-in
                                         } else {
