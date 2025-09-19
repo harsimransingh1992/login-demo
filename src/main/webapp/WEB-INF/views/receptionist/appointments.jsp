@@ -2260,15 +2260,16 @@
                                     return;
                                 }
 
-                                var url = '${pageContext.request.contextPath}/appointments/' + currentAppointmentId + '/status';
+                                var url = '${pageContext.request.contextPath}/appointments/management/update-status';
 
                                 fetch(url, {
-                                    method: 'PUT',
+                                    method: 'POST',
                                     headers: {
                                         'Content-Type': 'application/json',
                                         '${_csrf.headerName}': '${_csrf.token}'
                                     },
                                     body: JSON.stringify({
+                                        id: currentAppointmentId,
                                         status: newStatus,
                                         patientRegistrationNumber: patientRegistrationNumber
                                     })
@@ -2280,8 +2281,24 @@
                                             modal.hide();
                                             window.location.reload();
                                         } else {
-                                            return response.json().then(function(data) {
-                                                throw new Error(data.message || 'Failed to update status');
+                                            // Read response as text first, then try to parse as JSON
+                                            return response.text().then(function(text) {
+                                                console.error('Response text:', text);
+                                                var errorDiv = document.getElementById('statusUpdateError');
+                                                var errorMessage = 'Failed to update status';
+                                                
+                                                try {
+                                                    var data = JSON.parse(text);
+                                                    console.error('Server error response:', data);
+                                                    errorMessage = data.message || errorMessage;
+                                                } catch (parseError) {
+                                                    console.error('Failed to parse JSON, using raw response');
+                                                    errorMessage = 'Server error: ' + (text.length > 100 ? text.substring(0, 100) + '...' : text);
+                                                }
+                                                
+                                                errorDiv.textContent = errorMessage;
+                                                errorDiv.style.display = 'block';
+                                                throw new Error(errorMessage);
                                             });
                                         }
                                     })

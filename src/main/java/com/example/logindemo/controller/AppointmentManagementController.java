@@ -270,16 +270,36 @@ public class AppointmentManagementController {
     @PreAuthorize("hasAnyRole('RECEPTIONIST', 'DOCTOR', 'OPD_DOCTOR')")
     public ResponseEntity<?> updateAppointmentStatus(@RequestBody Map<String, Object> request) {
         try {
-            Long id = ((Number) request.get("id")).longValue();
+            logger.debug("Received status update request: {}", request);
+            
+            // Handle both String and Number types for ID
+            Long id;
+            Object idObj = request.get("id");
+            if (idObj instanceof String) {
+                id = Long.parseLong((String) idObj);
+            } else if (idObj instanceof Number) {
+                id = ((Number) idObj).longValue();
+            } else {
+                throw new IllegalArgumentException("Invalid appointment ID format");
+            }
+            
             AppointmentStatus status = AppointmentStatus.valueOf((String) request.get("status"));
             String patientRegistrationNumber = (String) request.get("patientRegistrationNumber");
+            
+            logger.debug("Updating appointment {} to status {} with patient reg number: {}", 
+                id, status, patientRegistrationNumber);
 
             appointmentService.updateAppointmentStatus(id, status, patientRegistrationNumber);
             return ResponseEntity.ok().build();
         } catch (IllegalStateException e) {
+            logger.error("Validation error updating appointment status: {}", e.getMessage());
+            return ResponseEntity.badRequest().body(new ErrorResponse(e.getMessage()));
+        } catch (IllegalArgumentException e) {
+            logger.error("Invalid argument error updating appointment status: {}", e.getMessage());
             return ResponseEntity.badRequest().body(new ErrorResponse(e.getMessage()));
         } catch (Exception e) {
-            return ResponseEntity.badRequest().body(new ErrorResponse("Failed to update appointment status"));
+            logger.error("Unexpected error updating appointment status", e);
+            return ResponseEntity.badRequest().body(new ErrorResponse("Failed to update appointment status: " + e.getMessage()));
         }
     }
 

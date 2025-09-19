@@ -420,8 +420,103 @@
 
                             .payment-form-actions {
                                 display: flex;
-                                gap: 10px;
+                                gap: 15px;
                                 justify-content: flex-end;
+                            }
+
+                            /* Success Modal Styles */
+                            .success-modal {
+                                position: fixed;
+                                top: 0;
+                                left: 0;
+                                width: 100%;
+                                height: 100%;
+                                background: rgba(0, 0, 0, 0.5);
+                                z-index: 1001;
+                                display: none;
+                                justify-content: center;
+                                align-items: center;
+                            }
+
+                            .success-modal.show {
+                                display: flex;
+                            }
+
+                            .success-modal-content {
+                                background: white;
+                                border-radius: 20px;
+                                padding: 40px;
+                                box-shadow: 0 15px 35px rgba(0, 0, 0, 0.3);
+                                text-align: center;
+                                max-width: 450px;
+                                width: 90%;
+                                animation: successModalSlideIn 0.3s ease-out;
+                            }
+
+                            @keyframes successModalSlideIn {
+                                from {
+                                    opacity: 0;
+                                    transform: scale(0.8) translateY(-20px);
+                                }
+                                to {
+                                    opacity: 1;
+                                    transform: scale(1) translateY(0);
+                                }
+                            }
+
+                            .success-icon {
+                                font-size: 4rem;
+                                color: #27ae60;
+                                margin-bottom: 20px;
+                                animation: successIconPulse 0.6s ease-out;
+                            }
+
+                            @keyframes successIconPulse {
+                                0% {
+                                    transform: scale(0);
+                                }
+                                50% {
+                                    transform: scale(1.1);
+                                }
+                                100% {
+                                    transform: scale(1);
+                                }
+                            }
+
+                            .success-title {
+                                font-size: 1.5rem;
+                                font-weight: 700;
+                                color: #2c3e50;
+                                margin: 0 0 20px 0;
+                            }
+
+                            .success-details {
+                                background: #f8f9fa;
+                                border-radius: 10px;
+                                padding: 20px;
+                                margin-bottom: 25px;
+                                text-align: left;
+                            }
+
+                            .success-detail-row {
+                                display: flex;
+                                justify-content: space-between;
+                                margin-bottom: 8px;
+                                font-size: 0.95rem;
+                            }
+
+                            .success-detail-row:last-child {
+                                margin-bottom: 0;
+                            }
+
+                            .success-detail-label {
+                                font-weight: 500;
+                                color: #7f8c8d;
+                            }
+
+                            .success-detail-value {
+                                font-weight: 600;
+                                color: #2c3e50;
                             }
 
                             .payment-history-modal {
@@ -751,6 +846,23 @@
                             </div>
                         </div>
 
+                        <!-- Success Modal -->
+                        <div class="success-modal" id="successModal">
+                            <div class="success-modal-content">
+                                <div class="success-icon">
+                                    <i class="fas fa-check-circle"></i>
+                                </div>
+                                <h3 class="success-title">Payment Collected Successfully!</h3>
+                                <div class="success-details" id="successDetails">
+                                    <!-- Payment details will be populated here -->
+                                </div>
+                                <button type="button" class="btn btn-primary" onclick="hideSuccessModal()">
+                                    <i class="fas fa-check"></i>
+                                    OK
+                                </button>
+                            </div>
+                        </div>
+
                         <!-- Payment History Modal -->
                         <div class="payment-history-modal" id="paymentHistoryModal">
                             <div class="payment-history-header">
@@ -1007,14 +1119,42 @@
                                 document.querySelector('.payment-mode-select').value = '';
                                 document.querySelector('.payment-amount-input').value = '';
                                 document.querySelector('.payment-notes').value = '';
+
+                                // Reset processing state and button when form is closed
+                                isProcessingPayment = false;
+                                const confirmButton = document.querySelector('button[onclick="collectPayment()"]');
+                                if (confirmButton) {
+                                    confirmButton.disabled = false;
+                                    confirmButton.innerHTML = '<i class="fas fa-check"></i> Confirm Payment';
+                                    confirmButton.style.opacity = '1';
+                                }
                             }
 
+                            // Variable to track payment processing state
+                            let isProcessingPayment = false;
+                            let lastClickTime = 0;
+                            const DEBOUNCE_DELAY = 1000; // 1 second debounce
+
                             function collectPayment() {
+                                const currentTime = Date.now();
+                                
+                                // Prevent multiple clicks during processing
+                                if (isProcessingPayment) {
+                                    return;
+                                }
+
+                                // Debounce mechanism - prevent rapid successive clicks
+                                if (currentTime - lastClickTime < DEBOUNCE_DELAY) {
+                                    return;
+                                }
+                                lastClickTime = currentTime;
+
                                 const form = document.getElementById('paymentForm');
                                 const paymentMode = form.querySelector('select[name="paymentMode"]').value;
                                 const amountInput = form.querySelector('input[name="paymentAmount"]');
                                 const amount = parseFloat(amountInput.value);
                                 const notes = form.querySelector('textarea[name="paymentNotes"]').value;
+                                const confirmButton = form.querySelector('button[onclick="collectPayment()"]');
 
                                 // Validate payment mode
                                 if (!paymentMode) {
@@ -1027,6 +1167,14 @@
                                     alert('Please enter a valid payment amount.');
                                     amountInput.focus();
                                     return;
+                                }
+
+                                // Set processing state and disable button
+                                isProcessingPayment = true;
+                                if (confirmButton) {
+                                    confirmButton.disabled = true;
+                                    confirmButton.innerHTML = '<i class="fas fa-spinner fa-spin"></i> Processing...';
+                                    confirmButton.style.opacity = '0.6';
                                 }
 
                                 const requestData = {
@@ -1049,8 +1197,10 @@
                                     .then(response => response.json())
                                     .then(data => {
                                         if (data.success) {
-                                            alert('Payment collected successfully!');
                                             hidePaymentForm();
+                                            
+                                            // Show success modal with payment details
+                                            showSuccessModal(data.payment, requestData);
 
                                             // Refresh the patient data
                                             if (currentPatient && currentPatient.registrationCode) {
@@ -1063,6 +1213,15 @@
                                     .catch(error => {
                                         console.error('Error:', error);
                                         alert('Error collecting payment');
+                                    })
+                                    .finally(() => {
+                                        // Reset processing state and re-enable button
+                                        isProcessingPayment = false;
+                                        if (confirmButton) {
+                                            confirmButton.disabled = false;
+                                            confirmButton.innerHTML = '<i class="fas fa-check"></i> Confirm Payment';
+                                            confirmButton.style.opacity = '1';
+                                        }
                                     });
                             }
 
@@ -1167,10 +1326,60 @@
                                     });
                             }
 
+                            // Success Modal Functions
+                            function showSuccessModal(paymentData, requestData) {
+                                const modal = document.getElementById('successModal');
+                                const detailsContainer = modal.querySelector('.success-details');
+                                
+                                // Format payment details
+                                const paymentDate = new Date().toLocaleDateString('en-IN', {
+                                    year: 'numeric',
+                                    month: 'long',
+                                    day: 'numeric',
+                                    hour: '2-digit',
+                                    minute: '2-digit'
+                                });
+                                
+                                var detailsHtml = 
+                                    '<div class="success-detail-row">' +
+                                        '<span class="success-detail-label">Examination ID:</span>' +
+                                        '<span class="success-detail-value">' + requestData.examinationId + '</span>' +
+                                    '</div>' +
+                                    '<div class="success-detail-row">' +
+                                        '<span class="success-detail-label">Amount Paid:</span>' +
+                                        '<span class="success-detail-value">₹' + requestData.paymentDetails.amount + '</span>' +
+                                    '</div>' +
+                                    '<div class="success-detail-row">' +
+                                        '<span class="success-detail-label">Payment Mode:</span>' +
+                                        '<span class="success-detail-value">' + requestData.paymentMode + '</span>' +
+                                    '</div>' +
+                                    '<div class="success-detail-row">' +
+                                        '<span class="success-detail-label">Date & Time:</span>' +
+                                        '<span class="success-detail-value">' + paymentDate + '</span>' +
+                                    '</div>';
+                                
+                                if (requestData.notes) {
+                                    detailsHtml += 
+                                        '<div class="success-detail-row">' +
+                                            '<span class="success-detail-label">Notes:</span>' +
+                                            '<span class="success-detail-value">' + requestData.notes + '</span>' +
+                                        '</div>';
+                                }
+                                
+                                detailsContainer.innerHTML = detailsHtml;
+                                
+                                modal.classList.add('show');
+                            }
+
+                            function hideSuccessModal() {
+                                document.getElementById('successModal').classList.remove('show');
+                            }
+
                             // Close modal when clicking overlay
                             document.getElementById('overlay').addEventListener('click', function () {
                                 hidePaymentForm();
                                 hidePaymentHistory();
+                                hideSuccessModal();
                             });
 
                             // Close payment history modal with ESC key
@@ -1178,6 +1387,7 @@
                                 if (e.key === 'Escape') {
                                     hidePaymentHistory();
                                     hidePaymentForm();
+                                    hideSuccessModal();
                                 }
                             });
 

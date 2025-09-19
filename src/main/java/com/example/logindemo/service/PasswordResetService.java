@@ -170,7 +170,7 @@ public class PasswordResetService {
             message.setFrom(fromEmail);
             message.setTo(user.getEmail());
             message.setSubject("PeriDesk - Password Reset Request");
-            message.setText(buildEmailContent(user.getFirstName(), resetUrl));
+            message.setText(buildEmailContent(user.getFirstName(), user.getUsername(), resetUrl));
             
             mailSender.send(message);
             System.out.println("Password reset email sent to: " + maskEmail(user.getEmail()));
@@ -184,9 +184,10 @@ public class PasswordResetService {
     /**
      * Build email content
      */
-    private String buildEmailContent(String firstName, String resetUrl) {
+    private String buildEmailContent(String firstName, String username, String resetUrl) {
         return "Dear " + (firstName != null ? firstName : "User") + ",\n\n" +
-               "You have requested to reset your password for your PeriDesk account.\n\n" +
+               "You have requested to reset your password for your PeriDesk account.\n" +
+               "Username: " + username + "\n\n" +
                "Please click the following link to reset your password:\n" +
                resetUrl + "\n\n" +
                "This link will expire in 30 minutes for security reasons.\n\n" +
