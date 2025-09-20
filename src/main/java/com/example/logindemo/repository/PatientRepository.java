@@ -22,13 +22,13 @@ public interface PatientRepository extends JpaRepository<Patient, Long> {
     List<Patient> findByCheckedInTrueAndCurrentCheckInRecord_Clinic(ClinicModel clinic);
     
     // Optimized query with JOIN FETCH to avoid N+1 problem
-    // Ensures: 1) Patient is checked in, 2) Has a current check-in record, 3) Patient's registered clinic matches logged-in user's clinic
+    // Ensures: 1) Patient is checked in, 2) Has a current check-in record, 3) Patient is checked in at the current clinic (allows cross-clinic check-ins)
     @Query("SELECT DISTINCT p FROM Patient p " +
            "LEFT JOIN FETCH p.currentCheckInRecord cir " +
            "LEFT JOIN FETCH cir.assignedDoctor " +
            "WHERE p.checkedIn = true " +
            "AND p.currentCheckInRecord IS NOT NULL " +
-           "AND p.registeredClinic = :clinic " +
+           "AND cir.clinic = :clinic " +
            "ORDER BY cir.checkInTime ASC")
     List<Patient> findCheckedInPatientsWithDetailsOptimized(@org.springframework.data.repository.query.Param("clinic") ClinicModel clinic);
     

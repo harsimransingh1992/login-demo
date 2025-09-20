@@ -452,13 +452,22 @@ public class PatientController {
             Patient patient = patientService.getPatientById(id)
                 .orElseThrow(() -> new RuntimeException("Patient not found"));
 
+            // Check if patient is already checked in
+            if (patient.getCheckedIn() != null && patient.getCheckedIn()) {
+                return ResponseEntity.status(HttpStatus.CONFLICT)
+                    .body(Map.of(
+                        "success", false,
+                        "message", "Patient is already checked in"
+                    ));
+            }
+
             // Get doctor ID from request if provided
             Long doctorId = null;
             if (request != null && request.get("doctorId") != null && !request.get("doctorId").toString().isEmpty()) {
                 doctorId = Long.parseLong(request.get("doctorId").toString());
             }
 
-            // Create new check-in record
+            // Create new check-in record - Allow cross-clinic check-ins
             CheckInRecord checkInRecord = new CheckInRecord();
             checkInRecord.setPatient(patient);
             checkInRecord.setCheckInTime(LocalDateTime.now());
@@ -466,7 +475,7 @@ public class PatientController {
             checkInRecord.setClinic(loggedInUser.getClinic());
             checkInRecord.setStatus(CheckInStatus.WAITING);
             
-            // Set the assigned doctor if provided
+            // Set the assigned doctor if provided (from current clinic)
             if (doctorId != null) {
                 User doctor = userRepository.findById(doctorId).orElse(null);
                 if (doctor != null && doctor.getClinic().equals(loggedInUser.getClinic())) {
