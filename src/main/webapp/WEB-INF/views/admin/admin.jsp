@@ -195,6 +195,14 @@
                     <h3 class="card-title">Procedure Prices</h3>
                     <p class="card-description">Configure procedure prices and packages</p>
                 </a>
+
+                <a href="${pageContext.request.contextPath}/admin/report-dashboard" class="admin-card">
+                    <div class="card-icon">
+                        <i class="fas fa-chart-bar"></i>
+                    </div>
+                    <h3 class="card-title">Report Dashboard</h3>
+                    <p class="card-description">Manage automated reports and scheduling triggers</p>
+                </a>
             </div>
 
             <div class="stats-section">
@@ -225,4 +233,4 @@
     <script src="https://cdn.jsdelivr.net/npm/popper.js@1.16.1/dist/umd/popper.min.js"></script>
     <script src="https://stackpath.bootstrapcdn.com/bootstrap/4.5.2/js/bootstrap.min.js"></script>
 </body>
-</html> 
+</html>

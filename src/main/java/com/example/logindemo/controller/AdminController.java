@@ -794,6 +794,12 @@ public class AdminController {
         return "admin/reports";
     }
     
+    @GetMapping("/report-dashboard")
+    public String reportDashboard(Model model) {
+        // Redirect to the AdminReportDashboardController
+        return "redirect:/admin/reports/dashboard";
+    }
+    
     // Motivation Quote Management
     
     @GetMapping("/motivation-quotes")

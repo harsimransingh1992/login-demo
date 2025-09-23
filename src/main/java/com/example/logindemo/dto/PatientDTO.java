@@ -76,6 +76,9 @@ public class PatientDTO {
     private PatientColorCode colorCode;
 
     private String chairsideNote;
+    
+    // Transient field for pending payments calculation
+    private Double pendingPayments = 0.0;
 
     public Integer getAge() {
         if (dateOfBirth == null) {

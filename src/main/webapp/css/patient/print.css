@@ -38,13 +38,153 @@
         margin: 25mm 10mm 15mm 10mm;
     }
     
-    /* Header styling - increased top margin with 9+ lines of space */
+    /* Header styling - reduced top margin for letterhead */
     .print-header {
         text-align: center;
-        margin-top: 50mm; /* Approximately 9+ lines of space at top */
+        margin-top: 5mm; /* Reduced margin for letterhead */
         margin-bottom: 8mm;
-        border-bottom: 1px solid #333;
+        border-bottom: 2px solid #0066cc;
         padding-bottom: 5mm;
+    }
+    
+    /* Letterhead container */
+    .letterhead-container {
+        display: flex;
+        justify-content: space-between;
+        align-items: flex-start;
+        margin-bottom: 5mm;
+        padding: 3mm 0;
+    }
+    
+    .letterhead-left, .letterhead-right {
+        flex: 1;
+    }
+    
+    .letterhead-center {
+        flex: 2;
+        text-align: center;
+    }
+    
+    /* Shark Tank Badge */
+    .shark-tank-badge {
+        background: linear-gradient(135deg, #0066cc, #004499);
+        color: white;
+        padding: 3mm;
+        border-radius: 3mm;
+        font-weight: bold;
+        text-align: center;
+        max-width: 25mm;
+    }
+    
+    .as-seen-text {
+        font-size: 6pt;
+        margin-bottom: 1mm;
+    }
+    
+    .shark-tank-text, .tank-text {
+        font-size: 8pt;
+        font-weight: bold;
+        line-height: 1;
+    }
+    
+    .india-text {
+        font-size: 7pt;
+        color: #ffcc00;
+        font-weight: bold;
+    }
+    
+    /* Clinic Logo */
+    .clinic-logo {
+        text-align: center;
+    }
+    
+    .logo-text {
+        font-size: 18pt;
+        font-weight: bold;
+        color: #0066cc;
+        letter-spacing: 2pt;
+        margin-bottom: 1mm;
+    }
+    
+    .dental-text {
+        font-size: 14pt;
+        color: #333;
+        font-style: italic;
+        margin-bottom: 1mm;
+    }
+    
+    .care-text {
+        font-size: 12pt;
+        font-weight: bold;
+        color: #0066cc;
+        margin-bottom: 2mm;
+    }
+    
+    .tagline {
+        font-size: 8pt;
+        color: #0066cc;
+        font-style: italic;
+    }
+    
+    /* Right side text */
+    .not-for-medico {
+        font-size: 7pt;
+        color: #666;
+        text-align: right;
+        font-weight: bold;
+        margin-top: 5mm;
+    }
+    
+    /* Contact Information */
+    .contact-info {
+        display: flex;
+        justify-content: space-between;
+        align-items: center;
+        margin: 5mm 0;
+        padding: 3mm 0;
+        border-top: 1px solid #ddd;
+        border-bottom: 1px solid #ddd;
+    }
+    
+    .contact-left {
+        flex: 2;
+    }
+    
+    .contact-right {
+        flex: 1;
+        text-align: right;
+    }
+    
+    .phone-info, .email-info, .website-info {
+        font-size: 8pt;
+        margin-bottom: 1mm;
+        color: #333;
+    }
+    
+    .phone-info i, .email-info i, .website-info i {
+        margin-right: 2mm;
+        color: #0066cc;
+    }
+    
+    /* QR Code placeholder */
+    .qr-code {
+        text-align: center;
+    }
+    
+    .qr-placeholder {
+        width: 15mm;
+        height: 15mm;
+        border: 1px solid #333;
+        display: inline-block;
+        font-size: 6pt;
+        line-height: 15mm;
+        text-align: center;
+        margin-bottom: 1mm;
+    }
+    
+    .scan-text {
+        font-size: 6pt;
+        color: #666;
     }
     
     .print-title {
@@ -139,6 +279,39 @@
         font-size: 7pt;
         color: #666;
         break-inside: avoid;
+    }
+    
+    /* Branch Footer Styles */
+    .branch-footer {
+        margin-top: 10mm;
+        padding: 5mm 0;
+        border-top: 2px solid #0066cc;
+        background-color: #0066cc;
+        color: white;
+        text-align: center;
+    }
+    
+    .branches-title {
+        font-size: 10pt;
+        font-weight: bold;
+        margin-bottom: 3mm;
+        color: white;
+    }
+    
+    .branches-info {
+        font-size: 8pt;
+    }
+    
+    .branch-row {
+        display: flex;
+        justify-content: space-between;
+        margin-bottom: 2mm;
+    }
+    
+    .branch-item {
+        flex: 1;
+        padding: 0 2mm;
+        color: white;
     }
     
     /* Ensure content fits on one page */

@@ -37,6 +37,17 @@ public class WelcomeController {
             try {
                 List<PatientDTO> waitingPatients = patientService.getCheckedInPatients();
                 
+                // Calculate pending payments for each patient
+                for (PatientDTO patient : waitingPatients) {
+                    try {
+                        Double pendingAmount = patientService.calculatePendingPayments(Long.valueOf(patient.getId()));
+                        patient.setPendingPayments(pendingAmount);
+                    } catch (Exception e) {
+                        log.warn("Could not calculate pending payments for patient {}: {}", patient.getId(), e.getMessage());
+                        patient.setPendingPayments(0.0);
+                    }
+                }
+                
                 // Get the logged-in user's clinic and add clinic doctors
                 String username = authentication.getName();
                 User currentUser = userService.findByUsername(username)

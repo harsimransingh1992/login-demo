@@ -693,6 +693,59 @@ public class PendingPaymentController {
         return response;
     }
 
+    @GetMapping("/patient/{patientId}")
+    public String showPatientPendingPayments(@PathVariable Long patientId, Model model) {
+        try {
+            // Get patient details
+            Optional<Patient> patientOpt = patientService.getPatientById(patientId);
+            if (!patientOpt.isPresent()) {
+                model.addAttribute("error", "Patient not found");
+                return "error/404";
+            }
+            
+            Patient patient = patientOpt.get();
+            
+            // Get all examinations for this patient
+            List<ToothClinicalExaminationDTO> allExaminationDTOs = examinationService.getExaminationsByPatientId(patientId);
+            
+            // Convert DTOs to entities and filter examinations with pending payments
+            List<ToothClinicalExamination> pendingExaminations = new ArrayList<>();
+            for (ToothClinicalExaminationDTO dto : allExaminationDTOs) {
+                Optional<ToothClinicalExamination> examOpt = examinationRepository.findById(dto.getId());
+                if (examOpt.isPresent()) {
+                    ToothClinicalExamination exam = examOpt.get();
+                    Double totalProcedureAmount = exam.getTotalProcedureAmount();
+                    Double totalPaidAmount = exam.getTotalPaidAmount();
+                    double pending = (totalProcedureAmount != null ? totalProcedureAmount : 0.0) - 
+                                   (totalPaidAmount != null ? totalPaidAmount : 0.0);
+                    if (pending > 0.01) { // Consider amounts > 0.01 as pending
+                        pendingExaminations.add(exam);
+                    }
+                }
+            }
+            
+            // Calculate total pending amount
+            double totalPendingAmount = pendingExaminations.stream()
+                .mapToDouble(exam -> {
+                    Double totalProcedureAmount = exam.getTotalProcedureAmount();
+                    Double totalPaidAmount = exam.getTotalPaidAmount();
+                    return (totalProcedureAmount != null ? totalProcedureAmount : 0.0) - 
+                           (totalPaidAmount != null ? totalPaidAmount : 0.0);
+                })
+                .sum();
+            
+            model.addAttribute("patient", patient);
+            model.addAttribute("pendingExaminations", pendingExaminations);
+            model.addAttribute("totalPendingAmount", totalPendingAmount);
+            
+            return "payments/patient-pending-payments";
+            
+        } catch (Exception e) {
+            model.addAttribute("error", "Error loading pending payments: " + e.getMessage());
+            return "error/500";
+        }
+    }
+
     @GetMapping("/export")
     @PreAuthorize("hasRole('RECEPTIONIST')")
     @ResponseBody
@@ -782,4 +835,4 @@ public class PendingPaymentController {
     }
 
 
-} 
+}
