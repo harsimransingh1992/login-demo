@@ -646,4 +646,47 @@ public class PatientServiceImpl implements PatientService{
         return patient.map(patientMapper::toDto).orElse(null);
     }
 
+    @Override
+    public double calculatePendingPayments(Long patientId) {
+        Optional<Patient> patientOpt = patientRepository.findById(patientId);
+        if (!patientOpt.isPresent()) {
+            return 0.0;
+        }
+        
+        Patient patient = patientOpt.get();
+        double totalPendingAmount = 0.0;
+        
+        // Get all examinations for this patient
+        List<ToothClinicalExamination> examinations = toothClinicalExaminationRepository.findByPatientId(patientId);
+        
+        for (ToothClinicalExamination exam : examinations) {
+            // Calculate payment amounts with transaction types
+            double totalPaid = 0.0;
+            double totalRefunded = 0.0;
+            
+            if (exam.getPaymentEntries() != null) {
+                for (PaymentEntry entry : exam.getPaymentEntries()) {
+                    if (entry.getAmount() != null) {
+                        if (entry.getTransactionType() != null && entry.getTransactionType().toString().equals("REFUND")) {
+                            totalRefunded += entry.getAmount();
+                        } else {
+                            totalPaid += entry.getAmount();
+                        }
+                    }
+                }
+            }
+            
+            double netPaid = totalPaid - totalRefunded;
+            double totalProcedureAmount = exam.getTotalProcedureAmount() != null ? exam.getTotalProcedureAmount() : 0.0;
+            double remainingAmount = totalProcedureAmount - netPaid;
+            
+            // Only add to pending if there's actually an amount remaining
+            if (remainingAmount > 0) {
+                totalPendingAmount += remainingAmount;
+            }
+        }
+        
+        return totalPendingAmount;
+    }
+
 }

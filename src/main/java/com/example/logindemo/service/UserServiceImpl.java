@@ -190,6 +190,9 @@ public class UserServiceImpl implements UserService {
 
     @Override
     public List<UserDTO> getUsersByRoleAndClinic(UserRole role, ClinicModel clinic) {
+        if (clinic == null) {
+            return new java.util.ArrayList<>();
+        }
         return userRepository.findByRoleAndClinic_Id(role, clinic.getId()).stream()
                 .map(user -> modelMapper.map(user, UserDTO.class))
                 .collect(Collectors.toList());

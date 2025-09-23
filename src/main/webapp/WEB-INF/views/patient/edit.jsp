@@ -457,19 +457,15 @@
                                         </c:otherwise>
                                     </c:choose>
                                 </div>
+                                <!-- Hidden field to ensure gender is submitted with form -->
+                                <form:hidden path="gender" />
                             </div>
                             <div class="form-group w-33">
                                 <label for="occupation">Occupation</label>
-                                <div class="read-only-field">
-                                    <c:choose>
-                                        <c:when test="${not empty patient.occupation}">
-                                            ${patient.occupation.displayName}
-                                        </c:when>
-                                        <c:otherwise>
-                                            <span style="color: #999; font-style: italic;">Not specified</span>
-                                        </c:otherwise>
-                                    </c:choose>
-                                </div>
+                                <form:select path="occupation" id="occupation" class="form-control">
+                                    <form:option value="">Select Occupation</form:option>
+                                    <form:options items="${occupations}" itemLabel="displayName" itemValue="name"/>
+                                </form:select>
                             </div>
                         </div>
                     </div>
@@ -501,7 +497,7 @@
                                 <form:select path="state" id="state" required="true" onchange="loadCities()">
                                     <form:option value="" label="-- Select State --" />
                                     <c:forEach items="${indianStates}" var="state">
-                                        <form:option value="${state.name()}" label="${state.displayName}" />
+                                        <form:option value="${state.displayName}" label="${state.displayName}" />
                                     </c:forEach>
                                 </form:select>
                             </div>
@@ -532,16 +528,10 @@
                         <div class="form-row">
                             <div class="form-group w-50">
                                 <label for="referralModel">Referral Source</label>
-                                <div class="read-only-field">
-                                    <c:choose>
-                                        <c:when test="${not empty patient.referralModel}">
-                                            ${patient.referralModel.displayName}
-                                        </c:when>
-                                        <c:otherwise>
-                                            <span style="color: #999; font-style: italic;">Not specified</span>
-                                        </c:otherwise>
-                                    </c:choose>
-                                </div>
+                                <form:select path="referralModel" id="referralModel" class="form-control">
+                                    <form:option value="">Select Referral Source</form:option>
+                                    <form:options items="${referralModels}" itemLabel="displayName" itemValue="name"/>
+                                </form:select>
                             </div>
                             <div class="form-group w-50">
                                 <label for="colorCode">Patient Code</label>
@@ -586,7 +576,7 @@
     
 <script>
         // Load cities function
-        function loadCities() {
+        function loadCities(restoreCity = false) {
             const stateSelect = document.getElementById('state');
             const citySelect = document.getElementById('city');
             const selectedState = stateSelect.value;
@@ -618,27 +608,29 @@
                         citySelect.appendChild(option);
                     });
                     
-                    // If editing and city is already set, select it
-                    const currentCity = "${patient.city}";
-                    console.log("Current city to select:", currentCity);
-                    if (currentCity) {
-                        let cityFound = false;
-                        for (let i = 0; i < citySelect.options.length; i++) {
-                            if (citySelect.options[i].value === currentCity) {
-                                citySelect.selectedIndex = i;
-                                cityFound = true;
-                                console.log("City matched at index:", i);
-                                break;
+                    // Only restore city if explicitly requested (on page load)
+                    if (restoreCity) {
+                        const currentCity = "${patient.city}";
+                        console.log("Current city to select:", currentCity);
+                        if (currentCity) {
+                            let cityFound = false;
+                            for (let i = 0; i < citySelect.options.length; i++) {
+                                if (citySelect.options[i].value === currentCity) {
+                                    citySelect.selectedIndex = i;
+                                    cityFound = true;
+                                    console.log("City matched at index:", i);
+                                    break;
+                                }
                             }
-                        }
-                        
-                        if (!cityFound) {
-                            console.log("Current city not found in options - adding it manually");
-                            const option = document.createElement('option');
-                            option.value = currentCity;
-                            option.textContent = currentCity;
-                            citySelect.appendChild(option);
-                            citySelect.value = currentCity;
+                            
+                            if (!cityFound) {
+                                console.log("Current city not found in options - adding it manually");
+                                const option = document.createElement('option');
+                                option.value = currentCity;
+                                option.textContent = currentCity;
+                                citySelect.appendChild(option);
+                                citySelect.value = currentCity;
+                            }
                         }
                     }
                 })
@@ -652,17 +644,24 @@
         document.addEventListener('DOMContentLoaded', function() {
             const stateSelect = document.getElementById('state');
             console.log("DOM loaded - state value:", stateSelect.value);
-            if (stateSelect.value) {
-                loadCities();
-            }
             
             // Log the patient data for debugging
             console.log("Patient city:", "${patient.city}");
             console.log("Patient state:", "${patient.state}");
             
+            // Set the state value if patient has a state
+            const patientState = "${patient.state}";
+            if (patientState && patientState !== "") {
+                stateSelect.value = patientState;
+                console.log("Set state to:", patientState);
+                // Load cities after setting state and restore the current city
+                loadCities(true);
+            }
+            
             // Add state change event listener
             stateSelect.addEventListener('change', function() {
-                loadCities();
+                // Don't restore city when state changes - reset to empty
+                loadCities(false);
             });
             
             // Form validation
@@ -670,10 +669,19 @@
                 const stateSelect = document.getElementById('state');
                 const citySelect = document.getElementById('city');
                 
-                if (stateSelect.value && !citySelect.value) {
+                console.log('=== FORM SUBMISSION DEBUG ===');
+                console.log('State value:', stateSelect.value);
+                console.log('City value:', citySelect.value);
+                console.log('City options length:', citySelect.options.length);
+                console.log('City options:', Array.from(citySelect.options).map(opt => opt.value));
+                
+                // Only validate city if state is selected and city dropdown has options
+                if (stateSelect.value && citySelect.options.length > 1 && !citySelect.value) {
+                    console.log('BLOCKING: City validation failed');
                     event.preventDefault();
                     alert('Please select a city');
                     citySelect.focus();
+                    return;
                 }
                 
                 // Validate profile picture if one is selected
@@ -681,8 +689,12 @@
                 if (profilePicture.files.length > 0) {
                     const file = profilePicture.files[0];
                     
+                    console.log('Profile picture file size:', file.size);
+                    console.log('Profile picture file type:', file.type);
+                    
                     // Check file size (max 2MB)
                     if (file.size > 2 * 1024 * 1024) {
+                        console.log('BLOCKING: File size too large');
                         event.preventDefault();
                         alert('Error: Profile picture size exceeds 2MB limit');
                         return;
@@ -690,11 +702,14 @@
                     
                     // Check file type
                     if (!file.type.startsWith('image/')) {
+                        console.log('BLOCKING: Invalid file type');
                         event.preventDefault();
                         alert('Error: Only image files are allowed for profile picture');
                         return;
                     }
                 }
+                
+                console.log('FORM SUBMISSION ALLOWED - No validation errors');
             });
             
             // Profile picture preview functionality
@@ -799,4 +814,4 @@
 
     <script src="${pageContext.request.contextPath}/js/webcam.js"></script>
 </body>
-</html> 
+</html>

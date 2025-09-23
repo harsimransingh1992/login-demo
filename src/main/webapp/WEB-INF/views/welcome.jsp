@@ -300,6 +300,123 @@
                                 transform: none;
                             }
 
+                            /* Blinking Payment Status Styles */
+                            .blinking-payment-btn {
+                                animation: blinkPayment 2s infinite;
+                                position: relative;
+                                overflow: hidden;
+                            }
+
+                            .blinking-payment-btn .payment-text {
+                                display: inline-block;
+                                animation: textAlternate 2s infinite;
+                            }
+
+                            @keyframes blinkPayment {
+                                0%, 50% {
+                                    background: linear-gradient(135deg, #f39c12, #e67e22);
+                                    box-shadow: 0 0 10px rgba(243, 156, 18, 0.5);
+                                }
+                                51%, 100% {
+                                    background: linear-gradient(135deg, #e67e22, #d35400);
+                                    box-shadow: 0 0 15px rgba(230, 126, 34, 0.7);
+                                }
+                            }
+
+                            @keyframes textAlternate {
+                                0%, 49% {
+                                    opacity: 1;
+                                }
+                                50%, 100% {
+                                    opacity: 0;
+                                }
+                            }
+
+                            .blinking-payment-btn .payment-text-alt {
+                                position: absolute;
+                                left: 50%;
+                                top: 50%;
+                                transform: translate(-50%, -50%);
+                                animation: textAlternateReverse 2s infinite;
+                                white-space: nowrap;
+                            }
+
+                            @keyframes textAlternateReverse {
+                                0%, 49% {
+                                    opacity: 0;
+                                }
+                                50%, 100% {
+                                    opacity: 1;
+                                }
+                            }
+                            }
+
+                            /* Blinking Pending Payment Notification Styles */
+                            .pending-payment-notification {
+                                position: fixed;
+                                top: 20px;
+                                right: 20px;
+                                background: linear-gradient(135deg, #f39c12, #e67e22);
+                                color: white;
+                                padding: 15px 20px;
+                                border-radius: 10px;
+                                box-shadow: 0 8px 25px rgba(243, 156, 18, 0.3);
+                                cursor: pointer;
+                                z-index: 1000;
+                                display: flex;
+                                align-items: center;
+                                gap: 10px;
+                                font-weight: 600;
+                                font-size: 1rem;
+                                animation: blinkNotification 2s infinite;
+                                transition: all 0.3s ease;
+                                border: 2px solid rgba(255, 255, 255, 0.2);
+                            }
+
+                            .pending-payment-notification:hover {
+                                transform: scale(1.05);
+                                box-shadow: 0 12px 35px rgba(243, 156, 18, 0.4);
+                                background: linear-gradient(135deg, #e67e22, #d35400);
+                            }
+
+                            .pending-payment-notification i {
+                                font-size: 1.2rem;
+                                animation: pulse 1s infinite;
+                            }
+
+                            @keyframes blinkNotification {
+                                0%, 50% {
+                                    opacity: 1;
+                                }
+                                51%, 100% {
+                                    opacity: 0.8;
+                                }
+                            }
+
+                            @keyframes pulse {
+                                0%, 100% {
+                                    transform: scale(1);
+                                }
+                                50% {
+                                    transform: scale(1.1);
+                                }
+                            }
+
+                            .notification-text {
+                                position: relative;
+                            }
+
+                            @keyframes simpleBlink {
+                                0%, 50% {
+                                    opacity: 1;
+                                    background: linear-gradient(135deg, #f39c12, #e67e22);
+                                }
+                                51%, 100% {
+                                    opacity: 0.9;
+                                    background: linear-gradient(135deg, #e67e22, #d35400);
+                                }
+                            }
+
                             .action-buttons {
                                 display: flex;
                                 gap: 8px;
@@ -667,6 +784,8 @@
                                     </a>
                                 </div>
 
+
+
                                 <c:if test="${not empty errorMessage}">
                                     <div class="card" style="border-left: 4px solid #e74c3c; margin-bottom: 20px;">
                                         <div class="card-body">
@@ -695,6 +814,7 @@
                                                             </th>
                                                             <th>Assigned Doctor</th>
                                                             <th>Waiting Time</th>
+                                                            <th>Payment Status</th>
                                                             <th style="text-align: center;">Actions</th>
                                                         </tr>
                                                     </thead>
@@ -900,6 +1020,26 @@
                                                                             <span class="time-value">00:00:00</span>
                                                                         </div>
                                                                     </c:if>
+                                                                </td>
+                                                                <td style="text-align: center;">
+                                                                    <c:choose>
+                                                                        <c:when test="${patient.pendingPayments > 0}">
+                                                                            <a href="${pageContext.request.contextPath}/payments/patient/${patient.id}" 
+                                                                               class="btn btn-warning btn-sm blinking-payment-btn" 
+                                                                               style="text-decoration: none; color: #fff; position: relative;">
+                                                                                <i class="fas fa-exclamation-triangle"></i> 
+                                                                                <span class="payment-text">Pending Payment</span>
+                                                                                <span class="payment-text-alt">
+                                                                                    Click to View
+                                                                                </span>
+                                                                            </a>
+                                                                        </c:when>
+                                                                        <c:otherwise>
+                                                                            <span class="badge badge-success" style="background-color: #27ae60;">
+                                                                                <i class="fas fa-check-circle"></i> Paid
+                                                                            </span>
+                                                                        </c:otherwise>
+                                                                    </c:choose>
                                                                 </td>
                                                                 <td style="text-align: center;">
                                                                     <div class="action-buttons"

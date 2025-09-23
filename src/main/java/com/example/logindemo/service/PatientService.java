@@ -80,4 +80,11 @@ public interface PatientService {
      * @return paginated results
      */
     Page<PatientDTO> searchPatientsPaginated(String searchType, String query, Pageable pageable);
+    
+    /**
+     * Calculate pending payment amount for a patient
+     * @param patientId the ID of the patient
+     * @return the total pending payment amount
+     */
+    double calculatePendingPayments(Long patientId);
 }

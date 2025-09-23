@@ -108,6 +108,10 @@ public class Patient {
     @Column(name = "created_at")
     private Date createdAt = new Date();
 
+    // Transient field for pending payments calculation
+    @Transient
+    private Double pendingPayments = 0.0;
+
     /**
      * Calculate the age based on the dateOfBirth.
      * @return the age in years

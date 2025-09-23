@@ -13,7 +13,9 @@ public enum ReferralModel {
     WORD_OF_MOUTH("Word of Mouth"),
     PRM("Public Relationship Manager"),
     BNI("BNI"),
-    STAFF_REFERENCE("Clinic Staff Reference");
+    STAFF_REFERENCE("Clinic Staff Reference"),
+    SHARK_TANK("Shark Tank"),
+    BIKRAM_REFERENCE("Bikramjeet Reference");
 
     private final String displayName;
 

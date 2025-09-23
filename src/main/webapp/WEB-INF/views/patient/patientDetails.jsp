@@ -584,6 +584,76 @@
             color: #1e293b;
             line-height: 1.6;
         }
+
+        /* Blinking Payment Button - Enhanced and Stable */
+        .blinking-payment-btn {
+            animation: blinkPayment 2s ease-in-out infinite;
+            position: relative;
+            padding: 6px 12px !important;
+            font-size: 12px !important;
+            font-weight: 700 !important;
+            border-radius: 5px !important;
+            border: 1px solid #28a745 !important;
+            background: linear-gradient(135deg, #28a745 0%, #20c997 100%) !important;
+            color: white !important;
+            text-transform: uppercase !important;
+            letter-spacing: 0.5px !important;
+            box-shadow: 0 3px 10px rgba(40, 167, 69, 0.4);
+            transition: all 0.3s cubic-bezier(0.4, 0, 0.2, 1);
+            overflow: hidden;
+            white-space: nowrap;
+            margin-left: auto;
+        }
+
+        .blinking-payment-btn:hover {
+            transform: translateY(-1px) scale(1.01);
+            box-shadow: 0 6px 15px rgba(40, 167, 69, 0.5);
+            background: linear-gradient(135deg, #20c997 0%, #17a2b8 100%) !important;
+        }
+
+        .blinking-payment-btn .payment-text {
+            display: inline-block;
+            font-weight: 700;
+            white-space: nowrap;
+            position: relative;
+            z-index: 2;
+        }
+
+        @keyframes blinkPayment {
+            0%, 50% {
+                background: linear-gradient(135deg, #28a745 0%, #20c997 100%) !important;
+                border-color: #28a745 !important;
+                box-shadow: 0 3px 10px rgba(40, 167, 69, 0.4);
+            }
+            25%, 75% {
+                background: linear-gradient(135deg, #ffc107 0%, #fd7e14 100%) !important;
+                border-color: #ffc107 !important;
+                box-shadow: 0 3px 10px rgba(255, 193, 7, 0.5);
+            }
+        }
+
+        .pending-payment-section {
+            background: #fff8e1;
+            border: 1px solid #ffcc02;
+            border-radius: 8px;
+            padding: 15px;
+            margin: 15px 0;
+            box-shadow: 0 1px 5px rgba(255, 193, 7, 0.1);
+        }
+
+        .pending-payment-section h4 {
+            color: #856404;
+            margin-bottom: 10px;
+            font-size: 1rem;
+            display: flex;
+            align-items: center;
+            gap: 8px;
+        }
+
+        .pending-payment-section p {
+            font-size: 0.9rem;
+            margin-bottom: 10px;
+        }
         
         .welcome-container {
             display: flex;
@@ -723,11 +793,141 @@
         
         .patient-actions {
             display: flex;
-            gap: 10px;
+            gap: 6px;
+            flex-wrap: wrap;
+            align-items: center;
+            justify-content: flex-start;
+            margin-top: 10px;
+            padding: 8px;
+            background: linear-gradient(135deg, #f8fafc 0%, #e2e8f0 100%);
+            border-radius: 6px;
+            border: 1px solid #e2e8f0;
+            box-shadow: 0 1px 4px rgba(0, 0, 0, 0.05);
+        }
+        
+        .patient-actions .btn {
+            font-size: 12px;
+            font-weight: 600;
+            padding: 5px 9px;
+            border-radius: 4px;
+            border: 1px solid transparent;
+            text-decoration: none;
+            display: inline-flex;
+            align-items: center;
+            gap: 3px;
+            transition: all 0.3s cubic-bezier(0.4, 0, 0.2, 1);
+            white-space: nowrap;
+            line-height: 1.2;
+            position: relative;
+            overflow: hidden;
+        }
+        
+        .patient-actions .btn::before {
+            content: '';
+            position: absolute;
+            top: 0;
+            left: -100%;
+            width: 100%;
+            height: 100%;
+            background: linear-gradient(90deg, transparent, rgba(255, 255, 255, 0.2), transparent);
+            transition: left 0.5s;
+        }
+        
+        .patient-actions .btn:hover::before {
+            left: 100%;
+        }
+        
+        .patient-actions .btn:hover {
+            transform: translateY(-1px);
+            box-shadow: 0 4px 12px rgba(0, 0, 0, 0.15);
+        }
+        
+        .patient-actions .btn-sm {
+            font-size: 11px;
+            padding: 4px 8px;
+        }
+        
+        .patient-actions .btn-secondary {
+            background: linear-gradient(135deg, #6c757d 0%, #5a6268 100%);
+            border-color: #6c757d;
+            color: white;
+            box-shadow: 0 2px 6px rgba(108, 117, 125, 0.3);
+        }
+
+        .patient-actions .btn-secondary:hover {
+            background: linear-gradient(135deg, #5a6268 0%, #495057 100%);
+            border-color: #545b62;
+            color: white;
+            box-shadow: 0 4px 12px rgba(108, 117, 125, 0.4);
+        }
+
+        .patient-actions .btn-primary {
+            background: linear-gradient(135deg, #007bff 0%, #0056b3 100%);
+            border-color: #007bff;
+            color: white;
+            box-shadow: 0 2px 6px rgba(0, 123, 255, 0.3);
+        }
+
+        .patient-actions .btn-primary:hover {
+            background: linear-gradient(135deg, #0056b3 0%, #004085 100%);
+            border-color: #004085;
+            color: white;
+            box-shadow: 0 4px 12px rgba(0, 123, 255, 0.4);
+        }
+
+        .patient-actions .btn-info {
+            background: linear-gradient(135deg, #17a2b8 0%, #138496 100%);
+            border-color: #17a2b8;
+            color: white;
+            box-shadow: 0 2px 6px rgba(23, 162, 184, 0.3);
+        }
+
+        .patient-actions .btn-info:hover {
+            background: linear-gradient(135deg, #138496 0%, #117a8b 100%);
+            border-color: #117a8b;
+            color: white;
+            box-shadow: 0 4px 12px rgba(23, 162, 184, 0.4);
+        }
+        
+        /* Responsive Design for Patient Actions */
+        @media (max-width: 768px) {
+            .patient-actions {
+                flex-direction: column;
+                gap: 10px;
+                padding: 15px;
+                margin-top: 15px;
+            }
+            
+            .patient-actions .btn {
+                width: 100%;
+                justify-content: center;
+                padding: 12px 16px;
+            }
+            
+            .blinking-payment-btn {
+                padding: 16px 24px !important;
+                font-size: 18px !important;
+            }
+        }
+        
+        @media (max-width: 480px) {
+            .patient-actions {
+                padding: 12px;
+                gap: 8px;
+            }
+            
+            .patient-actions .btn {
+                font-size: 0.8rem;
+                padding: 10px 14px;
+            }
+            
+            .patient-actions .btn-sm {
+                font-size: 0.75rem;
+                padding: 8px 12px;
+            }
         }
         
         .patient-info {
-            display: grid;
             grid-template-columns: repeat(auto-fill, minmax(280px, 1fr));
             gap: 12px;
         }
@@ -3238,6 +3438,7 @@
                 <div class="patient-details">
                     <h2 class="patient-name">${patient.firstName} ${patient.lastName}</h2>
                     <p class="patient-id">Registration Code: ${patient.registrationCode}</p>
+                    
                     <div class="patient-meta">
                         <span class="meta-item"><i class="fas fa-calendar-alt"></i> Age: <strong>${patient.age} years</strong></span>
                         <span class="meta-item"><i class="fas fa-venus-mars"></i> Gender: <strong>${patient.gender}</strong></span>
@@ -3259,13 +3460,23 @@
                     </div>
                 </div>
                 <div class="patient-actions">
+                    <!-- Pending Payment Button -->
+                    <c:if test="${hasPendingPayments}">
+                        <a href="${pageContext.request.contextPath}/payments/patient/${patient.id}" 
+                           class="blinking-payment-btn btn btn-warning">
+                            <i class="fas fa-credit-card"></i>
+                            <span class="payment-text">Pending Payment</span>
+                            <span class="payment-text-alt">Click to View</span>
+                        </a>
+                    </c:if>
+                    
                     <a href="${pageContext.request.contextPath}/patients/edit/${patient.id}" class="btn btn-secondary">
                         <i class="fas fa-edit"></i> Edit
                     </a>
-                    <button onclick="printRegistrationDetails()" class="btn btn-primary" style="margin-left: 10px;">
+                    <button onclick="printRegistrationDetails()" class="btn btn-primary btn-sm">
                         <i class="fas fa-print"></i> Print Registration
                     </button>
-                    <button onclick="openCustomerLedger()" class="btn btn-info" style="margin-left: 10px;">
+                    <button onclick="openCustomerLedger()" class="btn btn-info btn-sm">
                         <i class="fas fa-file-invoice-dollar"></i> Customer Ledger
                     </button>
                 </div>
@@ -4040,11 +4251,12 @@
                                             <i class="fas fa-eye"></i>
                                         </a>
                                         <c:set var="canDup" value="${duplicateAllowed[exam.id]}"/>
+                                        <c:set var="canDupAndCheckedIn" value="${canDup && patient.checkedIn}"/>
                                         <button class="btn btn-sm has-tooltip" 
-                                                data-tooltip="${canDup ? 'Duplicate' : 'Cannot duplicate'}" 
+                                                data-tooltip="${canDupAndCheckedIn ? 'Duplicate' : (canDup ? 'Patient must be checked in to duplicate' : 'Cannot duplicate')}" 
                                                 data-exam-id="${exam.id}"
-                                                onclick="event.stopPropagation(); if(this.disabled){return false;} duplicateExaminationFromEl(this)"
-                                                <c:if test="${!canDup}">disabled style="opacity:0.6; cursor:not-allowed;"</c:if>>
+                                                onclick="event.stopPropagation(); duplicateExaminationFromEl(this)"
+                                                <c:if test="${!canDupAndCheckedIn}">disabled style="opacity:0.6; cursor:not-allowed;"</c:if>>
                                             <i class="fas fa-clone"></i>
                                         </button>
                                         
@@ -5183,88 +5395,33 @@
      
      <!-- Hidden Print Content -->
      <div class="print-content" id="printContent">
-         <div class="print-header">
-             <h1 class="print-title">Patient Registration Details</h1>
-         </div>
-         
-         <div class="registration-details">
-             <div class="detail-column">
-                 <div class="detail-section">
-                     <h3 class="section-title">Personal Information</h3>
-                     <div class="detail-item">
-                         <span class="detail-label">Full Name:</span>
-                         <span class="detail-value">${patient.firstName} ${patient.lastName}</span>
-                     </div>
-                     <div class="detail-item">
-                         <span class="detail-label">Date of Birth:</span>
-                         <span class="detail-value">
-                             <fmt:formatDate value="${patient.dateOfBirth}" pattern="dd/MM/yyyy"/>
-                         </span>
-                     </div>
-                     <div class="detail-item">
-                         <span class="detail-label">Age:</span>
-                         <span class="detail-value">${patient.age} years</span>
-                     </div>
-                     <div class="detail-item">
-                         <span class="detail-label">Gender:</span>
-                         <span class="detail-value">${patient.gender}</span>
-                     </div>
-                     <div class="detail-item">
-                         <span class="detail-label">Occupation:</span>
-                         <span class="detail-value">${not empty patient.occupation ? patient.occupation.displayName : 'Not specified'}</span>
-                     </div>
-                 </div>
-                 
-                 <div class="detail-section">
-                     <h3 class="section-title">Contact Information</h3>
-                     <div class="detail-item">
-                         <span class="detail-label">Phone Number:</span>
-                         <span class="detail-value">${patient.phoneNumber}</span>
-                     </div>
-                     <div class="detail-item">
-                         <span class="detail-label">Email:</span>
-                         <span class="detail-value">${not empty patient.email ? patient.email : 'Not provided'}</span>
-                     </div>
-                 </div>
+         <div class="registration-details" style="text-align: center; display: block;">
+             <div class="detail-item" style="display: block; text-align: center; margin-bottom: 10px; font-size: 14pt;">
+                 <strong>Full Name:</strong> ${patient.firstName} ${patient.lastName}
              </div>
-             
-             <div class="detail-column">
-                 <div class="detail-section">
-                     <h3 class="section-title">Address Information</h3>
-                     <div class="detail-item">
-                         <span class="detail-label">Street Address:</span>
-                         <span class="detail-value">${not empty patient.streetAddress ? patient.streetAddress : 'Not provided'}</span>
-                     </div>
-                     <div class="detail-item">
-                         <span class="detail-label">City:</span>
-                         <span class="detail-value">${not empty patient.city ? patient.city : 'Not provided'}</span>
-                     </div>
-                     <div class="detail-item">
-                         <span class="detail-label">State:</span>
-                         <span class="detail-value">${not empty patient.state ? patient.state : 'Not provided'}</span>
-                     </div>
-                     <div class="detail-item">
-                         <span class="detail-label">Pincode:</span>
-                         <span class="detail-value">${not empty patient.pincode ? patient.pincode : 'Not provided'}</span>
-                     </div>
-                 </div>
-                 
-                 <div class="detail-section">
-                     <h3 class="section-title">Medical Information</h3>
-                     <div class="detail-item">
-                         <span class="detail-label">Medical History:</span>
-                         <span class="detail-value">${not empty patient.medicalHistory ? patient.medicalHistory : 'None reported'}</span>
-                     </div>
-                 </div>
+             <div class="detail-item" style="display: block; text-align: center; margin-bottom: 10px; font-size: 14pt;">
+                 <strong>Age:</strong> ${patient.age} years
+             </div>
+             <div class="detail-item" style="display: block; text-align: center; margin-bottom: 10px; font-size: 14pt;">
+                 <strong>Gender:</strong> ${patient.gender}
+             </div>
+             <div class="detail-item" style="display: block; text-align: center; margin-bottom: 10px; font-size: 14pt;">
+                 <strong>Phone Number:</strong> ${patient.phoneNumber}
+             </div>
+             <div class="detail-item" style="display: block; text-align: center; margin-bottom: 10px; font-size: 14pt;">
+                 <strong>Medical History:</strong> ${not empty patient.medicalHistory ? patient.medicalHistory : 'None reported'}
+             </div>
+             <div class="detail-item" style="display: block; text-align: center; margin-bottom: 10px; font-size: 14pt;">
+                 <strong>Branch:</strong> ${not empty patient.registeredClinic ? patient.registeredClinic.clinicName : 'Not specified'}
+             </div>
+             <div class="detail-item" style="display: block; text-align: center; margin-bottom: 10px; font-size: 14pt;">
+                 <strong>Registration Code:</strong> ${patient.registrationCode}
              </div>
          </div>
          
-         <div class="registration-code">
-             Registration Code: ${patient.registrationCode}
-         </div>
-         
-         <div class="slip-footer">
-             <p>Generated using PeriDesk Developed by Navtech Labs</p>
+         <!-- Footer positioned 7 lines from bottom -->
+         <div style="position: fixed; bottom: 7em; left: 0; right: 0; text-align: center; font-size: 10pt; color: #666;">
+             Generated using PeriDesk developed by NavTech Labs
          </div>
      </div>
 

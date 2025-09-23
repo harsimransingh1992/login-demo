@@ -516,9 +516,13 @@ public class PatientController {
                 savedAppointment.getId(), 
                 savedAppointment.getDoctor() != null ? savedAppointment.getDoctor().getFirstName() : "NULL");
 
+            // Calculate pending payments for the patient
+            double pendingPayments = patientService.calculatePendingPayments(id);
+
             return ResponseEntity.ok(Map.of(
                 "success", true,
-                "message", "Patient checked in successfully and appointment marked as completed"
+                "message", "Patient checked in successfully and appointment marked as completed",
+                "pendingPayments", pendingPayments
             ));
         } catch (Exception e) {
             log.error("Error checking in patient: {}", e.getMessage(), e);
@@ -579,30 +583,25 @@ public class PatientController {
             allDoctors.addAll(opdDoctors);
             model.addAttribute("doctorDetails", allDoctors);
 
+            // Get pending payments for this patient using the same method as WelcomeController
+            try {
+                Double pendingAmount = patientService.calculatePendingPayments(patient.get().getId());
+                model.addAttribute("hasPendingPayments", pendingAmount > 0);
+                model.addAttribute("totalPendingAmount", pendingAmount);
+                
+            } catch (Exception e) {
+                log.warn("Could not fetch pending payments for patient {}: {}", id, e.getMessage());
+                model.addAttribute("hasPendingPayments", false);
+                model.addAttribute("totalPendingAmount", 0.0);
+            }
+
             // Prepare duplicate permissions map keyed by exam id for easy lookup in JSP
             try {
                 List<ToothClinicalExaminationDTO> exams = toothClinicalExaminationService.getToothClinicalExaminationForPatientId(patient.get().getId());
                 Map<Long, Boolean> duplicateAllowed = new java.util.HashMap<>();
                 for (ToothClinicalExaminationDTO examDto : exams) {
-                    boolean sameClinic = examDto.getExaminationClinic() != null && currentUser.getClinic() != null
-                        && java.util.Objects.equals(examDto.getExaminationClinic().getId(), currentUser.getClinic().getId());
-                    boolean sameDate = false;
-                    if (examDto.getExaminationDate() != null) {
-                        try {
-                            sameDate = java.time.LocalDate.now().equals(examDto.getExaminationDate().toLocalDate());
-                        } catch (Exception ignore) { /* keep false */ }
-                    }
-                    boolean isOpdDoctor = false;
-                    try {
-                        // Attempt to fetch model for OPD doctor comparison
-                        java.util.Optional<ToothClinicalExamination> examModelOpt = toothClinicalExaminationRepository.findById(examDto.getId());
-                        if (examModelOpt.isPresent() && examModelOpt.get().getOpdDoctor() != null) {
-                            isOpdDoctor = java.util.Objects.equals(examModelOpt.get().getOpdDoctor().getId(), currentUser.getId());
-                        }
-                    } catch (Exception ignore) { /* keep false */ }
-                    // Allow OPD_DOCTOR role to duplicate regardless of being the OPD doctor
-                    boolean canDuplicate = sameClinic && sameDate && (isOpdDoctor || currentUser.getRole() == UserRole.OPD_DOCTOR);
-                    duplicateAllowed.put(examDto.getId(), canDuplicate);
+                    // Allow duplication for all examinations without restrictions
+                    duplicateAllowed.put(examDto.getId(), true);
                 }
                 model.addAttribute("duplicateAllowed", duplicateAllowed);
             } catch (Exception e) {
@@ -626,9 +625,14 @@ public class PatientController {
             // Load cities for the current state if state is set
             if (patient.getState() != null) {
                 try {
-                    IndianState stateEnum = IndianState.valueOf(patient.getState());
-                    List<IndianCityInterface> cities = locationUtil.getCitiesByState(stateEnum);
-                    model.addAttribute("cities", cities);
+                    // Use LocationUtil.getStateByName to handle both enum names and display names
+                    IndianState stateEnum = locationUtil.getStateByName(patient.getState());
+                    if (stateEnum != null) {
+                        List<IndianCityInterface> cities = locationUtil.getCitiesByState(stateEnum);
+                        model.addAttribute("cities", cities);
+                    } else {
+                        log.warn("Could not find state enum for: {}", patient.getState());
+                    }
                 } catch (Exception e) {
                     log.warn("Could not load cities for state: {}", patient.getState(), e);
                 }
@@ -645,29 +649,60 @@ public class PatientController {
                                @RequestParam(value = "profilePicture", required = false) MultipartFile profilePicture,
                                @RequestParam(value = "removeProfilePicture", required = false) String removeProfilePicture,
                                RedirectAttributes redirectAttributes) {
-        log.info("Updating patient {}", patient.getId());
+        log.info("=== PATIENT UPDATE METHOD CALLED ===");
+        log.info("Updating patient {} with data: firstName={}, lastName={}, email={}, phoneNumber={}", 
+                patient.getId(), patient.getFirstName(), patient.getLastName(), patient.getEmail(), patient.getPhoneNumber());
+        log.info("Patient city: {}, state: {}, pincode: {}", patient.getCity(), patient.getState(), patient.getPincode());
         try {
+            // Get the existing patient to preserve audit fields and relationships
+            Optional<Patient> existingPatientOpt = patientRepository.findById(patient.getId());
+            if (!existingPatientOpt.isPresent()) {
+                redirectAttributes.addFlashAttribute("error", "Patient not found");
+                return "redirect:/patients/list";
+            }
+            
+            Patient existingPatient = existingPatientOpt.get();
+            
+            // Update only the editable fields, preserving system fields
+            existingPatient.setFirstName(patient.getFirstName());
+            existingPatient.setLastName(patient.getLastName());
+            existingPatient.setDateOfBirth(patient.getDateOfBirth());
+            existingPatient.setGender(patient.getGender());
+            existingPatient.setPhoneNumber(patient.getPhoneNumber());
+            existingPatient.setEmail(patient.getEmail());
+            existingPatient.setStreetAddress(patient.getStreetAddress());
+            existingPatient.setCity(patient.getCity());
+            existingPatient.setState(patient.getState());
+            existingPatient.setPincode(patient.getPincode());
+            existingPatient.setMedicalHistory(patient.getMedicalHistory());
+            existingPatient.setEmergencyContactName(patient.getEmergencyContactName());
+            existingPatient.setEmergencyContactPhoneNumber(patient.getEmergencyContactPhoneNumber());
+            existingPatient.setOccupation(patient.getOccupation());
+            existingPatient.setReferralModel(patient.getReferralModel());
+            existingPatient.setReferralOther(patient.getReferralOther());
+            existingPatient.setColorCode(patient.getColorCode());
+            existingPatient.setChairsideNote(patient.getChairsideNote());
+            
             // Handle profile picture upload if provided
             if (profilePicture != null && !profilePicture.isEmpty()) {
                 log.info("New profile picture uploaded for patient {}", patient.getId());
                 String profilePicturePath = patientService.handleProfilePictureUpload(profilePicture, patient.getId().toString());
-                patient.setProfilePicturePath(profilePicturePath);
+                existingPatient.setProfilePicturePath(profilePicturePath);
             } 
             // Handle profile picture removal if requested
             else if ("true".equals(removeProfilePicture)) {
                 log.info("Removing profile picture for patient {}", patient.getId());
-                // Get current patient to find the profile picture path
-                Optional<Patient> existingPatient = patientRepository.findById(patient.getId());
-                if (existingPatient.isPresent() && existingPatient.get().getProfilePicturePath() != null) {
+                if (existingPatient.getProfilePicturePath() != null) {
                     // Delete the file
-                    fileStorageService.deleteFile(existingPatient.get().getProfilePicturePath());
+                    fileStorageService.deleteFile(existingPatient.getProfilePicturePath());
                 }
                 // Set path to null in the patient
-                patient.setProfilePicturePath(null);
+                existingPatient.setProfilePicturePath(null);
             }
             
             // Save the updated patient
-            patientRepository.save(patient);
+            patientRepository.save(existingPatient);
+            log.info("Successfully updated patient {} with preserved audit fields", patient.getId());
             redirectAttributes.addFlashAttribute("success", "Patient updated successfully");
         } catch (Exception e) {
             log.error("Error updating patient", e);
@@ -1073,12 +1108,16 @@ public class PatientController {
             // Add doctors list and current user role for treating doctor assignment on selection page
             if (currentUser.isPresent()) {
                 User user = currentUser.get();
-                List<UserDTO> doctors = userService.getUsersByRoleAndClinic(UserRole.DOCTOR, user.getClinic());
-                List<UserDTO> opdDoctors = userService.getUsersByRoleAndClinic(UserRole.OPD_DOCTOR, user.getClinic());
-                List<UserDTO> allDoctors = new ArrayList<>();
-                allDoctors.addAll(doctors);
-                allDoctors.addAll(opdDoctors);
-                model.addAttribute("doctors", allDoctors);
+                if (user.getClinic() != null) {
+                    List<UserDTO> doctors = userService.getUsersByRoleAndClinic(UserRole.DOCTOR, user.getClinic());
+                    List<UserDTO> opdDoctors = userService.getUsersByRoleAndClinic(UserRole.OPD_DOCTOR, user.getClinic());
+                    List<UserDTO> allDoctors = new ArrayList<>();
+                    allDoctors.addAll(doctors);
+                    allDoctors.addAll(opdDoctors);
+                    model.addAttribute("doctors", allDoctors);
+                } else {
+                    model.addAttribute("doctors", new ArrayList<>());
+                }
                 model.addAttribute("currentUserRole", user.getRole());
             }
             
@@ -1681,23 +1720,7 @@ public class PatientController {
             User currentUser = userService.findByUsername(currentUsername)
                 .orElseThrow(() -> new RuntimeException("Current user not found"));
 
-            // 1) Clinic must match
-            if (existing.getExaminationClinic() == null || currentUser.getClinic() == null
-                || !existing.getExaminationClinic().getId().equals(currentUser.getClinic().getId())) {
-                return ResponseEntity.status(HttpStatus.FORBIDDEN).body(Map.of(
-                        "success", false,
-                        "message", "Cannot duplicate: examination clinic does not match current user's clinic"
-                ));
-            }
-
-            // 2) Examination date must be today
-            LocalDate examDate = existing.getExaminationDate() != null ? existing.getExaminationDate().toLocalDate() : null;
-            if (examDate == null || !examDate.equals(LocalDate.now())) {
-                return ResponseEntity.status(HttpStatus.FORBIDDEN).body(Map.of(
-                        "success", false,
-                        "message", "Cannot duplicate: examination date must be today"
-                ));
-            }
+            // Validation checks removed - allow duplication without restrictions
 
             // OPD doctor validation removed - any user can now duplicate examinations
 
@@ -1846,23 +1869,7 @@ public class PatientController {
             User currentUser = userService.findByUsername(currentUsername)
                 .orElseThrow(() -> new RuntimeException("Current user not found"));
 
-            // 1) Clinic must match
-            if (existing.getExaminationClinic() == null || currentUser.getClinic() == null
-                || !existing.getExaminationClinic().getId().equals(currentUser.getClinic().getId())) {
-                return ResponseEntity.status(HttpStatus.FORBIDDEN).body(Map.of(
-                        "success", false,
-                        "message", "Cannot duplicate: examination clinic does not match current user's clinic"
-                ));
-            }
-
-            // 2) Examination date must be today
-            LocalDate examDate = existing.getExaminationDate() != null ? existing.getExaminationDate().toLocalDate() : null;
-            if (examDate == null || !examDate.equals(LocalDate.now())) {
-                return ResponseEntity.status(HttpStatus.FORBIDDEN).body(Map.of(
-                        "success", false,
-                        "message", "Cannot duplicate: examination date must be today"
-                ));
-            }
+            // Validation checks removed - allow selective duplication without restrictions
 
             // OPD doctor validation removed - any user can now duplicate examinations
 

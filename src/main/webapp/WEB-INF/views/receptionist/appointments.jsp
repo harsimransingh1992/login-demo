@@ -1591,8 +1591,11 @@
                                                 <div class="modal-footer">
                                                     <button type="button" class="btn btn-secondary"
                                                         data-bs-dismiss="modal">Cancel</button>
-                                                    <button type="submit" class="btn btn-primary">Create
-                                                        Appointment</button>
+                                                    <button type="submit" class="btn btn-primary" id="createAppointmentBtn">
+                                                        <span id="createAppointmentBtnText">Create Appointment</span>
+                                                        <span id="createAppointmentBtnLoader" class="spinner-border spinner-border-sm" role="status" aria-hidden="true" style="display: none;"></span>
+                                                        <span id="createAppointmentBtnLoadingText" style="display: none;">Creating...</span>
+                                                    </button>
                                                 </div>
                                             </form>
                                         </div>
@@ -1944,31 +1947,20 @@
                                 var calendarEl = $('#appointmentsCalendar');
                                 if (!calendarEl.length) return;
 
-                                // Update button states
-                                updateViewButtonStates(newView);
+                                // Get current date from calendar or URL
+                                var currentDate = calendarEl.fullCalendar('getDate');
+                                var year = currentDate.year();
+                                var month = String(currentDate.month() + 1);
+                                if (month.length === 1) month = '0' + month;
+                                var day = String(currentDate.date());
+                                if (day.length === 1) day = '0' + day;
+                                var dateString = year + '-' + month + '-' + day;
                                 
-                                // Update navigation labels
-                                updateNavigationLabels(newView);
-
-                                // Change the FullCalendar view
-                                var fullCalendarView;
-                                switch(newView) {
-                                    case 'week':
-                                        fullCalendarView = 'agendaWeek';
-                                        break;
-                                    case 'month':
-                                        fullCalendarView = 'month';
-                                        break;
-                                    default:
-                                        fullCalendarView = 'agendaDay';
-                                }
-
-                                calendarEl.fullCalendar('changeView', fullCalendarView);
-                                
-                                // Update the URL without reloading the page
-                                var currentUrl = new URL(window.location);
-                                currentUrl.searchParams.set('view', newView);
-                                window.history.pushState({}, '', currentUrl.toString());
+                                // Reload the page with the new view and current date to fetch proper data range
+                                var url = new URL(window.location);
+                                url.searchParams.set('view', newView);
+                                url.searchParams.set('date', dateString);
+                                window.location.href = url.toString();
                             }
                             
                             function updateViewButtonStates(activeView) {
@@ -2620,6 +2612,27 @@
                                 </div>
                             </div>
                         </div>
+
+                        <script>
+                            // Add form submission handler for Create Appointment form
+                            document.addEventListener('DOMContentLoaded', function() {
+                                const createAppointmentForm = document.getElementById('createAppointmentForm');
+                                const createAppointmentBtn = document.getElementById('createAppointmentBtn');
+                                const btnText = document.getElementById('createAppointmentBtnText');
+                                const btnLoader = document.getElementById('createAppointmentBtnLoader');
+                                const btnLoadingText = document.getElementById('createAppointmentBtnLoadingText');
+
+                                if (createAppointmentForm && createAppointmentBtn) {
+                                    createAppointmentForm.addEventListener('submit', function(e) {
+                                        // Show loading state
+                                        createAppointmentBtn.disabled = true;
+                                        btnText.style.display = 'none';
+                                        btnLoader.style.display = 'inline-block';
+                                        btnLoadingText.style.display = 'inline';
+                                    });
+                                }
+                            });
+                        </script>
                     </body>
 
                     </html>
