@@ -1,5 +1,6 @@
 package com.example.logindemo.model;
 
+import com.example.logindemo.model.TreatmentPhase;
 import lombok.Getter;
 import lombok.Setter;
 
@@ -25,6 +26,10 @@ public class MediaFile {
     @Column(name = "file_type")
     private String fileType; // e.g. 'xray', 'profile', etc.
 
+    @Column(name = "treatment_phase")
+    @Enumerated(EnumType.STRING)
+    private TreatmentPhase treatmentPhase = TreatmentPhase.PRE; // Default to PRE treatment phase
+
     @Column(name = "uploaded_at")
     private LocalDateTime uploadedAt = LocalDateTime.now();
-} 
+}

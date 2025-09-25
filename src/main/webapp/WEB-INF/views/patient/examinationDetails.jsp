@@ -1499,10 +1499,33 @@
                             .image-card .image-type {
                                 font-weight: 600;
                                 color: #2c3e50;
-                                margin-bottom: 15px;
+                                margin-bottom: 10px;
                                 font-size: 14px;
                                 text-transform: uppercase;
                                 letter-spacing: 0.5px;
+                            }
+
+                            .image-card .treatment-phase {
+                                font-weight: 500;
+                                margin-bottom: 15px;
+                                font-size: 12px;
+                                padding: 4px 8px;
+                                border-radius: 12px;
+                                text-transform: uppercase;
+                                letter-spacing: 0.3px;
+                                display: inline-block;
+                            }
+
+                            .treatment-phase.phase-pre {
+                                background-color: #e3f2fd;
+                                color: #1976d2;
+                                border: 1px solid #bbdefb;
+                            }
+
+                            .treatment-phase.phase-post {
+                                background-color: #e8f5e8;
+                                color: #388e3c;
+                                border: 1px solid #c8e6c9;
                             }
 
                             .image-card .image-actions {
@@ -2789,7 +2812,7 @@
                                 // No doctor assignment messaging here anymore
                             }
 
-                            // Enable/disable Start Procedure button when both arches are uploaded and no procedure started
+                            // Enable/disable Start Procedure button when both pre-treatment arches are uploaded and no procedure started
                             function updateStartProcedureState() {
                                 const btn = document.getElementById('startProcedureBtn');
                                 if (!btn) return;
@@ -2798,25 +2821,29 @@
                                 if (procedureAlreadyStarted) return;
 
                                 const existingImagesGrid = document.getElementById('existing-images-grid');
-                                let hasUpperArch = false;
-                                let hasLowerArch = false;
+                                let hasPreTreatmentUpperArch = false;
+                                let hasPreTreatmentLowerArch = false;
 
                                 if (existingImagesGrid) {
                                     const imageCards = existingImagesGrid.querySelectorAll('.image-card');
                                     imageCards.forEach(card => {
                                         const img = card.querySelector('img');
                                         const imageType = img ? img.getAttribute('alt') : '';
-                                        if (imageType === 'upper_arch') hasUpperArch = true;
-                                        if (imageType === 'lower_arch') hasLowerArch = true;
+                                        const treatmentPhaseElement = card.querySelector('.treatment-phase');
+                                        const isPreTreatment = treatmentPhaseElement && treatmentPhaseElement.classList.contains('phase-pre');
+                                        
+                                        if (imageType === 'upper_arch' && isPreTreatment) hasPreTreatmentUpperArch = true;
+                                        if (imageType === 'lower_arch' && isPreTreatment) hasPreTreatmentLowerArch = true;
                                     });
                                 }
 
-                                if (!hasUpperArch || !hasLowerArch) {
-                                    hasUpperArch = '${not empty examination.upperDenturePicturePath}' === 'true' || hasUpperArch;
-                                    hasLowerArch = '${not empty examination.lowerDenturePicturePath}' === 'true' || hasLowerArch;
+                                // Check legacy fields for backward compatibility (these are considered pre-treatment by default)
+                                if (!hasPreTreatmentUpperArch || !hasPreTreatmentLowerArch) {
+                                    hasPreTreatmentUpperArch = '${not empty examination.upperDenturePicturePath}' === 'true' || hasPreTreatmentUpperArch;
+                                    hasPreTreatmentLowerArch = '${not empty examination.lowerDenturePicturePath}' === 'true' || hasPreTreatmentLowerArch;
                                 }
 
-                                const canStart = hasUpperArch && hasLowerArch;
+                                const canStart = hasPreTreatmentUpperArch && hasPreTreatmentLowerArch;
                                 if (canStart) {
                                     btn.classList.remove('disabled');
                                     btn.removeAttribute('disabled');
@@ -3042,10 +3069,16 @@
 
                             async function uploadImage() {
                                 const fileType = document.getElementById('imageType').value;
+                                const treatmentPhase = document.getElementById('treatmentPhase').value;
                                 const file = selectedImageFile;
 
                                 if (!fileType) {
                                     alert('Please select a file type');
+                                    return;
+                                }
+
+                                if (!treatmentPhase) {
+                                    alert('Please select a treatment phase');
                                     return;
                                 }
 
@@ -3082,7 +3115,8 @@
                                     console.log('Uploading file:', {
                                         name: file.name,
                                         size: file.size + ' bytes',
-                                        type: file.type
+                                        type: file.type,
+                                        treatmentPhase: treatmentPhase
                                     });
 
                                     // Create FormData
@@ -3090,6 +3124,7 @@
                                     formData.append('examinationId', examinationId);
                                     formData.append('file', file);
                                     formData.append('fileType', fileType);
+                                    formData.append('treatmentPhase', treatmentPhase);
 
                                     // Upload
                                     const response = await fetch('/patients/examination/upload-media-file', {
@@ -3211,13 +3246,19 @@
                                     const filePath = file.filePath;
                                     const fileType = file.fileType;
                                     const fileId = file.id;
+                                    const treatmentPhase = file.treatmentPhase || 'pre'; // Default to 'pre' if not set
 
                                     console.log('displayImages - file:', file);
                                     console.log('displayImages - filePath:', filePath);
                                     console.log('displayImages - fileType:', fileType);
                                     console.log('displayImages - fileId:', fileId);
+                                    console.log('displayImages - treatmentPhase:', treatmentPhase);
                                     console.log('displayImages - fileId type:', typeof fileId);
                                     console.log('displayImages - fileId is null/undefined:', fileId === null || fileId === undefined);
+
+                                    // Get treatment phase display name
+                                    const phaseDisplayName = treatmentPhase === 'post' ? 'Post-Treatment' : 'Pre-Treatment';
+                                    const phaseClass = treatmentPhase === 'post' ? 'phase-post' : 'phase-pre';
 
                                     // Determine if it's an image or PDF
                                     const imageTypes = ['upper_arch', 'lower_arch', 'xray'];
@@ -3233,6 +3274,7 @@
                                             'alt="' + fileType + '" ' +
                                             'onclick="openImageModal(\'' + imageSrc + '\', \'' + fileType + '\')">' +
                                             '<div class="image-type">' + displayName + '</div>' +
+                                            '<div class="treatment-phase ' + phaseClass + '">' + phaseDisplayName + '</div>' +
                                             '<div class="image-actions">' +
                                             '<button type="button" class="btn btn-sm btn-primary" ' +
                                             'onclick="openImageModal(\'' + imageSrc + '\', \'' + fileType + '\')">' +
@@ -3256,6 +3298,7 @@
                                             '<div class="pdf-filename">' + fileName + '</div>' +
                                             '</div>' +
                                             '<div class="image-type">' + displayName + '</div>' +
+                                            '<div class="treatment-phase ' + phaseClass + '">' + phaseDisplayName + '</div>' +
                                             '<div class="image-actions">' +
                                             '<button type="button" class="btn btn-sm btn-primary" ' +
                                             'onclick="openPdfModal(\'' + pdfSrc + '\', \'' + displayName + '\')">' +
@@ -3486,6 +3529,17 @@
                                                 <option value="prescription">Prescription (PDF)</option>
                                                 <option value="other_document">Other Document (PDF)</option>
                                             </select>
+                                        </div>
+
+                                        <div class="form-group" id="treatmentPhaseGroup">
+                                            <label for="treatmentPhase">Treatment Phase</label>
+                                            <select id="treatmentPhase" name="treatmentPhase" class="form-control" required>
+                                                <option value="pre">Pre-Treatment</option>
+                                                <option value="post">Post-Treatment</option>
+                                            </select>
+                                            <small class="form-text text-muted">
+                                                Select whether this image is taken before or after treatment
+                                            </small>
                                         </div>
 
                                         <div class="form-group">

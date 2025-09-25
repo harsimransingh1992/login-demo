@@ -20,6 +20,7 @@ import java.time.LocalDateTime;
 import java.time.format.DateTimeFormatter;
 import java.util.List;
 import java.util.Map;
+import java.util.Optional;
 import java.util.concurrent.ConcurrentHashMap;
 import java.util.concurrent.ScheduledFuture;
 
@@ -91,53 +92,34 @@ public class DailyReportScheduler {
             // Cancel existing task if any
             cancelScheduledTask(trigger.getId());
             
-            // Normalize cron expression to handle both 5-field and 6-field formats
-            String normalizedCron = normalizeCronExpression(trigger.getCronExpression());
+            // Use standard 5-field cron expression directly
+            String cronExpression = trigger.getCronExpression();
             
             // Create new scheduled task
             ScheduledFuture<?> scheduledTask = taskScheduler.schedule(
                 () -> executeReportTrigger(trigger),
-                new CronTrigger(normalizedCron)
+                new CronTrigger(cronExpression)
             );
             
             scheduledTasks.put(trigger.getId(), scheduledTask);
-            log.info("Scheduled report trigger '{}' with cron expression: {} (normalized: {})", 
-                    trigger.getReportDisplayName(), trigger.getCronExpression(), normalizedCron);
+            
+            log.info("Scheduled report trigger '{}' with cron expression: {}", 
+                    trigger.getReportName(), cronExpression);
+            
         } catch (Exception e) {
-            log.error("Failed to schedule report trigger: {}", trigger.getReportDisplayName(), e);
+            log.error("Failed to schedule report trigger: {}", trigger.getReportName(), e);
         }
     }
     
-    /**
-     * Normalize cron expression to 6-field format (seconds minutes hours day-of-month month day-of-week)
-     * If 5 fields are provided, prepend '0' for seconds
-     */
-    private String normalizeCronExpression(String cronExpression) {
-        if (cronExpression == null || cronExpression.trim().isEmpty()) {
-            return cronExpression;
-        }
-        
-        String[] fields = cronExpression.trim().split("\\s+");
-        
-        if (fields.length == 5) {
-            // Convert 5-field to 6-field by prepending '0' for seconds
-            return "0 " + cronExpression.trim();
-        } else if (fields.length == 6) {
-            // Already in correct format
-            return cronExpression.trim();
-        } else {
-            // Invalid number of fields, return as-is to let CronTrigger handle the error
-            return cronExpression.trim();
-        }
-    }
+
 
     /**
      * Cancel a scheduled task
      */
     public void cancelScheduledTask(Long triggerId) {
-        ScheduledFuture<?> existingTask = scheduledTasks.remove(triggerId);
-        if (existingTask != null) {
-            existingTask.cancel(false);
+        ScheduledFuture<?> task = scheduledTasks.remove(triggerId);
+        if (task != null && !task.isCancelled()) {
+            task.cancel(false);
             log.info("Cancelled scheduled task for trigger ID: {}", triggerId);
         }
     }
@@ -146,9 +128,29 @@ public class DailyReportScheduler {
      * Execute a report trigger
      */
     private void executeReportTrigger(ReportTrigger trigger) {
-        if (!trigger.isActive()) {
-            log.info("Report trigger '{}' is disabled. Skipping execution.", trigger.getReportDisplayName());
-            return;
+        // Fetch the latest trigger state from database to avoid using cached data
+        try {
+            Optional<ReportTrigger> latestTrigger = reportTriggerService.getReportTriggerById(trigger.getId());
+            if (latestTrigger.isEmpty()) {
+                log.warn("Report trigger with ID {} not found in database. Skipping execution.", trigger.getId());
+                return;
+            }
+            
+            ReportTrigger currentTrigger = latestTrigger.get();
+            if (!currentTrigger.isActive()) {
+                log.info("Report trigger '{}' is disabled. Skipping execution.", currentTrigger.getReportDisplayName());
+                return;
+            }
+            
+            // Use the current trigger data for execution
+            trigger = currentTrigger;
+        } catch (Exception e) {
+            log.error("Failed to fetch latest trigger state for ID {}: {}", trigger.getId(), e.getMessage());
+            // Fall back to original trigger check
+            if (!trigger.isActive()) {
+                log.info("Report trigger '{}' is disabled. Skipping execution.", trigger.getReportDisplayName());
+                return;
+            }
         }
 
         try {
@@ -165,7 +167,15 @@ public class DailyReportScheduler {
 
             // Generate the report using the new bean-based approach
             Map<String, Object> parameters = parseReportParameters(trigger.getReportParameters());
-            String reportContent = reportExecutionService.executeReport(trigger.getReportGeneratorBean(), parameters);
+            
+            // Use plain text generator for daily patient registration reports to ensure email compatibility
+            String beanName = trigger.getReportGeneratorBean();
+            if ("dailyPatientRegistrationReport".equals(beanName)) {
+                beanName = "dailyPatientRegistrationPlainTextReport";
+                log.info("Switching to plain text generator for email compatibility: {}", beanName);
+            }
+            
+            String reportContent = reportExecutionService.executeReport(beanName, parameters);
             
             // Get total registrations for subject line
             long totalRegistrations = dailyReportService.getTotalRegistrationsYesterday();

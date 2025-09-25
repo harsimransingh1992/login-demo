@@ -7,6 +7,7 @@ import com.example.logindemo.service.ReportTriggerService;
 import com.example.logindemo.service.UserService;
 import com.example.logindemo.service.DailyReportService;
 import com.example.logindemo.service.EmailService;
+import com.example.logindemo.scheduler.DailyReportScheduler;
 import com.example.logindemo.utils.PeriDeskUtils;
 import lombok.extern.slf4j.Slf4j;
 import org.springframework.beans.factory.annotation.Autowired;
@@ -45,6 +46,9 @@ public class AdminReportDashboardController {
     
     @Autowired
     private com.example.logindemo.service.report.ReportExecutionService reportExecutionService;
+    
+    @Autowired
+    private DailyReportScheduler dailyReportScheduler;
 
     /**
      * Display the admin report dashboard page
@@ -309,6 +313,9 @@ public class AdminReportDashboardController {
             trigger.setUpdatedAt(LocalDateTime.now());
             
             ReportTrigger updatedTrigger = reportTriggerService.updateReportTrigger(id, trigger, currentUser.get());
+            
+            // Refresh the scheduler to apply the changes immediately
+            dailyReportScheduler.refreshScheduledTasks();
             
             response.put("success", true);
             response.put("message", "Report trigger " + (updatedTrigger.isActive() ? "enabled" : "disabled") + " successfully");

@@ -503,15 +503,16 @@
 
                         <div class="form-group">
                             <label for="cronExpression">Cron Expression *</label>
-                            <input type="text" class="form-control" id="cronExpression" name="cronExpression" required placeholder="0 8 * * *">
+                            <input type="text" class="form-control" id="cronExpression" name="cronExpression" required placeholder="8 * * * *">
                             <div class="cron-helper">
-                                <strong>Cron Format:</strong> second minute hour day month dayOfWeek
+                                <strong>Cron Format:</strong> minute hour day month dayOfWeek
                                 <div class="cron-examples">
                                     <small>Examples:</small><br>
                                     <a href="#" class="cron-example" onclick="setCronExpression('0 8 * * *')">0 8 * * * - Daily at 8:00 AM</a>
-                                    <a href="#" class="cron-example" onclick="setCronExpression('0 0 9 * * MON')">0 0 9 * * MON - Every Monday at 9:00 AM</a>
-                                    <a href="#" class="cron-example" onclick="setCronExpression('0 0 10 1 * *')">0 0 10 1 * * - First day of every month at 10:00 AM</a>
-                                    <a href="#" class="cron-example" onclick="setCronExpression('0 30 18 * * FRI')">0 30 18 * * FRI - Every Friday at 6:30 PM</a>
+                                    <a href="#" class="cron-example" onclick="setCronExpression('0 9 * * 1')">0 9 * * 1 - Every Monday at 9:00 AM</a>
+                                    <a href="#" class="cron-example" onclick="setCronExpression('0 10 1 * *')">0 10 1 * * - First day of every month at 10:00 AM</a>
+                                    <a href="#" class="cron-example" onclick="setCronExpression('30 18 * * 5')">30 18 * * 5 - Every Friday at 6:30 PM</a>
+                                    <a href="#" class="cron-example" onclick="setCronExpression('* * * * *')">* * * * * - Every minute (for testing)</a>
                                 </div>
                             </div>
                             <div id="cronValidation" class="mt-2"></div>

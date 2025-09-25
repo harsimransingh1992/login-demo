@@ -177,31 +177,12 @@ public class ReportTriggerServiceImpl implements ReportTriggerService {
         }
         
         try {
-            String normalizedCron = normalizeCronExpression(cronExpression.trim());
-            CronExpression.parse(normalizedCron);
+            // Use standard 5-field cron expression directly
+            CronExpression.parse(cronExpression.trim());
             return true;
         } catch (Exception e) {
             log.warn("Invalid cron expression: {}", cronExpression, e);
             return false;
-        }
-    }
-    
-    /**
-     * Normalize cron expression to 6-field format (seconds minutes hours day-of-month month day-of-week)
-     * If 5 fields are provided, prepend '0' for seconds
-     */
-    private String normalizeCronExpression(String cronExpression) {
-        String[] fields = cronExpression.split("\\s+");
-        
-        if (fields.length == 5) {
-            // Convert 5-field to 6-field by prepending '0' for seconds
-            return "0 " + cronExpression;
-        } else if (fields.length == 6) {
-            // Already in correct format
-            return cronExpression;
-        } else {
-            // Invalid number of fields, return as-is to let CronExpression.parse() handle the error
-            return cronExpression;
         }
     }
     
@@ -212,8 +193,8 @@ public class ReportTriggerServiceImpl implements ReportTriggerService {
         }
         
         try {
-            String normalizedCron = normalizeCronExpression(cronExpression.trim());
-            CronExpression cron = CronExpression.parse(normalizedCron);
+            // Use standard 5-field cron expression directly
+            CronExpression cron = CronExpression.parse(cronExpression.trim());
             // Use IST timezone for consistent calculation
             return cron.next(LocalDateTime.now(java.time.ZoneId.of("Asia/Kolkata")));
         } catch (Exception e) {

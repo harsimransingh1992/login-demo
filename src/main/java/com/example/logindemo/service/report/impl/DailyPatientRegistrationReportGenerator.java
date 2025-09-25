@@ -50,7 +50,7 @@ public class DailyPatientRegistrationReportGenerator implements ReportGenerator 
             reportContent.append("<h4>Summary:</h4>");
             reportContent.append("<ul>");
             reportContent.append("<li>Total Registrations: ").append(totalRegistrations).append("</li>");
-            reportContent.append("<li>Report Generated: ").append(LocalDate.now().format(DateTimeFormatter.ofPattern("dd MMM yyyy HH:mm"))).append("</li>");
+            reportContent.append("<li>Report Generated: ").append(java.time.LocalDateTime.now().format(DateTimeFormatter.ofPattern("dd MMM yyyy HH:mm"))).append("</li>");
             reportContent.append("</ul>");
             reportContent.append("</div>");
             

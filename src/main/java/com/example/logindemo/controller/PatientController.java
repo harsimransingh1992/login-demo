@@ -44,6 +44,7 @@ import com.fasterxml.jackson.databind.ObjectMapper;
 import com.example.logindemo.model.MediaFile;
 import com.example.logindemo.model.ProcedureLifecycleTransition;
 import com.example.logindemo.model.ReopeningRecord;
+import com.example.logindemo.model.TreatmentPhase;
 
 @Controller
 @RequestMapping("/patients")
@@ -2682,7 +2683,8 @@ public class PatientController {
     public ResponseEntity<?> uploadMediaFile(
             @RequestParam("examinationId") Long examinationId,
             @RequestParam("file") MultipartFile file,
-            @RequestParam("fileType") String fileType) {
+            @RequestParam("fileType") String fileType,
+            @RequestParam(value = "treatmentPhase", defaultValue = "PRE") String treatmentPhaseStr) {
         try {
             if (examinationId == null) {
                 return ResponseEntity.badRequest().body(Map.of(
@@ -2702,6 +2704,32 @@ public class PatientController {
                 return ResponseEntity.badRequest().body(Map.of(
                     "success", false,
                     "message", "File type is required"
+                ));
+            }
+            
+            if (treatmentPhaseStr == null || treatmentPhaseStr.trim().isEmpty()) {
+                return ResponseEntity.badRequest().body(Map.of(
+                    "success", false,
+                    "message", "Treatment phase is required"
+                ));
+            }
+            
+            // Parse and validate treatment phase
+            TreatmentPhase treatmentPhase;
+            try {
+                // Convert string to enum (handle both "pre"/"post" and "PRE"/"POST")
+                String normalizedPhase = treatmentPhaseStr.toLowerCase();
+                if ("pre".equals(normalizedPhase)) {
+                    treatmentPhase = TreatmentPhase.PRE;
+                } else if ("post".equals(normalizedPhase)) {
+                    treatmentPhase = TreatmentPhase.POST;
+                } else {
+                    treatmentPhase = TreatmentPhase.fromValue(treatmentPhaseStr);
+                }
+            } catch (IllegalArgumentException e) {
+                return ResponseEntity.badRequest().body(Map.of(
+                    "success", false,
+                    "message", "Treatment phase must be 'pre' or 'post'"
                 ));
             }
             
@@ -2758,6 +2786,7 @@ public class PatientController {
             mediaFile.setExamination(examination);
             mediaFile.setFilePath(filePath);
             mediaFile.setFileType(fileType);
+            mediaFile.setTreatmentPhase(treatmentPhase);
             mediaFile.setUploadedAt(LocalDateTime.now());
             
             // Save to database
@@ -2771,6 +2800,7 @@ public class PatientController {
                     "id", mediaFile.getId(),
                     "filePath", mediaFile.getFilePath(),
                     "fileType", mediaFile.getFileType(),
+                    "treatmentPhase", mediaFile.getTreatmentPhase().getValue(),
                     "uploadedAt", mediaFile.getUploadedAt(),
                     "isPdf", isPdf,
                     "originalFilename", originalFilename
@@ -2798,6 +2828,7 @@ public class PatientController {
                     fileData.put("filePath", file.getFilePath());
                     fileData.put("fileType", file.getFileType());
                     fileData.put("uploadedAt", file.getUploadedAt());
+                    fileData.put("treatmentPhase", file.getTreatmentPhase() != null ? file.getTreatmentPhase().getValue() : "pre");
                     return fileData;
                 })
                 .collect(Collectors.toList());

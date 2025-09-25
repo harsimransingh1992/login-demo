@@ -3,8 +3,10 @@ package com.example.logindemo.service.impl;
 import com.example.logindemo.dto.ReconciliationResponse;
 import com.example.logindemo.model.ToothClinicalExamination;
 import com.example.logindemo.model.PaymentEntry;
+import com.example.logindemo.model.ClinicModel;
 import com.example.logindemo.repository.ToothClinicalExaminationRepository;
 import com.example.logindemo.service.PaymentReconciliationService;
+import com.example.logindemo.utils.PeriDeskUtils;
 import org.springframework.beans.factory.annotation.Autowired;
 import org.springframework.stereotype.Service;
 import org.springframework.transaction.annotation.Transactional;
@@ -27,8 +29,14 @@ public class PaymentReconciliationServiceImpl implements PaymentReconciliationSe
         LocalDateTime startOfDay = date.atStartOfDay();
         LocalDateTime endOfDay = date.plusDays(1).atStartOfDay();
 
-        // Get all examinations
-        List<ToothClinicalExamination> examinations = examinationRepository.findAll();
+        // Get current user's clinic
+        ClinicModel currentClinic = PeriDeskUtils.getCurrentClinicModel();
+        
+        // Get examinations filtered by current user's clinic
+        List<ToothClinicalExamination> examinations = examinationRepository.findAll().stream()
+            .filter(exam -> exam.getExaminationClinic() != null && 
+                           exam.getExaminationClinic().getId().equals(currentClinic.getId()))
+            .collect(Collectors.toList());
 
         ReconciliationResponse response = new ReconciliationResponse();
         
@@ -123,4 +131,4 @@ public class PaymentReconciliationServiceImpl implements PaymentReconciliationSe
         // No-op for now, as payment status is now tracked per PaymentEntry. Optionally, you can add a status field to PaymentEntry and update it here.
             return true;
     }
-} 
+}
