@@ -88,7 +88,7 @@ public class SecurityConfig {
                 .antMatchers("/follow-up/**").hasAnyRole("DOCTOR", "OPD_DOCTOR", "STAFF", "RECEPTIONIST", "ADMIN", "CLINIC_OWNER", "MODERATOR")
                 
                 // Payments - accessible to receptionists and moderators (read-only for moderators)
-                .antMatchers("/payments/**").hasAnyRole("RECEPTIONIST", "ADMIN", "MODERATOR","OPD_DOCTOR")
+                .antMatchers("/payments/**").hasAnyRole("RECEPTIONIST", "ADMIN", "MODERATOR","OPD_DOCTOR","DOCTOR")
                 
                 // Welcome page and basic features - accessible to all authenticated users
                 .antMatchers("/welcome", "/profile/**").authenticated()
