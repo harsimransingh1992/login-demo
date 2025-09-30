@@ -60,12 +60,14 @@ public class WelcomeController {
                         List.of(UserRole.DOCTOR, UserRole.OPD_DOCTOR)
                     );
                     model.addAttribute("clinicDoctors", clinicDoctors);
+                    model.addAttribute("currentUserClinic", userClinic);
                 } else {
                     model.addAttribute("clinicDoctors", new ArrayList<>());
                 }
                 
                 model.addAttribute("waitingPatients", waitingPatients);
                 model.addAttribute("username", authentication.getName());
+                model.addAttribute("currentUser", currentUser);
                 return "welcome";
             } catch (Exception e) {
                 log.error("Error loading welcome page: {}", e.getMessage(), e);

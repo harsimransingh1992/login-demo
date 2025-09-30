@@ -2490,8 +2490,6 @@
                             const contextPath = '${pageContext.request.contextPath}';
 
                             document.addEventListener('DOMContentLoaded', function () {
-                                console.log('DOMContentLoaded event fired - starting initialization...');
-
                                 // Initialize color code component
                                 initializeColorCodeComponent();
 
@@ -2580,11 +2578,7 @@
                                 updateStartProcedureState();
 
                                 // Initialize dental images upload functionality
-                                console.log('About to call initializeArchUpload...');
-                                console.log('Debug - examination.id from JSP:', '${examination.id}');
-                                console.log('Debug - examination object:', '${examination}');
                                 initializeArchUpload();
-                                console.log('initializeArchUpload called');
 
                                 // Form submission removed - form is now read-only
                                 /*
@@ -2635,7 +2629,6 @@
                                         }
                                     })
                                     .catch(error => {
-                                        console.error('Error:', error);
                                         showNotification('An error occurred while updating the examination', true);
                                     });
                                 });
@@ -2762,14 +2755,6 @@
                                 // Enable if both arches are uploaded AND doctor is not already assigned
                                 const shouldEnable = hasBothArchs && !isDoctorAssigned;
 
-                                console.log('Doctor assignment state check:', {
-                                    hasUpperArch,
-                                    hasLowerArch,
-                                    hasBothArchs,
-                                    isDoctorAssigned,
-                                    shouldEnable
-                                });
-
                                 // doctor assignment UI is removed from this page
 
                                 // Update info message visibility
@@ -2856,14 +2841,8 @@
                             }
 
                             function initializeArchUpload() {
-                                console.log('=== initializeArchUpload function called ===');
-                                console.log('Current user role:', '${currentUserRole}');
-                                console.log('Is receptionist?', '${currentUserRole}' === 'RECEPTIONIST');
-                                console.log('Initializing dental images upload functionality...');
-
                                 // Check if user is receptionist
                                 if ('${currentUserRole}' === 'RECEPTIONIST') {
-                                    console.log('User is receptionist - image upload not available');
                                     return;
                                 }
 
@@ -2873,30 +2852,15 @@
                                 const imageTypeSelect = document.getElementById('imageType');
                                 const modal = document.getElementById('imageUploadModal');
 
-                                console.log('Elements found:', {
-                                    addImageBtn: addImageBtn,
-                                    imageFileInput: imageFileInput,
-                                    imageTypeSelect: imageTypeSelect,
-                                    modal: modal
-                                });
-
                                 if (!addImageBtn || !imageFileInput || !imageTypeSelect) {
-                                    console.error('Image upload elements not found');
-                                    console.error('This might be because the user is a receptionist or the elements are not rendered');
                                     return;
                                 }
 
                                 // Add click handler to add image button
-                                console.log('About to add click handler to addImageBtn:', addImageBtn);
                                 if (addImageBtn) {
-                                    console.log('addImageBtn found, adding click handler...');
                                     addImageBtn.addEventListener('click', function () {
-                                        console.log('Add image button clicked!');
                                         openImageUploadModal();
                                     });
-                                    console.log('Click handler added successfully');
-                                } else {
-                                    console.error('addImageBtn element not found!');
                                 }
 
                                 // Add change handler to file input
@@ -2904,20 +2868,13 @@
 
                                 // Load existing images
                                 loadExistingImages();
-
-                                console.log('Dental images upload functionality initialized successfully');
                             }
 
                             function openImageUploadModal() {
-                                console.log('openImageUploadModal called');
                                 const modal = document.getElementById('imageUploadModal');
-                                console.log('Modal element:', modal);
-                                console.log('Modal display style before:', modal ? modal.style.display : 'modal not found');
 
                                 if (modal) {
-                                    console.log('Setting modal display to block');
                                     modal.style.display = 'block';
-                                    console.log('Modal display style after:', modal.style.display);
 
                                     // Reset form
                                     const form = document.getElementById('imageUploadForm');
@@ -3061,7 +3018,6 @@
                                     }
 
                                 } catch (error) {
-                                    console.error('File processing error:', error);
                                     alert('Error processing file. Please try again.');
                                     previewElement.innerHTML = '<span style="color: red;">Error processing file</span>';
                                 }
@@ -3190,11 +3146,8 @@
                                     console.log('loadExistingImages - examinationId length:', examinationId ? examinationId.length : 'null');
 
                                     const url = `/patients/examination/${examinationId}/media-files`;
-                                    console.log('loadExistingImages - making request to:', url);
-
-                                    // Alternative URL construction for debugging
+                                    // Alternative URL
                                     const url2 = '/patients/examination/' + examinationId + '/media-files';
-                                    console.log('loadExistingImages - alternative URL:', url2);
 
                                     // Get CSRF token
                                     const csrfToken = document.querySelector('meta[name="_csrf"]').content;
@@ -3206,33 +3159,25 @@
                                             'Content-Type': 'application/json',
                                             [csrfHeader]: csrfToken
                                         },
-                                        credentials: 'same-origin' // Include cookies for session
+                                        credentials: 'same-origin'
                                     });
 
                                     if (!response.ok) {
-                                        console.error('Response not ok:', response.status, response.statusText);
                                         return;
                                     }
 
                                     const result = await response.json();
 
-                                    console.log('loadExistingImages - API response:', result);
-
                                     if (result.success) {
-                                        console.log('loadExistingImages - mediaFiles from API:', result.mediaFiles);
                                         displayImages(result.mediaFiles);
-                                    } else {
-                                        console.error('Failed to load images:', result.message);
                                     }
                                 } catch (error) {
-                                    console.error('Error loading images:', error);
+                                    // Fail silently but keep UI consistent
                                 }
                             }
 
                             function displayImages(mediaFiles) {
                                 const imagesGrid = document.getElementById('existing-images-grid');
-
-                                console.log('displayImages - mediaFiles:', mediaFiles);
 
                                 if (!mediaFiles || mediaFiles.length === 0) {
                                     imagesGrid.innerHTML = '<div class="no-images-message">No files uploaded yet</div>';
@@ -3247,14 +3192,6 @@
                                     const fileType = file.fileType;
                                     const fileId = file.id;
                                     const treatmentPhase = file.treatmentPhase || 'pre'; // Default to 'pre' if not set
-
-                                    console.log('displayImages - file:', file);
-                                    console.log('displayImages - filePath:', filePath);
-                                    console.log('displayImages - fileType:', fileType);
-                                    console.log('displayImages - fileId:', fileId);
-                                    console.log('displayImages - treatmentPhase:', treatmentPhase);
-                                    console.log('displayImages - fileId type:', typeof fileId);
-                                    console.log('displayImages - fileId is null/undefined:', fileId === null || fileId === undefined);
 
                                     // Get treatment phase display name
                                     const phaseDisplayName = treatmentPhase === 'post' ? 'Post-Treatment' : 'Pre-Treatment';

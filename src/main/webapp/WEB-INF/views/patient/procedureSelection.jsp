@@ -1843,7 +1843,7 @@
                     updateDentureValidation();
                     
                 } catch (error) {
-                    console.error('Error compressing upper denture image:', error);
+                    // Error handled via UI status
                     showDentureStatus('upper', 'error', 'Error processing image');
                     ImageCompression.createPreview(null, upperDenturePreview, {
                         defaultIcon: '<i class="fas fa-image"></i>',
@@ -1889,7 +1889,7 @@
                     updateDentureValidation();
                     
                 } catch (error) {
-                    console.error('Error compressing lower denture image:', error);
+                    // Error handled via UI status
                     showDentureStatus('lower', 'error', 'Error processing image');
                     ImageCompression.createPreview(null, lowerDenturePreview, {
                         defaultIcon: '<i class="fas fa-image"></i>',
@@ -1958,7 +1958,7 @@
             const examinationId = examinationIdInput ? examinationIdInput.value : '';
             
             if (!examinationId || examinationId.trim() === '') {
-                console.error('Examination ID not found on page load');
+                // Examination ID not found on page load
                 showNotification('Error: Examination data not available. Please go back and try again.', true);
             }
             
@@ -2256,7 +2256,7 @@
                                 body: JSON.stringify({ examinationId: examinationId, doctorId: treatingDoctorSelect.value })
                             });
                         } catch (e) {
-                            console.warn('Treating doctor assignment failed before starting procedure:', e);
+                            // Treating doctor assignment failed before starting procedure
                         }
                     }
 
@@ -2408,7 +2408,7 @@
                 const removeBtnElement = e.target.classList.contains('remove-procedure-btn') ? 
                     e.target : e.target.closest('.remove-procedure-btn');
                 
-                console.log('Remove button clicked');
+                // Remove button clicked
                 
                 // Call removeProcedure function
                 removeProcedure();
@@ -2486,7 +2486,7 @@
                     }
                 }
                     } else {
-                console.error('Content element not found for department:', dept);
+                // Content element not found for department
                 departmentsContent.classList.add('no-active-tab');
                 
                 // If no content found, fallback to showing the first department tab
@@ -2532,7 +2532,7 @@
                 departmentContents[0].classList.add('active');
                 departmentContents[0].style.display = 'block';
                         } else {
-                console.error('No tabs or content found at all');
+                // No tabs or content found at all
             }
             
             // Force check of all procedure cards in active content

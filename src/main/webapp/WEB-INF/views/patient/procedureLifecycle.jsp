@@ -2610,7 +2610,6 @@
                                     window.location.reload();
                                 } else {
                                     const statusErrorText = await statusResponse.text();
-                                    console.error('Status update failed. Response:', statusErrorText);
                                     
                                     // Check if it's a payment pending error
                                     if (statusErrorText.includes('payment') && statusErrorText.includes('pending')) {
@@ -2628,7 +2627,6 @@
                                 alert(errorMsg);
                             }
                         } catch (error) {
-                            console.error('Error uploading images:', error);
                             alert('Error uploading images. Please try again.');
                         } finally {
                             // Reset button
@@ -2718,6 +2716,8 @@
                 document.body.style.overflow = 'auto';
             };
             
+
+            
             // Load attached images
             window.loadAttachedImages = async function() {
                 const examinationId = document.getElementById('examinationId').value;
@@ -2735,19 +2735,15 @@
                     }
                     
                     const result = await response.json();
-                    console.log('API Response:', result);
                     
                     if (result.success && result.mediaFiles && result.mediaFiles.length > 0) {
-                        console.log('Found media files:', result.mediaFiles);
                         displayAttachedImages(result.mediaFiles);
                         noImagesMessage.style.display = 'none';
                     } else {
-                        console.log('No media files found or empty response');
                         imagesGrid.innerHTML = '';
                         noImagesMessage.style.display = 'block';
                     }
                 } catch (error) {
-                    console.error('Error loading attached images:', error);
                     imagesGrid.innerHTML = `<div style="text-align: center; padding: 20px; color: #e74c3c;">
                         <i class="fas fa-exclamation-triangle" style="font-size: 2rem; margin-bottom: 10px;"></i>
                         <p>Error loading images: ${error.message}</p>
@@ -2759,23 +2755,51 @@
             // Display attached images
             window.displayAttachedImages = function(mediaFiles) {
                 const imagesGrid = document.getElementById('attachedImagesGrid');
-                console.log('Displaying media files:', mediaFiles);
                 
                 const imagesHtml = mediaFiles.map(file => {
-                    console.log('Processing file:', file);
                     const displayName = getImageTypeDisplayName(file.fileType);
                     const filePath = file.filePath;
                     const fileType = file.fileType;
                     const fileId = file.id;
-                    const uploadedAt = new Date(file.uploadedAt).toLocaleDateString('en-IN');
+                    const uploadedAt = (function(v){
+                         if (!v) return 'Unknown';
+                         try {
+                             // Handle Jackson-style arrays: [year, month, day, hour, minute, second, nanos]
+                             if (Array.isArray(v)) {
+                                 const y = Number(v[0]);
+                                 const m = Number(v[1]);
+                                 const dDay = Number(v[2]);
+                                 const h = Number(v[3] || 0);
+                                 const min = Number(v[4] || 0);
+                                 const s = Number(v[5] || 0);
+                                 const dArr = new Date(y, m - 1, dDay, h, min, s);
+                                 return isNaN(dArr) ? 'Unknown' : dArr.toLocaleDateString('en-IN');
+                             }
+                             if (typeof v === 'number') {
+                                 const d = new Date(v);
+                                 return isNaN(d) ? 'Unknown' : d.toLocaleDateString('en-IN');
+                             }
+                             if (typeof v === 'string') {
+                                 let d = new Date(v);
+                                 if (!isNaN(d)) return d.toLocaleDateString('en-IN');
+                                 const m = v.match(/^(\d{4})-(\d{2})-(\d{2})[ T](\d{2}):(\d{2}):(\d{2})$/);
+                                 if (m) {
+                                     const d2 = new Date(Number(m[1]), Number(m[2]) - 1, Number(m[3]), Number(m[4]), Number(m[5]), Number(m[6]));
+                                     if (!isNaN(d2)) return d2.toLocaleDateString('en-IN');
+                                 }
+                                 const m2 = v.match(/^(\d{4})-(\d{2})-(\d{2})$/);
+                                 if (m2) {
+                                     const d3 = new Date(Number(m2[1]), Number(m2[2]) - 1, Number(m2[3]));
+                                     if (!isNaN(d3)) return d3.toLocaleDateString('en-IN');
+                                 }
+                                 d = new Date(v.replace(' ', 'T'));
+                                 if (!isNaN(d)) return d.toLocaleDateString('en-IN');
+                             }
+                         } catch(e) {}
+                         return 'Unknown';
+                     })(file.uploadedAt);
                     
-                    console.log('File details:', {
-                        displayName,
-                        filePath,
-                        fileType,
-                        fileId,
-                        uploadedAt
-                    });
+
                     
                     // Determine if it's an image or PDF
                     const imageTypes = ['upper_arch', 'lower_arch', 'xray'];
@@ -2783,12 +2807,7 @@
                     
                     if (isImage) {
                         const contextPath = ''; // Root context
-                        console.log('Before constructing imageSrc - filePath:', filePath, 'type:', typeof filePath);
                         const imageSrc = contextPath + '/uploads/' + filePath;
-                        console.log('After constructing imageSrc:', imageSrc);
-                        console.log('Image URL:', imageSrc);
-                        console.log('File path:', filePath);
-                        console.log('Full image URL:', imageSrc);
                         return '<div class="image-card">' +
                             '<div class="image-preview">' +
                             '<img src="' + imageSrc + '" alt="' + displayName + '" loading="lazy" onclick="openImageModal(\'' + imageSrc + '\', \'' + displayName + '\')" onerror="this.style.display=\'none\'; this.parentElement.innerHTML=\'<div style=\\\'display: flex; align-items: center; justify-content: center; height: 100%; color: #e74c3c;\\\'><i class=\\\'fas fa-exclamation-triangle\\\'></i> Image not found</div>\';">' +
@@ -2878,7 +2897,6 @@
             
             // Test function for image modal
             window.testImageModal = function() {
-                console.log('Testing image modal...');
                 openImageModal('/uploads/dental-images/086b8428-2241-4f97-8d49-05240928fb80.jpeg', 'Test Image');
             };
             
@@ -2890,17 +2908,14 @@
                     '/uploads/documents/1997869e-2a35-4677-98f6-17f11bd87fe1.pdf'
                 ];
                 
-                console.log('Testing image URLs...');
                 const results = [];
                 for (const url of testUrls) {
                     try {
                         const response = await fetch(url, { method: 'HEAD' });
                         const result = `${url}: ${response.status} ${response.statusText}`;
-                        console.log(result);
                         results.push(result);
                     } catch (error) {
                         const result = `${url}: Error - ${error.message}`;
-                        console.log(result);
                         results.push(result);
                     }
                 }
@@ -2921,14 +2936,7 @@
             };
             
             // Debug: Check if functions are defined
-            console.log('Modal functions defined:', {
-                showXrayUploadModal: typeof window.showXrayUploadModal,
-                closeXrayUploadModal: typeof window.closeXrayUploadModal,
-                closeClinicalNotesModal: typeof window.closeClinicalNotesModal,
-                openImageModal: typeof window.openImageModal,
-                closeImageModal: typeof window.closeImageModal,
-                loadAttachedImages: typeof window.loadAttachedImages
-            });
+            
             
             // Ensure all modals are hidden on page load
             document.addEventListener('DOMContentLoaded', function() {
@@ -3873,7 +3881,7 @@
                 
                 // Only initialize if the elements exist (for backward compatibility)
                 if (!followUpModal || !closeFollowUpModal || !cancelFollowUp || !confirmFollowUp) {
-                    console.log('Follow-up modal elements not found, skipping initialization');
+
                     return;
                 }
                 
@@ -3972,7 +3980,6 @@
                         throw new Error('Failed to schedule follow-up');
                         }
                 } catch (error) {
-                    console.error('Error scheduling follow-up:', error);
                     alert('Failed to schedule follow-up. Please try again.');
                 } finally {
                     // Reset button
@@ -4037,7 +4044,6 @@
                     xrayValidation.className = 'upload-validation success';
                     xrayValidation.innerHTML = '<i class="fas fa-check-circle"></i> X-ray image compressed and ready for upload';
                 } catch (error) {
-                    console.error('Error compressing image:', error);
                     xrayStatus.textContent = 'Error compressing image. Please try again.';
                     xrayStatus.className = 'upload-status error';
                     ImageCompression.createPreview(null, xrayPreview, {
@@ -4084,7 +4090,7 @@
                         return;
                     }
                 } catch (error) {
-                    console.error('Error processing request:', error);
+                    alert('Error processing request. Please try again.');
                 } finally {
                     confirmXrayUpload.disabled = false;
                     confirmXrayUpload.innerHTML = '<i class="fas fa-check"></i> Close Case';
@@ -4096,46 +4102,18 @@
             const statusDropdownContent = document.querySelector('.status-dropdown-content');
             const statusOptions = document.querySelectorAll('.status-option');
             
-            console.log('=== STATUS DROPDOWN INITIALIZATION ===');
-            console.log('Status dropdown found:', !!statusDropdown);
-            console.log('Status dropdown content found:', !!statusDropdownContent);
-            console.log('Status options found:', statusOptions.length);
             
-            statusOptions.forEach(option => {
-                const status = option.getAttribute('data-status');
-                const statusText = option.querySelector('.status-text').textContent;
-                console.log('Available status option:', status, '-', statusText);
-            });
             
             if (statusDropdown) {
                 statusDropdown.addEventListener('click', function(e) {
                     e.stopPropagation();
                     const statusDropdownBtn = this.querySelector('.status-dropdown-btn');
-                    console.log('Status dropdown clicked');
-                    console.log('Status dropdown button found:', !!statusDropdownBtn);
-                    if (statusDropdownBtn) {
-                        console.log('Button classes:', statusDropdownBtn.className);
-                        console.log('Is disabled:', statusDropdownBtn.classList.contains('disabled'));
-                        console.log('Is cancelled:', statusDropdownBtn.classList.contains('cancelled'));
-                    }
                     if (statusDropdownBtn && !statusDropdownBtn.classList.contains('disabled') && !statusDropdownBtn.classList.contains('cancelled')) {
-                        console.log('Opening dropdown');
                         statusDropdownContent.classList.toggle('show');
-                        
-                        // Debug: Log available status options
-                        const statusOptions = statusDropdownContent.querySelectorAll('.status-option');
-                        console.log('Available status options:', statusOptions.length);
-                        statusOptions.forEach((option, index) => {
-                            const status = option.getAttribute('data-status');
-                            console.log(`Option ${index + 1}: ${status}`);
-                        });
-                        
                         const dropdownIcon = statusDropdownBtn.querySelector('.dropdown-icon i');
                         if (dropdownIcon) {
                             dropdownIcon.style.transform = statusDropdownContent.classList.contains('show') ? 'rotate(180deg)' : 'rotate(0deg)';
                         }
-                    } else {
-                        console.log('Dropdown not opened - button is disabled or cancelled');
                     }
                 });
                 
@@ -4155,12 +4133,10 @@
                     option.addEventListener('click', function() {
                         const newStatus = this.getAttribute('data-status');
                         const currentStatus = '${examination.procedureStatus}';
-                        console.log('Status option clicked - Current:', currentStatus, 'New:', newStatus);
                         
                         if (newStatus) {
                             // Prevent selecting the same status
                             if (newStatus === currentStatus) {
-                                console.log('Same status selected, no action needed');
                                 alert('This status is already active. No change needed.');
                                 statusDropdownContent.classList.remove('show');
                                 const dropdownIcon = statusDropdown.querySelector('.dropdown-icon i');
@@ -4183,15 +4159,9 @@
             
             // Update procedure status directly (without X-ray)
             window.updateProcedureStatusDirect = async function(newStatus) {
-                console.log('=== DIRECT STATUS UPDATE FUNCTION CALLED ===');
-                console.log('Requested status:', newStatus);
-                console.log('Function is being executed');
-                
                 const examinationId = $('#examinationId').val();
-                console.log('Examination ID:', examinationId);
                 
                 // First, refresh the payment status from server
-                console.log('Refreshing payment status from server...');
                 try {
                     const refreshResponse = await fetch(`${pageContext.request.contextPath}/patients/examination/${examinationId}/payment-status`, {
                         method: 'GET',
@@ -4202,30 +4172,23 @@
                     
                     if (refreshResponse.ok) {
                         const paymentData = await refreshResponse.json();
-                        console.log('Latest payment status from server:', paymentData);
                         
                         // Update the payment status on the page
                         const paymentStatusElement = document.querySelector('.payment-status');
                         if (paymentStatusElement && paymentData.paymentStatus) {
                             paymentStatusElement.textContent = paymentData.paymentStatus;
-                            console.log('Updated payment status on page to:', paymentData.paymentStatus);
                         }
                     }
                 } catch (error) {
-                    console.log('Could not refresh payment status:', error);
+                    // Silent on refresh errors
                 }
                 
                 // Get CSRF token
                 const token = $("meta[name='_csrf']").attr("content");
                 const header = $("meta[name='_csrf_header']").attr("content");
-                console.log('CSRF token:', token);
-                console.log('CSRF header:', header);
                 
                 try {
-                    console.log('Making API request to update status...');
                     const url = '${pageContext.request.contextPath}/patients/update-procedure-status';
-                    console.log('Request URL:', url);
-                    console.log('Request body:', JSON.stringify({ examinationId: examinationId, status: newStatus }));
                     
                     const response = await fetch(url, {
                         method: 'POST',
@@ -4236,14 +4199,9 @@
                         body: JSON.stringify({ examinationId: examinationId, status: newStatus })
                     });
                     
-                    console.log('Response status:', response.status);
-                    console.log('Response ok:', response.ok);
-                    
                     const responseText = await response.text();
-                    console.log('Response text (first 200 chars):', responseText.substring(0, 200));
                     
                     if (responseText.trim().startsWith('<!DOCTYPE')) {
-                        console.error('Received HTML instead of JSON. This usually means a redirect to login or error page.');
                         alert('Authentication error. Please refresh the page and try again.');
                         return;
                     }
@@ -4252,19 +4210,14 @@
                     try {
                         result = JSON.parse(responseText);
                     } catch (parseError) {
-                        console.error('Failed to parse response as JSON:', parseError);
-                        console.error('Full response:', responseText);
                         alert('Server returned invalid response. Please try again.');
                         return;
                     }
                     
                     if (result.success) {
-                        console.log('Response data:', result);
                         alert('Status updated successfully!');
                         window.location.reload();
                     } else {
-                        console.error('Status update failed:', result.message);
-                        
                         // Check if it's a payment pending error
                         if (result.message && result.message.includes('payment') && result.message.includes('pending')) {
                             showPaymentPendingModal();
@@ -4273,41 +4226,26 @@
                         }
                     }
                 } catch (error) {
-                    console.error('=== DIRECT STATUS UPDATE ERROR ===');
-                    console.error('Error updating status:', error);
                     alert('Failed to update status. Please try again.');
                 }
             }
             
             // Update procedure status
             async function updateProcedureStatus(newStatus) {
-                console.log('=== FRONTEND STATUS UPDATE ===');
-                console.log('Requested status:', newStatus);
-                
                 const examinationId = $('#examinationId').val();
-                console.log('Examination ID:', examinationId);
                 
                 // Get CSRF token
                 const token = $("meta[name='_csrf']").attr("content");
                 const header = $("meta[name='_csrf_header']").attr("content");
-                console.log('CSRF token:', token);
-                console.log('CSRF header:', header);
                 
                 // Check if X-ray is required for closing
                 const currentStatus = '${examination.procedureStatus}';
-                console.log('Current status:', currentStatus);
-                console.log('New status:', newStatus);
-                console.log('X-ray upload complete:', xrayUploadComplete);
                 
                 if (newStatus === 'CLOSED' && currentStatus !== 'CLOSED' && !xrayUploadComplete) {
-                    console.log('X-ray upload option for closing');
                     window.pendingStatusUpdate = newStatus;
-                    console.log('About to call showXrayConfirmationModal');
                     try {
                         showXrayConfirmationModal();
-                        console.log('showXrayConfirmationModal called successfully');
                     } catch (error) {
-                        console.error('Error calling showXrayConfirmationModal:', error);
                         // Fallback to alert
                         const userChoice = confirm('Do you want to upload an X-ray image before closing the case?\n\nClick "OK" to upload X-ray\nClick "Cancel" to close without X-ray');
                         if (userChoice) {
@@ -4323,16 +4261,12 @@
                 }
                 
                 if (newStatus === 'CLOSED' && currentStatus === 'CLOSED') {
-                    console.log('Case is already CLOSED, no action needed');
                     alert('This case is already closed. No action needed.');
                     return;
                 }
                 
                 try {
-                    console.log('Making API request to update status...');
                     const url = '${pageContext.request.contextPath}/patients/update-procedure-status';
-                    console.log('Request URL:', url);
-                    console.log('Request body:', JSON.stringify({ examinationId: examinationId, status: newStatus }));
                     
                     const response = await fetch(url, {
                         method: 'POST',
@@ -4343,15 +4277,10 @@
                         body: JSON.stringify({ examinationId: examinationId, status: newStatus })
                     });
                     
-                    console.log('Response status:', response.status);
-                    console.log('Response ok:', response.ok);
-                    
                     // Debug: Check if response is JSON or HTML
                     const responseText = await response.text();
-                    console.log('Response text (first 200 chars):', responseText.substring(0, 200));
                     
                     if (responseText.trim().startsWith('<!DOCTYPE')) {
-                        console.error('Received HTML instead of JSON. This usually means a redirect to login or error page.');
                         alert('Authentication error. Please refresh the page and try again.');
                         return;
                     }
@@ -4361,15 +4290,11 @@
                     try {
                         result = JSON.parse(responseText);
                     } catch (parseError) {
-                        console.error('Failed to parse response as JSON:', parseError);
-                        console.error('Full response:', responseText);
                         alert('Server returned invalid response. Please try again.');
                         return;
                     }
                     
                     if (result.success) {
-                        console.log('Response data:', result);
-                        
                         // Show success notification
                         const notification = document.querySelector('.status-notification');
                         notification.style.display = 'block';
@@ -4378,18 +4303,14 @@
                         }, 3000);
                         
                         // Reload page to reflect changes
-                        console.log('Reloading page in 1 second...');
                         setTimeout(() => {
                         window.location.reload();
                         }, 1000);
                     } else {
-                        console.error('Status update failed:', result.message);
                         alert(result.message || 'Failed to update status');
                         return;
                     }
                 } catch (error) {
-                    console.error('=== FRONTEND STATUS UPDATE ERROR ===');
-                    console.error('Error updating status:', error);
                     alert('Failed to update status. Please try again.');
                 }
             }
@@ -4414,11 +4335,6 @@
             
             // Load attached images when page loads
             loadAttachedImages();
-            
-            // Test if modal elements exist
-            console.log('Testing modal elements:');
-            console.log('xrayConfirmationModal exists:', !!document.getElementById('xrayConfirmationModal'));
-            console.log('xrayUploadModal exists:', !!document.getElementById('xrayUploadModal'));
             
             // Image modal event listeners
             const imageModal = document.getElementById('imageModal');
@@ -4478,7 +4394,6 @@
                             throw new Error('Failed to save notes');
                         }
                     } catch (error) {
-                        console.error('Error saving notes:', error);
                         alert('Failed to save notes. Please try again.');
                     }
                 });
@@ -4515,7 +4430,7 @@
             
             // Initialize all functionality
             initializeXrayUpload();
-            initializeFollowUpModal();
+            (typeof initializeFollowUpModal === 'function') && initializeFollowUpModal();
             
             // Close modal functions
             window.closeCompleteNextSittingModal = function() {
@@ -4609,7 +4524,6 @@
                         alert('Error reopening case: ' + result.message);
                     }
                 } catch (error) {
-                    console.error('Error reopening case:', error);
                     alert('Error reopening case. Please try again.');
                 }
             };
@@ -4654,7 +4568,7 @@
                     <button type="button" class="btn btn-primary" onclick="selectXrayOption('upload')">
                         <i class="fas fa-upload"></i> Upload X-ray Image
                     </button>
-                    <button type="button" class="btn btn-success" onclick="console.log('Button clicked!'); selectXrayOption('close');">
+                    <button type="button" class="btn btn-success" onclick="selectXrayOption('close');">
                         <i class="fas fa-check-circle"></i> Close Without X-ray
                     </button>
                 </div>

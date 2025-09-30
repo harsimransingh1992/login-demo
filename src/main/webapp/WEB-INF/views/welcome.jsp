@@ -349,7 +349,6 @@
                                     opacity: 1;
                                 }
                             }
-                            }
 
                             /* Blinking Pending Payment Notification Styles */
                             .pending-payment-notification {
@@ -419,8 +418,26 @@
 
                             .action-buttons {
                                 display: flex;
-                                gap: 8px;
+                                gap: 6px;
                                 align-items: center;
+                                justify-content: flex-start;
+                                flex-wrap: nowrap;
+                                margin-top: 8px;
+                            }
+
+                            .action-buttons .btn {
+                                padding: 6px 12px;
+                                font-size: 0.875rem;
+                                line-height: 1.2;
+                                border-radius: 4px;
+                                white-space: nowrap;
+                                flex: 0 0 auto;
+                                min-width: auto;
+                            }
+
+                            .action-buttons .btn-sm {
+                                padding: 4px 8px;
+                                font-size: 0.8rem;
                             }
 
                             .no-patients-message {
@@ -471,6 +488,36 @@
                             }
 
                             .waiting-time.short {
+                                color: #27ae60;
+                            }
+
+                            /* Blinking consultation button styles */
+                            .blinking-consultation-btn {
+                                position: relative;
+                                overflow: hidden;
+                            }
+
+                            .consultation-text-alt {
+                                display: none;
+                            }
+
+                            @keyframes blink {
+                                0%, 50% { opacity: 1; }
+                                51%, 100% { opacity: 0.3; }
+                            }
+
+                            .blinking-consultation-btn:hover {
+                                animation: blink 1s infinite;
+                            }
+
+                            @media (max-width: 768px) {
+                                .consultation-text {
+                                    display: none;
+                                }
+                                .consultation-text-alt {
+                                    display: inline;
+                                }
+                            }
                                 color: #27ae60;
                             }
 
@@ -630,6 +677,16 @@
                                 transform: translateY(-50%);
                             }
 
+                            /* Override for Bootstrap modals to use proper centering */
+                            #consultationChargesModal .modal-content {
+                                position: static;
+                                top: auto;
+                                transform: none;
+                                margin: 0;
+                                max-width: 100%;
+                                max-height: none;
+                            }
+
                             .modal-close {
                                 position: absolute;
                                 top: 15px;
@@ -752,6 +809,51 @@
                                 color: #333 !important;
                                 text-shadow: none;
                             }
+
+                            /* Treating Doctor Dropdown Styles */
+                            #treatingDoctor {
+                                width: 100%;
+                                height: 45px;
+                                padding: 8px 12px;
+                                border: 1px solid #c0c0c0;
+                                border-radius: 8px;
+                                font-size: 0.95rem;
+                                font-family: 'Poppins', sans-serif;
+                                color: #000000 !important;
+                                background-color: #ffffff;
+                                -webkit-appearance: none;
+                                -moz-appearance: none;
+                                appearance: none;
+                                background-image: url("data:image/svg+xml;charset=UTF-8,%3csvg xmlns='http://www.w3.org/2000/svg' viewBox='0 0 24 24' fill='none' stroke='%232c3e50' stroke-width='2' stroke-linecap='round' stroke-linejoin='round'%3e%3cpolyline points='6 9 12 15 18 9'%3e%3c/polyline%3e%3c/svg%3e");
+                                background-repeat: no-repeat;
+                                background-position: right 12px center;
+                                background-size: 16px;
+                                box-shadow: 0 1px 3px rgba(0, 0, 0, 0.05);
+                            }
+
+                            #treatingDoctor:focus {
+                                border-color: #3498db;
+                                box-shadow: 0 0 0 3px rgba(52, 152, 219, 0.1);
+                                outline: none;
+                            }
+
+                            #treatingDoctor option {
+                                color: #000000 !important;
+                                background-color: #ffffff !important;
+                                padding: 8px 12px;
+                                font-size: 0.95rem;
+                                font-family: 'Poppins', sans-serif;
+                            }
+
+                            #treatingDoctor option:hover {
+                                background-color: #f8f9fa !important;
+                                color: #000000 !important;
+                            }
+
+                            #treatingDoctor option:selected {
+                                background-color: #3498db !important;
+                                color: #ffffff !important;
+                            }
                         </style>
                     </head>
 
@@ -835,7 +937,10 @@
                                                                 </td>
                                                                 <td>
                                                                     <div class="patient-info"
-                                                                        style="position: relative;">
+                                                                        style="position: relative; cursor: pointer;"
+                                                                        onclick="window.location.href='${pageContext.request.contextPath}/patients/details/${patient.id}'"
+                                                                        onmouseover="this.style.backgroundColor='#f8f9fa'"
+                                                                        onmouseout="this.style.backgroundColor=''">
                                                                         <!-- Color Code Badge -->
                                                                         <c:if
                                                                             test="${not empty patient.colorCode && patient.colorCode != 'NO_CODE'}">
@@ -1042,32 +1147,30 @@
                                                                     </c:choose>
                                                                 </td>
                                                                 <td style="text-align: center;">
-                                                                    <div class="action-buttons"
-                                                                        style="justify-content: center;">
-                                                                        <a href="${pageContext.request.contextPath}/patients/details/${patient.id}"
-                                                                            class="btn btn-primary btn-sm">
-                                                                            <i class="fas fa-user"></i> View
-                                                                        </a>
+                                                                    <div class="d-flex flex-wrap gap-1" style="justify-content: center;">
+                                                                        <sec:authorize access="hasRole('RECEPTIONIST')">
+                                                                            <button
+                                                                                onclick="event.stopPropagation(); openConsultationChargesModal(${patient.id}, '${patient.firstName} ${patient.lastName}')"
+                                                                                class="btn btn-success btn-sm"
+                                                                                title="Collect Consultation Charges">
+                                                                                <i class="fas fa-money-bill-wave"></i> Collect
+                                                                            </button>
+                                                                        </sec:authorize>
                                                                         <sec:authorize access="!hasRole('DOCTOR') and !hasRole('OPD_DOCTOR')">
                                                                             <button
-                                                                                onclick="checkoutPatient(${patient.id})"
-                                                                                class="btn btn-danger btn-sm">
-                                                                                <i class="fas fa-sign-out-alt"></i>
-                                                                                Check Out
+                                                                                onclick="event.stopPropagation(); checkoutPatient(${patient.id})"
+                                                                                class="btn btn-danger btn-sm"
+                                                                                title="Check Out Patient">
+                                                                                <i class="fas fa-sign-out-alt"></i> Checkout
                                                                             </button>
                                                                         </sec:authorize>
                                                                         <sec:authorize access="hasRole('DOCTOR') or hasRole('OPD_DOCTOR')">
-                                                                            <div class="tooltip-container">
-                                                                                <button class="btn btn-secondary btn-sm"
-                                                                                    style="opacity: 0.6; cursor: not-allowed; background: #6c757d; border-color: #6c757d;"
-                                                                                    disabled>
-                                                                                    <i class="fas fa-sign-out-alt"></i>
-                                                                                    Check Out
-                                                                                </button>
-                                                                                <span class="tooltip-text">Please
-                                                                                    contact front desk/receptionist to
-                                                                                    checkout</span>
-                                                                            </div>
+                                                                            <button class="btn btn-secondary btn-sm"
+                                                                                style="opacity: 0.6; cursor: not-allowed; background: #6c757d; border-color: #6c757d;"
+                                                                                disabled
+                                                                                title="Please contact front desk/receptionist to checkout">
+                                                                                <i class="fas fa-sign-out-alt"></i> Checkout
+                                                                            </button>
                                                                         </sec:authorize>
                                                                     </div>
                                                                 </td>
@@ -1082,6 +1185,63 @@
                                                 </div>
                                             </c:otherwise>
                                         </c:choose>
+                                    </div>
+                                </div>
+                            </div>
+                        </div>
+
+                        <!-- Consultation Charges Modal -->
+                        <div id="consultationChargesModal" class="modal fade" tabindex="-1" role="dialog" aria-labelledby="consultationChargesModalLabel" aria-hidden="true">
+                            <div class="modal-dialog modal-dialog-centered" role="document">
+                                <div class="modal-content">
+                                    <div class="modal-header">
+                                        <h5 class="modal-title" id="consultationChargesModalLabel">
+                                            <i class="fas fa-money-bill-wave"></i> Collect Consultation Charges
+                                        </h5>
+                                    </div>
+                                    <div class="modal-body">
+                                        <form id="consultationChargesForm">
+                                            <div class="form-group">
+                                                <label for="patientName">Patient Name:</label>
+                                                <input type="text" class="form-control" id="patientName" readonly>
+                                            </div>
+                                            <div class="form-group">
+                                                <label for="consultationFee">Consultation Fee:</label>
+                                                <div class="input-group">
+                                                    <div class="input-group-prepend">
+                                                        <span class="input-group-text">₹</span>
+                                                    </div>
+                                                    <input type="number" class="form-control" id="consultationFee" readonly>
+                                                </div>
+                                            </div>
+                                            <div class="form-group">
+                                                <label for="paymentMode">Payment Mode:</label>
+                                                <select class="form-control" id="paymentMode" required>
+                                                    <option value="">Select Payment Mode</option>
+                                                    <option value="CASH">Cash</option>
+                                                    <option value="CARD">Card</option>
+                                                    <option value="UPI">UPI</option>
+                                                    <option value="NET_BANKING">Net Banking</option>
+                                                </select>
+                                            </div>
+                                            <div class="form-group">
+                                                <label for="paymentNotes">Payment Notes (Optional):</label>
+                                                <textarea class="form-control" id="paymentNotes" rows="3" placeholder="Any additional notes..."></textarea>
+                                            </div>
+                                            <div class="form-group">
+                                                <label for="treatingDoctor">Treating Doctor:</label>
+                                                <select class="form-control" id="treatingDoctor" required>
+                                                    <option value="">Select Treating Doctor</option>
+                                                </select>
+                                            </div>
+                                            <input type="hidden" id="selectedPatientId">
+                                        </form>
+                                    </div>
+                                    <div class="modal-footer">
+                                        <button type="button" class="btn btn-secondary" data-dismiss="modal">Cancel</button>
+                                        <button type="button" class="btn btn-success" onclick="collectConsultationCharges()">
+                                            <i class="fas fa-check"></i> Collect Payment
+                                        </button>
                                     </div>
                                 </div>
                             </div>
@@ -1387,6 +1547,147 @@
             }
 
                             // Auto-refresh functionality has been removed
+
+                            // Consultation Charges Modal Functions
+                            async function openConsultationChargesModal(patientId, patientName) {
+                                try {
+                                    // Set patient information
+                                    document.getElementById('selectedPatientId').value = patientId;
+                                    document.getElementById('patientName').value = patientName;
+                                    
+                                    // Get clinic ID from the current user's clinic
+                                    const clinicId = '${currentUserClinic != null ? currentUserClinic.clinicId : ""}';
+                                    
+                                    if (!clinicId) {
+                                        showNotification('Error: No clinic information available', true);
+                                        return;
+                                    }
+                                    
+                                    // Load treating doctors
+                                    await loadTreatingDoctors();
+                                    
+                                    // Fetch consultation fee from backend with clinic ID
+                                    const response = await fetch('${pageContext.request.contextPath}/api/consultation-fee?clinicId=' + encodeURIComponent(clinicId), {
+                                        method: 'GET',
+                                        headers: {
+                                            'Content-Type': 'application/json',
+                                            'X-CSRF-TOKEN': document.querySelector('meta[name="_csrf"]').content
+                                        },
+                                        credentials: 'same-origin'
+                                    });
+
+                                    if (response.ok) {
+                                        const result = await response.json();
+                                        if (result.success) {
+                                            document.getElementById('consultationFee').value = result.consultationFee;
+                                            $('#consultationChargesModal').modal('show');
+                                        } else {
+                                            showNotification('Error: ' + (result.message || 'Failed to fetch consultation fee'), true);
+                                        }
+                                    } else {
+                                        showNotification('Failed to fetch consultation fee. Please try again.', true);
+                                    }
+                                } catch (error) {
+                                    console.error('Error fetching consultation fee:', error);
+                                    showNotification('Network error. Please try again.', true);
+                                }
+                            }
+
+                            async function loadTreatingDoctors() {
+                                try {
+                                    const response = await fetch('${pageContext.request.contextPath}/api/clinic-doctors', {
+                                        method: 'GET',
+                                        headers: {
+                                            'Content-Type': 'application/json',
+                                            'X-CSRF-TOKEN': document.querySelector('meta[name="_csrf"]').content
+                                        },
+                                        credentials: 'same-origin'
+                                    });
+
+                                    if (response.ok) {
+                                        const doctors = await response.json();
+                                        console.log('Doctors data received:', doctors); // Debug log
+                                        const treatingDoctorSelect = document.getElementById('treatingDoctor');
+                                        
+                                        // Clear existing options except the first one
+                                        treatingDoctorSelect.innerHTML = '<option value="">Select Treating Doctor</option>';
+                                        
+                                        // Add doctor options
+                                        doctors.forEach(doctor => {
+                                            const option = document.createElement('option');
+                                            option.value = doctor.id;
+                                            // Handle potential null/undefined values
+                                            const firstName = doctor.firstName || '';
+                                            const lastName = doctor.lastName || '';
+                                            const fullName = (firstName + ' ' + lastName).trim();
+                                            // Use fullName only if it's not empty after trimming
+                                            option.textContent = fullName.length > 0 ? fullName : 'Doctor ' + doctor.id;
+                                            treatingDoctorSelect.appendChild(option);
+                                        });
+                                    } else {
+                                        console.error('Failed to load treating doctors, status:', response.status);
+                                    }
+                                } catch (error) {
+                                    console.error('Error loading treating doctors:', error);
+                                }
+                            }
+
+                            async function collectConsultationCharges() {
+                                const patientId = document.getElementById('selectedPatientId').value;
+                                const consultationFee = document.getElementById('consultationFee').value;
+                                const paymentMode = document.getElementById('paymentMode').value;
+                                const paymentNotes = document.getElementById('paymentNotes').value;
+                                const treatingDoctorId = document.getElementById('treatingDoctor').value;
+
+                                if (!paymentMode) {
+                                    showNotification('Please select a payment mode', true);
+                                    return;
+                                }
+
+                                if (!treatingDoctorId) {
+                                    showNotification('Please select a treating doctor', true);
+                                    return;
+                                }
+
+                                try {
+                                    const response = await fetch('${pageContext.request.contextPath}/api/collect-consultation-charges', {
+                                        method: 'POST',
+                                        headers: {
+                                            'Content-Type': 'application/json',
+                                            'X-CSRF-TOKEN': document.querySelector('meta[name="_csrf"]').content
+                                        },
+                                        body: JSON.stringify({
+                                            patientId: patientId,
+                                            consultationFee: consultationFee,
+                                            paymentMode: paymentMode,
+                                            paymentNotes: paymentNotes,
+                                            treatingDoctorId: treatingDoctorId
+                                        }),
+                                        credentials: 'same-origin'
+                                    });
+
+                                    if (response.ok) {
+                                        const result = await response.json();
+                                        if (result.success) {
+                                            showNotification('Consultation charges collected successfully!', false);
+                                            $('#consultationChargesModal').modal('hide');
+                                            // Reset form
+                                            document.getElementById('consultationChargesForm').reset();
+                                            // Reload page to show updated data
+                                            setTimeout(() => {
+                                                window.location.reload();
+                                            }, 1000);
+                                        } else {
+                                            showNotification('Error: ' + (result.message || 'Failed to collect consultation charges'), true);
+                                        }
+                                    } else {
+                                        showNotification('Failed to collect consultation charges. Please try again.', true);
+                                    }
+                                } catch (error) {
+                                    console.error('Error collecting consultation charges:', error);
+                                    showNotification('Network error. Please try again.', true);
+                                }
+                            }
 
                         </script>
 

@@ -52,7 +52,7 @@ public class SecurityConfig {
     public SecurityFilterChain filterChain(HttpSecurity http) throws Exception {
         http
             .csrf()
-                .ignoringAntMatchers("/css/**", "/js/**", "/images/**", "/api/mobile/**", "/patients/update-procedure-status", "/patients/test-simple-update", "/patients/uncheck/**", "/password-reset/**")
+                .ignoringAntMatchers("/css/**", "/js/**", "/images/**", "/api/mobile/**", "/api/consultation-charges/**", "/api/consultation-fee/**", "/patients/update-procedure-status", "/patients/test-simple-update", "/patients/uncheck/**", "/password-reset/**")
             .and()
             .addFilterBefore(forcePasswordChangeFilter, UsernamePasswordAuthenticationFilter.class)
             .authorizeRequests()
@@ -61,6 +61,12 @@ public class SecurityConfig {
                 
                 // Mobile API endpoints - handle their own security
                 .antMatchers("/api/mobile/**").permitAll()
+                
+                // Consultation charges API endpoints
+                .antMatchers("/api/consultation-charges/**").hasAnyRole("RECEPTIONIST", "ADMIN", "DOCTOR")
+                
+                // Consultation fee API endpoints
+                .antMatchers("/api/consultation-fee/**").hasAnyRole("RECEPTIONIST", "ADMIN", "DOCTOR")
                 
                 // Public pages
                 .antMatchers("/login", "/register", "/forgot-password", "/reset-password", "/password-reset/**").permitAll()
@@ -95,6 +101,8 @@ public class SecurityConfig {
                 
                 // Catch all other requests
                 .anyRequest().authenticated()
+            .and()
+            .httpBasic() // Enable HTTP Basic authentication for API endpoints
             .and()
             .formLogin()
                 .loginPage("/login")
