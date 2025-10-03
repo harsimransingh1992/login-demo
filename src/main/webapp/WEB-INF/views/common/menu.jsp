@@ -118,6 +118,18 @@
             </div>
         </div>
     </sec:authorize>
+    
+    <!-- Historic Data -->
+    <sec:authorize access="hasAnyRole('RECEPTIONIST', 'ADMIN','DOCTOR','OPD_DOCTOR')">
+        <c:set var="isActive" value="${pageContext.request.requestURI == pageContext.request.contextPath.concat('/historic-data')}" />
+        <a href="${pageContext.request.contextPath}/historic-data" class="action-card${isActive ? ' active' : ''}">
+            <i class="fas fa-history"></i>
+            <div class="card-text">
+                <h3>Historic Data</h3>
+
+            </div>
+        </a>
+    </sec:authorize>
     <div class="menu-divider"></div>
 
     <sec:authorize access="hasRole('DOCTOR') or hasRole('OPD_DOCTOR')">
