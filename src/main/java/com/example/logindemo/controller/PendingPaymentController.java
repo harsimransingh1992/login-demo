@@ -400,6 +400,16 @@ public class PendingPaymentController {
             Double amount = Double.parseDouble(paymentDetails.get("amount").toString());
             
             PaymentMode paymentMode = PaymentMode.valueOf(paymentModeStr);
+
+            // Allow collection only if examination clinic matches current user's clinic
+            String clinicId = PeriDeskUtils.getCurrentClinicModel().getClinicId();
+            ToothClinicalExamination exam = examinationRepository.findById(examinationId).orElse(null);
+            if (exam == null || exam.getExaminationClinic() == null ||
+                !clinicId.equals(exam.getExaminationClinic().getClinicId())) {
+                response.put("success", false);
+                response.put("message", "You don't have permission to collect payment for this examination");
+                return response;
+            }
             
             // Convert paymentDetails to Map<String, String> for the service method
             Map<String, String> paymentDetailsStr = new HashMap<>();
@@ -443,9 +453,9 @@ public class PendingPaymentController {
         }
 
         try {
-            // Get the examination to verify it belongs to the user's clinic
-            var examination = examinationService.getToothClinicalExaminationById(examinationId);
-            if (examination == null || 
+            // Get the examination entity to verify it belongs to the user's clinic
+            ToothClinicalExamination examination = examinationRepository.findById(examinationId).orElse(null);
+            if (examination == null || examination.getExaminationClinic() == null ||
                 !examination.getExaminationClinic().getClinicId().equals(user.getClinic().getClinicId())) {
                 redirectAttributes.addFlashAttribute("error", "You don't have permission to update this examination");
                 return "redirect:/pending-payments";
@@ -459,7 +469,7 @@ public class PendingPaymentController {
     }
 
     @GetMapping("/payment-history/{examinationId}")
-    @PreAuthorize("hasRole('RECEPTIONIST')")
+    @PreAuthorize("hasAnyRole('ADMIN','CLINIC_OWNER','DOCTOR','OPD_DOCTOR','STAFF','RECEPTIONIST')")
     @ResponseBody
     public Map<String, Object> getPaymentHistory(@PathVariable Long examinationId) {
         Map<String, Object> response = new HashMap<>();
@@ -737,6 +747,7 @@ public class PendingPaymentController {
             model.addAttribute("patient", patient);
             model.addAttribute("pendingExaminations", pendingExaminations);
             model.addAttribute("totalPendingAmount", totalPendingAmount);
+            model.addAttribute("currentClinicId", PeriDeskUtils.getCurrentClinicModel().getClinicId());
             
             return "payments/patient-pending-payments";
             
