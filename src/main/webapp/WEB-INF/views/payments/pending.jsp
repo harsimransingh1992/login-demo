@@ -830,7 +830,8 @@
                                     <option value="EMI">EMI</option>
                                 </select>
                                 <input type="number" class="payment-amount-input" name="paymentAmount"
-                                    placeholder="Enter payment amount" step="0.01" required>
+                                    placeholder="Enter payment amount" step="1" inputmode="numeric" pattern="[0-9]*" required>
+                                <div class="input-error" id="paymentError" style="display:none; color:#b91c1c; font-size:12px; margin-top:6px;">Please select a payment mode and enter a valid amount.</div>
                                 <textarea class="payment-notes" name="paymentNotes"
                                     placeholder="Payment notes (optional)" rows="3"></textarea>
                             </div>
@@ -1104,11 +1105,24 @@
                                     '</div>' +
                                     '<div class="summary-row">' +
                                     '<span class="summary-label">Remaining Amount:</span>' +
-                                    '<span class="summary-value">₹' + remainingAmount + '</span>' +
+                                    '<span class="summary-value">₹' + Math.floor(Number(remainingAmount || 0)) + '</span>' +
                                     '</div>';
 
                                 document.getElementById('paymentForm').classList.add('show');
                                 document.getElementById('overlay').classList.add('show');
+
+                                // Prefill amount and set max to remaining
+                                const amountInput = document.querySelector('.payment-amount-input');
+                                const rem = Number(remainingAmount || 0);
+                                const remInt = Math.floor(rem);
+                                if (amountInput) {
+                                    amountInput.value = remInt > 0 ? String(remInt) : '';
+                                    amountInput.setAttribute('max', remInt);
+                                }
+                                // Reset any previous error and validate
+                                const errorEl = document.getElementById('paymentError');
+                                if (errorEl) { errorEl.style.display = 'none'; }
+                                validatePaymentForm();
                             }
 
                             function hidePaymentForm() {
@@ -1152,9 +1166,18 @@
                                 const form = document.getElementById('paymentForm');
                                 const paymentMode = form.querySelector('select[name="paymentMode"]').value;
                                 const amountInput = form.querySelector('input[name="paymentAmount"]');
-                                const amount = parseFloat(amountInput.value);
+                                // sanitize and parse integer amount
+                                const amountRaw = (amountInput.value || '').trim();
+                                const amountSanitized = amountRaw.replace(/[^\d]/g, '');
+                                if (amountSanitized !== amountRaw) { amountInput.value = amountSanitized; }
+                                const amount = parseInt(amountSanitized, 10);
                                 const notes = form.querySelector('textarea[name="paymentNotes"]').value;
                                 const confirmButton = form.querySelector('button[onclick="collectPayment()"]');
+
+                                // Run validation, including remaining cap
+                                if (!validatePaymentForm()) {
+                                    return;
+                                }
 
                                 // Validate payment mode
                                 if (!paymentMode) {
@@ -1163,7 +1186,7 @@
                                 }
 
                                 // Validate payment amount
-                                if (!amount || amount <= 0) {
+                                if (!Number.isInteger(amount) || amount <= 0) {
                                     alert('Please enter a valid payment amount.');
                                     amountInput.focus();
                                     return;
@@ -1224,6 +1247,62 @@
                                         }
                                     });
                             }
+
+                            // Validate payment mode and amount against remaining
+                            function validatePaymentForm() {
+                                const form = document.getElementById('paymentForm');
+                                const paymentMode = form.querySelector('select[name="paymentMode"]').value;
+                                const amountInput = form.querySelector('input[name="paymentAmount"]');
+                                // sanitize input to digits only
+                                const raw = (amountInput.value || '').trim();
+                                const sanitized = raw.replace(/[^\d]/g, '');
+                                if (sanitized !== raw) { amountInput.value = sanitized; }
+                                const amount = parseInt(sanitized, 10);
+                                const maxRemaining = parseInt(amountInput.getAttribute('max') || '0', 10);
+                                const confirmButton = form.querySelector('button[onclick="collectPayment()"]');
+                                const errorEl = document.getElementById('paymentError');
+                                let valid = true;
+                                let message = '';
+
+                                if (!paymentMode) {
+                                    valid = false;
+                                    message = 'Please select a payment mode.';
+                                } else if (!Number.isInteger(amount) || isNaN(amount) || amount <= 0) {
+                                    valid = false;
+                                    message = 'Please enter a valid amount greater than 0.';
+                                } else if (amount > maxRemaining) {
+                                    valid = false;
+                                    const maxStr = '₹' + (Number.isFinite(maxRemaining) ? maxRemaining : 0);
+                                    message = 'Amount exceeds remaining balance (' + maxStr + ').';
+                                }
+
+                                if (confirmButton) {
+                                    confirmButton.disabled = !valid;
+                                    confirmButton.style.opacity = valid ? '1' : '0.6';
+                                }
+                                if (errorEl) {
+                                    if (!valid) {
+                                        errorEl.textContent = message;
+                                        errorEl.style.display = 'block';
+                                    } else {
+                                        errorEl.style.display = 'none';
+                                    }
+                                }
+                                return valid;
+                            }
+
+                            // Re-validate on input changes inside the form
+                            document.addEventListener('input', function(e) {
+                                if (e.target.closest('#paymentForm')) {
+                                    // enforce digits-only on amount input
+                                    if (e.target.matches('.payment-amount-input')) {
+                                        const raw = (e.target.value || '').trim();
+                                        const sanitized = raw.replace(/[^\d]/g, '');
+                                        if (sanitized !== raw) { e.target.value = sanitized; }
+                                    }
+                                    validatePaymentForm();
+                                }
+                            });
 
                             // Payment History Functions
                             function viewPaymentHistory(examinationId) {
