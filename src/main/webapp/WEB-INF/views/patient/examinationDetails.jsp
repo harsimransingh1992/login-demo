@@ -3428,11 +3428,39 @@
                         </script>
 
                         <!-- Image Modal -->
+                        <style>
+                            .modal-image-wrapper {
+                                position: relative;
+                                overflow: hidden;
+                                width: 100%;
+                                max-height: 70vh;
+                                border-radius: 8px;
+                                background: #f8f9fa;
+                                display: flex;
+                                align-items: center;
+                                justify-content: center;
+                                cursor: default;
+                                touch-action: none; /* enable custom pinch/drag */
+                            }
+                            .modal-image {
+                                max-width: 100%;
+                                max-height: 100%;
+                                user-select: none;
+                                -webkit-user-drag: none;
+                                transform-origin: center center;
+                                will-change: transform;
+                            }
+                            .modal-image-wrapper.grabbing { cursor: grabbing; }
+                            .modal-image-wrapper.grab { cursor: grab; }
+                        </style>
+
                         <div id="imageModal" class="image-modal">
                             <div class="image-modal-content">
                                 <div class="modal-header" id="modalHeader">Denture Photo</div>
                                 <span class="modal-close" onclick="closeImageModal()">&times;</span>
-                                <img id="modalImage" class="modal-image" src="" alt="Denture Photo">
+                                <div id="modalImageWrapper" class="modal-image-wrapper">
+                                    <img id="modalImage" class="modal-image" src="" alt="Denture Photo">
+                                </div>
                                 <div class="modal-actions">
                                     <button type="button" class="modal-btn" onclick="downloadImage()">
                                         <i class="fas fa-download"></i> Download
@@ -3549,10 +3577,237 @@
                             });
 
                             // Optimize image modal loading
+                            // Zoom & Pan state
+                            let imgScale = 1;
+                            let imgTranslateX = 0;
+                            let imgTranslateY = 0;
+                            const IMG_MIN_SCALE = 0.2; // allow zooming out
+                            const IMG_MAX_SCALE = 15;  // allow zooming in beyond native pixels
+                            let isPanning = false;
+                            let startX = 0;
+                            let startY = 0;
+                            let pinchStartDist = 0;
+                            let basePinchScale = 1;
+                            let wrapperHandlers = null;
+                            const activePointers = new Map(); // pointerId -> {x,y}
+
+                            function applyImageTransform() {
+                                const modalImage = document.getElementById('modalImage');
+                                if (!modalImage) return;
+                                modalImage.style.transform = `translate(${imgTranslateX}px, ${imgTranslateY}px) scale(${imgScale})`;
+                            }
+
+                            function resetImageTransform() {
+                                imgScale = 1;
+                                imgTranslateX = 0;
+                                imgTranslateY = 0;
+                                applyImageTransform();
+                                const wrapper = document.getElementById('modalImageWrapper');
+                                if (wrapper) {
+                                    wrapper.classList.remove('grabbing');
+                                    wrapper.classList.remove('grab');
+                                }
+                            }
+
+                            function initImageZoomHandlers() {
+                                const wrapper = document.getElementById('modalImageWrapper');
+                                const modalImage = document.getElementById('modalImage');
+                                if (!wrapper || !modalImage) return;
+
+                                function onWheel(e) {
+                                    e.preventDefault();
+                                    const delta = e.deltaY;
+                                    const factor = delta < 0 ? 1.1 : 0.9;
+                                    const newScale = Math.min(IMG_MAX_SCALE, Math.max(IMG_MIN_SCALE, imgScale * factor));
+                                    if (newScale !== imgScale) {
+                                        imgScale = newScale;
+                                        applyImageTransform();
+                                        wrapper.classList.toggle('grab', imgScale > 1);
+                                    }
+                                }
+
+                                function onDblClick() {
+                                    if (imgScale === 1) {
+                                        imgScale = 2;
+                                    } else {
+                                        imgScale = 1;
+                                        imgTranslateX = 0;
+                                        imgTranslateY = 0;
+                                    }
+                                    applyImageTransform();
+                                    wrapper.classList.toggle('grab', imgScale > 1);
+                                }
+
+                                function updatePointer(e) {
+                                    activePointers.set(e.pointerId, { x: e.clientX, y: e.clientY });
+                                }
+                                function removePointer(e) {
+                                    activePointers.delete(e.pointerId);
+                                }
+                                function currentDistance() {
+                                    const pts = Array.from(activePointers.values());
+                                    if (pts.length < 2) return 0;
+                                    const [p1, p2] = pts;
+                                    return Math.hypot(p2.x - p1.x, p2.y - p1.y);
+                                }
+
+                                function onPointerDown(e) {
+                                    updatePointer(e);
+                                    if (activePointers.size === 2) {
+                                        pinchStartDist = currentDistance();
+                                        basePinchScale = imgScale;
+                                    } else if (activePointers.size === 1 && imgScale > 1) {
+                                        isPanning = true;
+                                        startX = e.clientX - imgTranslateX;
+                                        startY = e.clientY - imgTranslateY;
+                                        wrapper.classList.add('grabbing');
+                                        wrapper.classList.remove('grab');
+                                    }
+                                }
+
+                                function onPointerMove(e) {
+                                    updatePointer(e);
+                                    if (activePointers.size === 2 && pinchStartDist > 0) {
+                                        const dist = currentDistance();
+                                        const factor = dist / pinchStartDist;
+                                        const newScale = Math.min(IMG_MAX_SCALE, Math.max(IMG_MIN_SCALE, basePinchScale * factor));
+                                        if (newScale !== imgScale) {
+                                            imgScale = newScale;
+                                            applyImageTransform();
+                                            wrapper.classList.toggle('grab', imgScale > 1);
+                                        }
+                                    } else if (isPanning && activePointers.size === 1) {
+                                        imgTranslateX = e.clientX - startX;
+                                        imgTranslateY = e.clientY - startY;
+                                        applyImageTransform();
+                                    }
+                                }
+
+                                function onPointerUp(e) {
+                                    removePointer(e);
+                                    if (activePointers.size < 2) {
+                                        pinchStartDist = 0;
+                                    }
+                                    if (activePointers.size === 0) {
+                                        isPanning = false;
+                                        wrapper.classList.remove('grabbing');
+                                        if (imgScale > 1) wrapper.classList.add('grab');
+                                    }
+                                }
+
+                                const usePointer = 'PointerEvent' in window;
+                                const isSafari = /Safari\//.test(navigator.userAgent) && !/Chrome\//.test(navigator.userAgent);
+                                let safariGestureHandlers = null;
+                                if (usePointer) {
+                                    // Register pointer handlers and keep references for teardown
+                                    wrapperHandlers = { type: 'pointer', onWheel, onDblClick, onPointerDown, onPointerMove, onPointerUp };
+                                    wrapper.addEventListener('wheel', onWheel, { passive: false });
+                                    wrapper.addEventListener('dblclick', onDblClick);
+                                    wrapper.addEventListener('pointerdown', onPointerDown);
+                                    wrapper.addEventListener('pointermove', onPointerMove);
+                                    wrapper.addEventListener('pointerup', onPointerUp);
+                                    wrapper.addEventListener('pointercancel', onPointerUp);
+                                    // Safari gesture fallback (older versions)
+                                    if (isSafari) {
+                                        function onGestureStart(e) { e.preventDefault(); basePinchScale = imgScale; }
+                                        function onGestureChange(e) {
+                                            e.preventDefault();
+                                            const newScale = Math.min(IMG_MAX_SCALE, Math.max(IMG_MIN_SCALE, basePinchScale * (e.scale || 1)));
+                                            if (newScale !== imgScale) {
+                                                imgScale = newScale;
+                                                applyImageTransform();
+                                                wrapper.classList.toggle('grab', imgScale > 1);
+                                            }
+                                        }
+                                        function onGestureEnd(e) { e.preventDefault(); }
+                                        safariGestureHandlers = { onGestureStart, onGestureChange, onGestureEnd };
+                                        wrapper.addEventListener('gesturestart', onGestureStart);
+                                        wrapper.addEventListener('gesturechange', onGestureChange);
+                                        wrapper.addEventListener('gestureend', onGestureEnd);
+                                    }
+                                } else {
+                                    // Touch fallback: single finger pan, two-finger pinch
+                                    function onTouchStart(e) {
+                                        if (e.touches.length >= 2) e.preventDefault();
+                                        if (e.touches.length === 1 && imgScale > 1) {
+                                            const t = e.touches[0];
+                                            isPanning = true;
+                                            startX = t.clientX - imgTranslateX;
+                                            startY = t.clientY - imgTranslateY;
+                                            wrapper.classList.add('grabbing');
+                                            wrapper.classList.remove('grab');
+                                        } else if (e.touches.length === 2) {
+                                            const [t1, t2] = e.touches;
+                                            pinchStartDist = Math.hypot(t2.clientX - t1.clientX, t2.clientY - t1.clientY);
+                                            basePinchScale = imgScale;
+                                        }
+                                    }
+                                    function onTouchMove(e) {
+                                        if (e.touches.length >= 1) e.preventDefault();
+                                        if (e.touches.length === 1 && isPanning) {
+                                            const t = e.touches[0];
+                                            imgTranslateX = t.clientX - startX;
+                                            imgTranslateY = t.clientY - startY;
+                                            applyImageTransform();
+                                        } else if (e.touches.length === 2) {
+                                            const [t1, t2] = e.touches;
+                                            const dist = Math.hypot(t2.clientX - t1.clientX, t2.clientY - t1.clientY);
+                                            const factor = dist / (pinchStartDist || dist);
+                                            const newScale = Math.min(IMG_MAX_SCALE, Math.max(IMG_MIN_SCALE, basePinchScale * factor));
+                                            if (newScale !== imgScale) {
+                                                imgScale = newScale;
+                                                applyImageTransform();
+                                                wrapper.classList.toggle('grab', imgScale > 1);
+                                            }
+                                            pinchStartDist = dist;
+                                        }
+                                    }
+                                    function onTouchEnd() {
+                                        isPanning = false;
+                                        wrapper.classList.remove('grabbing');
+                                        if (imgScale > 1) wrapper.classList.add('grab');
+                                    }
+                                    wrapperHandlers = { type: 'touch', onWheel, onDblClick, onTouchStart, onTouchMove, onTouchEnd };
+                                    wrapper.addEventListener('wheel', onWheel, { passive: false });
+                                    wrapper.addEventListener('dblclick', onDblClick);
+                                    wrapper.addEventListener('touchstart', onTouchStart, { passive: false });
+                                    wrapper.addEventListener('touchmove', onTouchMove, { passive: false });
+                                    wrapper.addEventListener('touchend', onTouchEnd);
+                                    wrapper.addEventListener('touchcancel', onTouchEnd);
+                                }
+                            }
+
+                            function teardownImageZoomHandlers() {
+                                const wrapper = document.getElementById('modalImageWrapper');
+                                if (!wrapper || !wrapperHandlers) return;
+                                wrapper.removeEventListener('wheel', wrapperHandlers.onWheel);
+                                wrapper.removeEventListener('dblclick', wrapperHandlers.onDblClick);
+                                if (wrapperHandlers.type === 'pointer') {
+                                    wrapper.removeEventListener('pointerdown', wrapperHandlers.onPointerDown);
+                                    wrapper.removeEventListener('pointermove', wrapperHandlers.onPointerMove);
+                                    wrapper.removeEventListener('pointerup', wrapperHandlers.onPointerUp);
+                                    wrapper.removeEventListener('pointercancel', wrapperHandlers.onPointerUp);
+                                    if (safariGestureHandlers) {
+                                        wrapper.removeEventListener('gesturestart', safariGestureHandlers.onGestureStart);
+                                        wrapper.removeEventListener('gesturechange', safariGestureHandlers.onGestureChange);
+                                        wrapper.removeEventListener('gestureend', safariGestureHandlers.onGestureEnd);
+                                        safariGestureHandlers = null;
+                                    }
+                                } else if (wrapperHandlers.type === 'touch') {
+                                    wrapper.removeEventListener('touchstart', wrapperHandlers.onTouchStart);
+                                    wrapper.removeEventListener('touchmove', wrapperHandlers.onTouchMove);
+                                    wrapper.removeEventListener('touchend', wrapperHandlers.onTouchEnd);
+                                    wrapper.removeEventListener('touchcancel', wrapperHandlers.onTouchEnd);
+                                }
+                                wrapperHandlers = null;
+                                activePointers.clear();
+                            }
+
                             function openImageModal(imageSrc, imageType) {
                                 const modal = document.getElementById('imageModal');
                                 const modalImage = document.getElementById('modalImage');
                                 const modalHeader = document.getElementById('modalHeader');
+                                const wrapper = document.getElementById('modalImageWrapper');
 
                                 if (modal && modalImage && modalHeader) {
                                     modalHeader.textContent = imageType || 'Dental Image';
@@ -3560,6 +3815,12 @@
                                     // Show loading state
                                     modalImage.style.opacity = '0';
                                     modal.style.display = 'block';
+                                    document.body.style.overflow = 'hidden';
+
+                                    // Reset zoom state on open
+                                    resetImageTransform();
+                                    teardownImageZoomHandlers();
+                                    initImageZoomHandlers();
 
                                     // Load image with performance tracking
                                     const startTime = performance.now();
@@ -3570,6 +3831,8 @@
                                         // Fade in the image
                                         this.style.opacity = '1';
                                         this.style.transition = 'opacity 0.3s ease-in-out';
+                                        // Ensure transform applied after load
+                                        applyImageTransform();
                                     };
 
                                     modalImage.onerror = function () {
@@ -3589,6 +3852,10 @@
                                 const modal = document.getElementById('imageModal');
                                 if (modal) {
                                     modal.style.display = 'none';
+                                    document.body.style.overflow = '';
+                                    // Reset zoom state
+                                    resetImageTransform();
+                                    teardownImageZoomHandlers();
                                 }
                             }
 

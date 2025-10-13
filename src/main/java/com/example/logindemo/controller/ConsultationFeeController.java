@@ -150,4 +150,46 @@ public class ConsultationFeeController {
             return ResponseEntity.badRequest().body(response);
         }
     }
+
+    @GetMapping("/consultation-fee/recent")
+    @PreAuthorize("hasRole('RECEPTIONIST') or hasRole('ADMIN') or hasRole('DOCTOR') or hasRole('OPD_DOCTOR')")
+    public ResponseEntity<Map<String, Object>> getRecentConsultation(@RequestParam Long patientId,
+                                                                     @RequestParam String clinicId,
+                                                                     @RequestParam(required = false, defaultValue = "30") int days) {
+        try {
+            if (clinicId == null || clinicId.trim().isEmpty()) {
+                Map<String, Object> resp = new HashMap<>();
+                resp.put("success", false);
+                resp.put("message", "Clinic ID is required");
+                return ResponseEntity.badRequest().body(resp);
+            }
+
+            if (!clinicService.getClinicByClinicId(clinicId).isPresent()) {
+                Map<String, Object> resp = new HashMap<>();
+                resp.put("success", false);
+                resp.put("message", "Clinic not found with ID: " + clinicId);
+                return ResponseEntity.badRequest().body(resp);
+            }
+
+            ToothClinicalExamination recent = consultationChargesService.findRecentConsultationPayment(patientId, clinicId, days);
+            Map<String, Object> resp = new HashMap<>();
+            resp.put("success", true);
+            resp.put("found", recent != null);
+            if (recent != null) {
+                java.time.LocalDateTime ts = recent.getExaminationDate() != null ? recent.getExaminationDate() : recent.getCreatedAt();
+                String clinicName = recent.getExaminationClinic() != null ? recent.getExaminationClinic().getClinicName() : clinicId;
+                java.time.format.DateTimeFormatter fmt = java.time.format.DateTimeFormatter.ofPattern("dd-MM-yyyy HH:mm");
+                resp.put("dateTime", ts != null ? ts.format(fmt) : null);
+                resp.put("clinic", clinicName);
+                resp.put("examinationId", recent.getId());
+            }
+            return ResponseEntity.ok(resp);
+        } catch (Exception e) {
+            log.error("Error checking recent consultation payment: {}", e.getMessage(), e);
+            Map<String, Object> resp = new HashMap<>();
+            resp.put("success", false);
+            resp.put("message", "Failed to check recent consultation payment: " + e.getMessage());
+            return ResponseEntity.badRequest().body(resp);
+        }
+    }
 }

@@ -24,6 +24,7 @@ import org.springframework.web.multipart.MultipartFile;
 import org.springframework.web.servlet.mvc.support.RedirectAttributes;
 import org.springframework.transaction.annotation.Transactional;
 import org.springframework.data.domain.Page;
+import org.springframework.security.access.prepost.PreAuthorize;
 
 import javax.annotation.Resource;
 import java.beans.PropertyEditor;
@@ -45,6 +46,8 @@ import com.example.logindemo.model.MediaFile;
 import com.example.logindemo.model.ProcedureLifecycleTransition;
 import com.example.logindemo.model.ReopeningRecord;
 import com.example.logindemo.model.TreatmentPhase;
+import com.example.logindemo.repository.PaymentEntryRepository;
+import com.example.logindemo.repository.FollowUpRecordRepository;
 
 @Controller
 @RequestMapping("/patients")
@@ -87,6 +90,9 @@ public class PatientController {
     @Resource(name="appointmentRepository")
     private AppointmentRepository appointmentRepository;
 
+    @Autowired
+    private FollowUpRecordRepository followUpRecordRepository;
+
     @Resource(name="procedurePriceRepository")
     private ProcedurePriceRepository procedurePriceRepository;
 
@@ -113,6 +119,9 @@ public class PatientController {
 
     @Autowired
     private ReopeningRecordRepository reopeningRecordRepository;
+
+    @Autowired
+    private PaymentEntryRepository paymentEntryRepository;
 
     @InitBinder
     public void initBinder(WebDataBinder binder) {
@@ -431,6 +440,19 @@ public class PatientController {
         model.addAttribute("pageSize", actualSize);
         model.addAttribute("sort", sort);
         model.addAttribute("direction", direction);
+        
+        // Add doctors from current clinic for appointment scheduling (same as /patients/list)
+        User currentUser = getCurrentUser();
+        ClinicModel userClinic = currentUser.getClinic();
+        if (userClinic != null) {
+            List<User> clinicDoctors = userRepository.findByClinicAndRoleIn(
+                userClinic, 
+                List.of(com.example.logindemo.model.UserRole.DOCTOR, com.example.logindemo.model.UserRole.OPD_DOCTOR)
+            );
+            model.addAttribute("clinicDoctors", clinicDoctors);
+        } else {
+            model.addAttribute("clinicDoctors", new ArrayList<>());
+        }
         
         return "patient/list";
     }
@@ -3137,6 +3159,182 @@ public class PatientController {
             return "error";
         }
     }
+
+    /**
+     * Purge a patient and all related records for the current clinic.
+     * Only ADMIN and CLINIC_OWNER can perform this action.
+     */
+    @PostMapping("/purge/{patientId}")
+    @ResponseBody
+    @Transactional
+    @PreAuthorize("hasAnyRole('ADMIN','CLINIC_OWNER')")
+    public ResponseEntity<?> purgePatient(@PathVariable Long patientId) {
+        try {
+            // Delegate to the per-patient transactional purge to ensure
+            // correct deletion order (transitions -> exams -> patient) and FK safety
+            purgeSinglePatientTransactional(patientId);
+
+            return ResponseEntity.ok(Map.of(
+                    "success", true,
+                    "message", "Patient purged successfully"));
+        } catch (Exception e) {
+            log.error("Error purging patient {}: {}", patientId, e.getMessage(), e);
+            return ResponseEntity.status(HttpStatus.INTERNAL_SERVER_ERROR)
+                    .body(Map.of("success", false, "message", "Error purging patient: " + e.getMessage()));
+        }
+    }
+
+    /**
+     * Purge ALL patients and all related records.
+     * Use with extreme caution. Intended for clearing test data.
+     */
+    @PostMapping("/purge-all")
+    @ResponseBody
+    @Transactional(propagation = org.springframework.transaction.annotation.Propagation.NOT_SUPPORTED)
+    @PreAuthorize("hasAnyRole('ADMIN','CLINIC_OWNER')")
+    public ResponseEntity<?> purgeAllPatients() {
+        int purgedCount = 0;
+        List<Map<String, Object>> errors = new ArrayList<>();
+        try {
+            List<Patient> patients = patientRepository.findAll();
+            for (Patient patient : patients) {
+                Long patientId = patient.getId();
+                try {
+                    // Execute purge in a separate transaction per patient to avoid long-lived session issues
+                    purgeSinglePatientTransactional(patientId);
+
+                    purgedCount++;
+                } catch (Exception ex) {
+                    log.error("Error purging patient {} in bulk purge: {}", patientId, ex.getMessage(), ex);
+                    errors.add(Map.of("patientId", patientId, "error", ex.getMessage()));
+                }
+            }
+
+            Map<String, Object> response = new HashMap<>();
+            response.put("success", true);
+            response.put("purgedCount", purgedCount);
+            response.put("errors", errors);
+            return ResponseEntity.ok(response);
+        } catch (Exception e) {
+            log.error("Error purging all patients: {}", e.getMessage(), e);
+            return ResponseEntity.status(HttpStatus.INTERNAL_SERVER_ERROR)
+                    .body(Map.of("success", false, "message", "Error purging all patients: " + e.getMessage()));
+        }
+    }
+
+    /**
+     * Purge logic executed in its own transaction per patient to prevent
+     * non-threadsafe session access issues during bulk operations.
+     */
+    @Transactional(propagation = org.springframework.transaction.annotation.Propagation.REQUIRES_NEW)
+    protected void purgeSinglePatientTransactional(Long patientId) {
+        // Load patient
+        Patient patient = patientRepository.findById(patientId)
+                .orElseThrow(() -> new RuntimeException("Patient not found: " + patientId));
+
+        // Delete payments associated with this patient's examinations
+        List<PaymentEntry> paymentEntries = paymentEntryRepository
+                .findByExaminationPatientIdOrderByPaymentDateDesc(patientId);
+        if (paymentEntries != null && !paymentEntries.isEmpty()) {
+            try {
+                paymentEntryRepository.deleteAll(paymentEntries);
+            } catch (Exception e) {
+                log.warn("Failed to delete {} payment entries for patient {}: {}", paymentEntries.size(), patientId, e.getMessage());
+            }
+        }
+
+        // Delete profile picture if present
+        if (patient.getProfilePicturePath() != null) {
+            try {
+                fileStorageService.deleteFile(patient.getProfilePicturePath());
+            } catch (Exception e) {
+                log.warn("Failed to delete profile picture for patient {}: {}", patientId, e.getMessage());
+            }
+            patient.setProfilePicturePath(null);
+        }
+
+        // Collect examinations for this patient
+        List<ToothClinicalExamination> examinations = toothClinicalExaminationRepository.findByPatientId(patientId);
+
+        // Delete lifecycle transitions for all examinations of this patient first to satisfy FK constraints
+        try {
+            procedureLifecycleTransitionRepository.deleteByExamination_Patient_Id(patientId);
+            // Ensure delete order is applied before removing examinations/patient
+            procedureLifecycleTransitionRepository.flush();
+        } catch (Exception e) {
+            log.warn("Failed to bulk delete lifecycle transitions for patient {}: {}", patientId, e.getMessage());
+            // Fallback: try per-exam delete
+            for (ToothClinicalExamination exam : examinations) {
+                try {
+                    procedureLifecycleTransitionRepository.deleteByExamination_Id(exam.getId());
+                } catch (Exception ex) {
+                    log.warn("Failed to delete lifecycle transitions for exam {}: {}", exam.getId(), ex.getMessage());
+                }
+            }
+            procedureLifecycleTransitionRepository.flush();
+        }
+
+        // Delete physical media files linked to all examinations, then remove DB records
+        for (ToothClinicalExamination exam : examinations) {
+            List<MediaFile> mediaFiles = mediaFileRepository.findByExamination_Id(exam.getId());
+            for (MediaFile mediaFile : mediaFiles) {
+                try {
+                    fileStorageService.deleteFile(mediaFile.getFilePath());
+                } catch (Exception e) {
+                    log.warn("Failed to delete media file {} for exam {}: {}", mediaFile.getFilePath(), exam.getId(), e.getMessage());
+                }
+            }
+            if (!mediaFiles.isEmpty()) {
+                mediaFileRepository.deleteAll(mediaFiles);
+            }
+        }
+
+        // For follow-up records under this patient's exams, sever appointment links to avoid FK issues
+        for (ToothClinicalExamination exam : examinations) {
+            try {
+                List<FollowUpRecord> followUps = followUpRecordRepository.findByExaminationOrderBySequenceNumberAsc(exam);
+                if (followUps != null && !followUps.isEmpty()) {
+                    for (FollowUpRecord fu : followUps) {
+                        if (fu.getAppointment() != null) {
+                            fu.setAppointment(null);
+                        }
+                    }
+                    followUpRecordRepository.saveAll(followUps);
+                }
+            } catch (Exception e) {
+                log.warn("Failed to detach appointments from follow-ups for exam {}: {}", exam.getId(), e.getMessage());
+            }
+        }
+
+        // Bulk delete appointments associated with this patient
+        try {
+            appointmentRepository.deleteByPatient_Id(patientId);
+        } catch (Exception e) {
+            log.warn("Failed to bulk delete appointments for patient {}: {}. Falling back to per-appointment delete.", patientId, e.getMessage());
+            // Fallback: per-appointment delete
+            List<Appointment> appointments = appointmentRepository.findByPatient_Id(patientId);
+            if (appointments != null && !appointments.isEmpty()) {
+                try {
+                    appointmentRepository.deleteAll(appointments);
+                } catch (Exception ex) {
+                    log.warn("Failed to delete {} appointments for patient {}: {}", appointments.size(), patientId, ex.getMessage());
+                }
+            }
+        }
+
+        // Delete clinical files owned by patient via service (detaches examinations from files)
+        List<ClinicalFileDTO> clinicalFiles = clinicalFileService.getClinicalFilesByPatientId(patientId);
+        for (ClinicalFileDTO fileDto : clinicalFiles) {
+            try {
+                clinicalFileService.deleteClinicalFile(fileDto.getId());
+            } catch (Exception e) {
+                log.warn("Failed to delete clinical file {} for patient {}: {}", fileDto.getId(), patientId, e.getMessage());
+            }
+        }
+
+        // Finally delete the patient (will cascade to examinations and related entities)
+        patientRepository.delete(patient);
+    }
     
     @PostMapping("/schedule-appointment")
     @ResponseBody
@@ -3269,8 +3467,9 @@ public class PatientController {
         Map<String, Object> response = new HashMap<>();
         
         try {
-            // Get the current user's clinic
-            String clinicId = PeriDeskUtils.getCurrentClinicModel().getClinicId();
+            // Get the current user's clinic (guard against null context)
+            ClinicModel currentClinic = PeriDeskUtils.getCurrentClinicModel();
+            String clinicId = (currentClinic != null ? currentClinic.getClinicId() : null);
             
             // Get the examination
             Optional<ToothClinicalExamination> examinationOpt = toothClinicalExaminationRepository.findById(examinationId);
@@ -3282,11 +3481,15 @@ public class PatientController {
             
             ToothClinicalExamination examination = examinationOpt.get();
             
-            // Verify the examination belongs to the current clinic
-            if (!examination.getExaminationClinic().getClinicId().equals(clinicId)) {
-                response.put("success", false);
-                response.put("message", "You don't have permission to view this examination");
-                return response;
+            // Verify the examination belongs to the current clinic only if clinic context is available
+            if (clinicId != null) {
+                ClinicModel examClinic = examination.getExaminationClinic();
+                String examClinicId = (examClinic != null ? examClinic.getClinicId() : null);
+                if (examClinicId != null && !examClinicId.equals(clinicId)) {
+                    response.put("success", false);
+                    response.put("message", "You don't have permission to view this examination");
+                    return response;
+                }
             }
             
             // Create examination data
@@ -3572,6 +3775,131 @@ public class PatientController {
             return ResponseEntity.status(HttpStatus.INTERNAL_SERVER_ERROR).body(Map.of(
                 "success", false,
                 "message", "Error deleting examination: " + e.getMessage()
+            ));
+        }
+    }
+
+    @PostMapping("/examination/{examinationId}/purge")
+    @ResponseBody
+    @Transactional
+    @PreAuthorize("hasAnyRole('ADMIN','CLINIC_OWNER')")
+    public ResponseEntity<?> purgeExamination(@PathVariable Long examinationId) {
+        try {
+            log.info("Admin purge examination request for examination ID: {}", examinationId);
+
+            Optional<ToothClinicalExamination> examinationOpt = toothClinicalExaminationRepository.findById(examinationId);
+            if (!examinationOpt.isPresent()) {
+                return ResponseEntity.badRequest().body(Map.of(
+                    "success", false,
+                    "message", "Examination not found"
+                ));
+            }
+
+            ToothClinicalExamination examination = examinationOpt.get();
+
+            // 1) Delete lifecycle transitions first to satisfy FK constraints
+            try {
+                procedureLifecycleTransitionRepository.deleteByExamination_Id(examinationId);
+                procedureLifecycleTransitionRepository.flush();
+            } catch (Exception e) {
+                log.warn("Failed to bulk delete lifecycle transitions for examination {}: {}", examinationId, e.getMessage());
+            }
+
+            // 2) Delete physical media files, then remove DB records
+            List<MediaFile> mediaFiles = mediaFileRepository.findByExamination_Id(examinationId);
+            for (MediaFile mediaFile : mediaFiles) {
+                try {
+                    fileStorageService.deleteFile(mediaFile.getFilePath());
+                } catch (Exception e) {
+                    log.warn("Failed to delete physical file: {}", mediaFile.getFilePath(), e);
+                }
+                try {
+                    mediaFileRepository.delete(mediaFile);
+                } catch (Exception e) {
+                    log.warn("Failed to delete media file DB record {}: {}", mediaFile.getId(), e.getMessage());
+                }
+            }
+
+            // 3) Optionally delete payment entries explicitly (cascade exists but ensure cleanup)
+            try {
+                List<PaymentEntry> paymentEntries = paymentEntryRepository.findByExaminationIdOrderByPaymentDateDesc(examinationId);
+                if (paymentEntries != null && !paymentEntries.isEmpty()) {
+                    paymentEntryRepository.deleteAll(paymentEntries);
+                }
+            } catch (Exception e) {
+                log.warn("Failed to delete payment entries for examination {}: {}", examinationId, e.getMessage());
+            }
+
+            // 4) Delete the examination (FollowUps/Reopenings/Payments cascade via entity mappings)
+            toothClinicalExaminationRepository.delete(examination);
+
+            log.info("Successfully purged examination {} for patient {}", examinationId, examination.getPatient() != null ? examination.getPatient().getId() : null);
+
+            return ResponseEntity.ok(Map.of(
+                "success", true,
+                "message", "Examination purged successfully"
+            ));
+
+        } catch (Exception e) {
+            log.error("Error purging examination {}: {}", examinationId, e.getMessage(), e);
+            return ResponseEntity.status(HttpStatus.INTERNAL_SERVER_ERROR).body(Map.of(
+                "success", false,
+                "message", "Error purging examination: " + e.getMessage()
+            ));
+        }
+    }
+    /**
+     * Upload and update a patient's profile picture immediately (AJAX)
+     */
+    @PostMapping("/{id}/profile-picture")
+    @ResponseBody
+    public ResponseEntity<?> updateProfilePictureAjax(
+            @PathVariable Long id,
+            @RequestParam("profilePicture") MultipartFile profilePicture) {
+        try {
+            Optional<Patient> existingPatientOpt = patientRepository.findById(id);
+            if (!existingPatientOpt.isPresent()) {
+                return ResponseEntity.status(HttpStatus.NOT_FOUND).body(Map.of(
+                        "success", false,
+                        "message", "Patient not found"
+                ));
+            }
+
+            if (profilePicture == null || profilePicture.isEmpty()) {
+                return ResponseEntity.badRequest().body(Map.of(
+                        "success", false,
+                        "message", "Profile picture file is required"
+                ));
+            }
+
+            // Basic validations similar to register
+            if (profilePicture.getSize() > 2 * 1024 * 1024) {
+                return ResponseEntity.badRequest().body(Map.of(
+                        "success", false,
+                        "message", "Profile picture size exceeds 2MB limit"
+                ));
+            }
+
+            String contentType = profilePicture.getContentType();
+            if (contentType == null || !contentType.startsWith("image/")) {
+                return ResponseEntity.badRequest().body(Map.of(
+                        "success", false,
+                        "message", "Only image files are allowed"
+                ));
+            }
+
+            // Store and update patient
+            String profilePicturePath = patientService.handleProfilePictureUpload(profilePicture, id.toString());
+
+            return ResponseEntity.ok(Map.of(
+                    "success", true,
+                    "path", profilePicturePath
+            ));
+        } catch (Exception e) {
+            log.error("Error updating profile picture via AJAX", e);
+            return ResponseEntity.status(HttpStatus.INTERNAL_SERVER_ERROR).body(Map.of(
+                    "success", false,
+                    "message", "Server error: " + e.getMessage()
             ));
         }
     }

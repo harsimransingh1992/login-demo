@@ -518,8 +518,7 @@
                                     display: inline;
                                 }
                             }
-                                color: #27ae60;
-                            }
+                            
 
                             .waiting-time.medium {
                                 color: #f39c12;
@@ -534,6 +533,36 @@
                                 display: flex;
                                 align-items: center;
                                 gap: 12px;
+                            }
+
+                            /* Patient color helpers */
+                            .patient-color-strip {
+                                position: absolute;
+                                left: 0;
+                                top: 0;
+                                bottom: 0;
+                                width: 4px;
+                                border-radius: 0 2px 2px 0;
+                            }
+
+                            .patient-color-badge {
+                                position: absolute;
+                                top: -5px;
+                                right: -5px;
+                                width: 12px;
+                                height: 12px;
+                                border-radius: 50%;
+                                border: 2px solid white;
+                                box-shadow: 0 1px 3px rgba(0, 0, 0, 0.2);
+                            }
+
+                            .patient-color-indicator {
+                                display: inline-block;
+                                padding: 2px 8px;
+                                border-radius: 12px;
+                                font-size: 0.7rem;
+                                font-weight: 500;
+                                color: white;
                             }
 
                             .patient-avatar {
@@ -804,11 +833,7 @@
                                 box-shadow: 0 2px 4px rgba(0, 0, 0, 0.2);
                             }
 
-                            /* Ensure text is readable on different color backgrounds */
-                            .patient-color-indicator[style*="#FFD700"] {
-                                color: #333 !important;
-                                text-shadow: none;
-                            }
+                            /* Removed attribute selector targeting inline style to simplify CSS parsing */
 
                             /* Treating Doctor Dropdown Styles */
                             #treatingDoctor {
@@ -824,7 +849,8 @@
                                 -webkit-appearance: none;
                                 -moz-appearance: none;
                                 appearance: none;
-                                background-image: url("data:image/svg+xml;charset=UTF-8,%3csvg xmlns='http://www.w3.org/2000/svg' viewBox='0 0 24 24' fill='none' stroke='%232c3e50' stroke-width='2' stroke-linecap='round' stroke-linejoin='round'%3e%3cpolyline points='6 9 12 15 18 9'%3e%3c/polyline%3e%3c/svg%3e");
+                                /* background-image disabled to avoid CSS parser issues with data URLs */
+                                /* background-image: url("data:image/svg+xml;charset=UTF-8,%3csvg xmlns='http://www.w3.org/2000/svg' viewBox='0 0 24 24' fill='none' stroke='%232c3e50' stroke-width='2' stroke-linecap='round' stroke-linejoin='round'%3e%3cpolyline points='6 9 12 15 18 9'%3e%3c/polyline%3e%3c/svg%3e"); */
                                 background-repeat: no-repeat;
                                 background-position: right 12px center;
                                 background-size: 16px;
@@ -862,6 +888,27 @@
                         <div id="imageModal" class="image-modal">
                             <span class="modal-close">&times;</span>
                             <img class="modal-content" id="modalImage">
+                        </div>
+
+                        <!-- Recent Consultation Info Modal -->
+                        <div id="recentConsultationModal" class="modal fade" tabindex="-1" role="dialog" aria-labelledby="recentConsultationModalLabel" aria-hidden="true">
+                            <div class="modal-dialog modal-dialog-centered" role="document">
+                                <div class="modal-content">
+                                    <div class="modal-header">
+                                        <h5 class="modal-title" id="recentConsultationModalLabel">
+                                            <i class="fas fa-info-circle"></i> Consultation Fee Already Paid
+                                        </h5>
+                                    </div>
+                                    <div class="modal-body">
+                                        <p id="recentConsultationMessage" style="margin: 0;">
+                                            Consultation fee already paid recently.
+                                        </p>
+                                    </div>
+                                    <div class="modal-footer">
+                                        <button type="button" class="btn btn-primary" id="recentConsultationOkBtn">OK</button>
+                                    </div>
+                                </div>
+                            </div>
                         </div>
 
 
@@ -929,9 +976,9 @@
                                                                     <!-- Color Code Strip -->
                                                                     <c:if
                                                                         test="${not empty patient.colorCode && patient.colorCode != 'NO_CODE'}">
-                                                                        <div class="patient-color-strip"
-                                                                            style="position: absolute; left: 0; top: 0; bottom: 0; width: 4px; background-color: ${patient.colorCode.hexColor}; border-radius: 0 2px 2px 0;">
-                                                                        </div>
+                                                                            <div class="patient-color-strip"
+                                                                                data-color="${patient.colorCode.hexColor}">
+                                                                            </div>
                                                                     </c:if>
                                                                     ${status.count}
                                                                 </td>
@@ -945,9 +992,9 @@
                                                                         <c:if
                                                                             test="${not empty patient.colorCode && patient.colorCode != 'NO_CODE'}">
                                                                             <div class="patient-color-badge"
-                                                                                style="position: absolute; top: -5px; right: -5px; width: 12px; height: 12px; border-radius: 50%; background-color: ${patient.colorCode.hexColor}; border: 2px solid white; box-shadow: 0 1px 3px rgba(0,0,0,0.2);"
+                                                                                data-color="${patient.colorCode.hexColor}"
                                                                                 title="${patient.colorCode.displayName}">
-                                                                            </div>
+                                                                                </div>
                                                                         </c:if>
                                                                         <c:choose>
                                                                             <c:when
@@ -958,7 +1005,11 @@
                                                                             </c:when>
                                                                             <c:otherwise>
                                                                                 <div class="avatar-placeholder"
-                                                                                    onclick="showAvatarInfo('${patient.firstName}', '${patient.lastName}', '${patient.gender}', '${patient.age}')">
+                                                                                    data-first-name="<c:out value='${patient.firstName}'/>"
+                                                                                    data-last-name="<c:out value='${patient.lastName}'/>"
+                                                                                    data-gender="<c:out value='${patient.gender}'/>"
+                                                                                    data-age="<c:out value='${patient.age}'/>"
+                                                                                    onclick="showAvatarInfo(this.dataset.firstName, this.dataset.lastName, this.dataset.gender, this.dataset.age)">
                                                                                     <c:choose>
                                                                                         <c:when
                                                                                             test="${patient.gender == 'MALE'}">
@@ -1015,7 +1066,7 @@
                                                                                     test="${not empty patient.colorCode && patient.colorCode != 'NO_CODE'}">
                                                                                     <span
                                                                                         class="patient-color-indicator"
-                                                                                        style="display: inline-block; padding: 2px 8px; border-radius: 12px; font-size: 0.7rem; font-weight: 500; color: white; background-color: ${patient.colorCode.hexColor};"
+                                                                                        data-color="${patient.colorCode.hexColor}"
                                                                                         title="${patient.colorCode.displayName}">
                                                                                         ${patient.colorCode.displayName}
                                                                                     </span>
@@ -1150,16 +1201,19 @@
                                                                     <div class="d-flex flex-wrap gap-1" style="justify-content: center;">
                                                                         <sec:authorize access="hasRole('RECEPTIONIST')">
                                                                             <button
-                                                                                onclick="event.stopPropagation(); openConsultationChargesModal(${patient.id}, '${patient.firstName} ${patient.lastName}')"
-                                                                                class="btn btn-success btn-sm"
+                                                                                type="button"
+                                                                                class="btn btn-success btn-sm collect-consultation-btn"
+                                                                                data-patient-id="${patient.id}"
+                                                                                data-patient-name="<c:out value='${patient.firstName} ${patient.lastName}'/>"
                                                                                 title="Collect Consultation Charges">
                                                                                 <i class="fas fa-money-bill-wave"></i> Collect
                                                                             </button>
                                                                         </sec:authorize>
                                                                         <sec:authorize access="!hasRole('DOCTOR') and !hasRole('OPD_DOCTOR')">
                                                                             <button
-                                                                                onclick="event.stopPropagation(); checkoutPatient(${patient.id})"
-                                                                                class="btn btn-danger btn-sm"
+                                                                                type="button"
+                                                                                class="btn btn-danger btn-sm checkout-patient-btn"
+                                                                                data-patient-id="${patient.id}"
                                                                                 title="Check Out Patient">
                                                                                 <i class="fas fa-sign-out-alt"></i> Checkout
                                                                             </button>
@@ -1563,9 +1617,54 @@
                                         return;
                                     }
                                     
+                                    // Check if consultation was already paid within last 30 days
+                                    try {
+                                        const recentResp = await fetch('${pageContext.request.contextPath}/api/consultation-fee/recent?patientId=' + encodeURIComponent(patientId) + '&clinicId=' + encodeURIComponent(clinicId) + '&days=30', {
+                                            method: 'GET',
+                                            headers: {
+                                                'Content-Type': 'application/json',
+                                                'X-CSRF-TOKEN': document.querySelector('meta[name="_csrf"]').content
+                                            },
+                                            credentials: 'same-origin'
+                                        });
+                                        if (recentResp.ok) {
+                                            const recentResult = await recentResp.json();
+                                            if (recentResult.success && recentResult.found) {
+                                                const msg = 'Consultation fee already paid on ' + (recentResult.dateTime || '') + ' at ' + (recentResult.clinic || clinicId);
+                                                const msgEl = document.getElementById('recentConsultationMessage');
+                                                if (msgEl) {
+                                                    msgEl.textContent = msg;
+                                                }
+                                                const okBtn = document.getElementById('recentConsultationOkBtn');
+                                                if (okBtn) {
+                                                    okBtn.onclick = function() {
+                                                        $('#recentConsultationModal').modal('hide');
+                                                    };
+                                                }
+                                                $('#recentConsultationModal').modal('show');
+                                                return; // wait for user to acknowledge
+                                            }
+                                        }
+                                    } catch (e) {
+                                        console.warn('Recent consultation check failed:', e);
+                                    }
+
+                                    // If not found, proceed directly
+                                    await continueToConsultationChargesModal();
+                                } catch (error) {
+                                    console.error('Error fetching consultation fee:', error);
+                                    showNotification('Network error. Please try again.', true);
+                                }
+                            }
+
+                            async function continueToConsultationChargesModal() {
+                                try {
                                     // Load treating doctors
                                     await loadTreatingDoctors();
-                                    
+
+                                    // Get clinic ID
+                                    const clinicId = '${currentUserClinic != null ? currentUserClinic.clinicId : ""}';
+
                                     // Fetch consultation fee from backend with clinic ID
                                     const response = await fetch('${pageContext.request.contextPath}/api/consultation-fee?clinicId=' + encodeURIComponent(clinicId), {
                                         method: 'GET',
@@ -1587,8 +1686,8 @@
                                     } else {
                                         showNotification('Failed to fetch consultation fee. Please try again.', true);
                                     }
-                                } catch (error) {
-                                    console.error('Error fetching consultation fee:', error);
+                                } catch (err) {
+                                    console.error('Error continuing to consultation modal:', err);
                                     showNotification('Network error. Please try again.', true);
                                 }
                             }
@@ -1688,6 +1787,53 @@
                                     showNotification('Network error. Please try again.', true);
                                 }
                             }
+
+                            // Delegated click handlers for action buttons
+                            document.addEventListener('click', function(event) {
+                                const collectBtn = event.target.closest('.collect-consultation-btn');
+                                if (collectBtn) {
+                                    event.stopPropagation();
+                                    const patientId = collectBtn.dataset.patientId;
+                                    const patientName = collectBtn.dataset.patientName || '';
+                                    if (patientId) {
+                                        openConsultationChargesModal(patientId, patientName);
+                                    }
+                                    return;
+                                }
+
+                                const checkoutBtn = event.target.closest('.checkout-patient-btn');
+                                if (checkoutBtn) {
+                                    event.stopPropagation();
+                                    const patientId = checkoutBtn.dataset.patientId;
+                                    if (patientId) {
+                                        checkoutPatient(patientId);
+                                    }
+                                    return;
+                                }
+                            }, true);
+
+                            // Apply dynamic patient colors from data-color attributes
+                            function applyPatientColors() {
+                                try {
+                                    document.querySelectorAll('.patient-color-strip[data-color]').forEach(function(el) {
+                                        var color = el.getAttribute('data-color');
+                                        if (color) el.style.backgroundColor = color;
+                                    });
+                                    document.querySelectorAll('.patient-color-badge[data-color]').forEach(function(el) {
+                                        var color = el.getAttribute('data-color');
+                                        if (color) el.style.backgroundColor = color;
+                                    });
+                                    document.querySelectorAll('.patient-color-indicator[data-color]').forEach(function(el) {
+                                        var color = el.getAttribute('data-color');
+                                        if (color) el.style.backgroundColor = color;
+                                    });
+                                } catch (e) {
+                                    console.warn('applyPatientColors error:', e);
+                                }
+                            }
+
+                            // Run on initial load
+                            document.addEventListener('DOMContentLoaded', applyPatientColors);
 
                         </script>
 

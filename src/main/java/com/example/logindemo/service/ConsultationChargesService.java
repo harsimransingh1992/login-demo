@@ -26,4 +26,13 @@ public interface ConsultationChargesService {
      */
     ToothClinicalExamination collectConsultationCharges(Long patientId, Double consultationFee, 
                                                        PaymentMode paymentMode, String paymentNotes, Long treatingDoctorId);
+
+    /**
+     * Find a recent consultation payment within the given days for a patient at a clinic
+     * @param patientId the patient ID
+     * @param clinicId the clinic ID
+     * @param days the lookback window in days (e.g., 30)
+     * @return the most recent matching examination if found, otherwise null
+     */
+    ToothClinicalExamination findRecentConsultationPayment(Long patientId, String clinicId, int days);
 }
