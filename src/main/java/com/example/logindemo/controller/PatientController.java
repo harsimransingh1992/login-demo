@@ -1057,26 +1057,7 @@ public class PatientController {
                 examination.setAssignedDoctorId(examinationModel.get().getAssignedDoctor().getId());
             }
 
-            // Gate by arch images instead of doctor assignment
-            boolean hasUpperArch = false;
-            boolean hasLowerArch = false;
-            // Check legacy fields
-            if (examinationModel.isPresent()) {
-                ToothClinicalExamination exEntity = examinationModel.get();
-                hasUpperArch = exEntity.getUpperDenturePicturePath() != null && !exEntity.getUpperDenturePicturePath().isEmpty();
-                hasLowerArch = exEntity.getLowerDenturePicturePath() != null && !exEntity.getLowerDenturePicturePath().isEmpty();
-            }
-            // Also check media files repository
-            if (!hasUpperArch) {
-                hasUpperArch = !mediaFileRepository.findByExaminationIdAndFileType(id, "upper_arch").isEmpty();
-            }
-            if (!hasLowerArch) {
-                hasLowerArch = !mediaFileRepository.findByExaminationIdAndFileType(id, "lower_arch").isEmpty();
-            }
-            if (!(hasUpperArch && hasLowerArch)) {
-                log.warn("Attempt to access procedures for examination {} without both arch images uploaded (upper={}, lower={})", id, hasUpperArch, hasLowerArch);
-                return "redirect:/patients/examination/" + id + "?error=Please upload both upper and lower arch pictures before starting a procedure";
-            }
+            // Removed gate by arch images: allow accessing procedures regardless of pre-treatment images
             
             // Get the patient details
             Optional<Patient> patient = patientRepository.findById(Long.valueOf(examination.getPatient().getId()));
@@ -2830,6 +2811,100 @@ public class PatientController {
             ));
         } catch (Exception e) {
             log.error("Error uploading media file: {}", e.getMessage(), e);
+            return ResponseEntity.badRequest().body(Map.of(
+                "success", false,
+                "message", e.getMessage()
+            ));
+        }
+    }
+
+    @PostMapping("/examination/upload-bulk-media")
+    @ResponseBody
+    @Transactional
+    public ResponseEntity<?> uploadBulkMedia(
+            @RequestParam("examinationId") Long examinationId,
+            @RequestParam("files") MultipartFile[] files) {
+        try {
+            if (examinationId == null) {
+                return ResponseEntity.badRequest().body(Map.of(
+                    "success", false,
+                    "message", "Missing examinationId"
+                ));
+            }
+
+            if (files == null || files.length == 0) {
+                return ResponseEntity.badRequest().body(Map.of(
+                    "success", false,
+                    "message", "At least one file is required"
+                ));
+            }
+
+            ToothClinicalExamination examination = toothClinicalExaminationRepository.findById(examinationId)
+                .orElseThrow(() -> new RuntimeException("Examination not found"));
+
+            int uploadedCount = 0;
+            List<Map<String, Object>> saved = new ArrayList<>();
+            List<String> errors = new ArrayList<>();
+
+            for (MultipartFile file : files) {
+                if (file == null || file.isEmpty()) {
+                    errors.add("Skipping empty file");
+                    continue;
+                }
+
+                String contentType = file.getContentType();
+                boolean isImage = contentType != null && contentType.startsWith("image/");
+                boolean isPdf = contentType != null && contentType.equals("application/pdf");
+
+                // Only allow images and PDFs
+                if (!isImage && !isPdf) {
+                    errors.add("Unsupported file type: " + (file.getOriginalFilename() != null ? file.getOriginalFilename() : "file"));
+                    continue;
+                }
+
+                long maxSize = isImage ? 5 * 1024 * 1024 : 10 * 1024 * 1024;
+                if (file.getSize() > maxSize) {
+                    errors.add((file.getOriginalFilename() != null ? file.getOriginalFilename() : "File") +
+                            " exceeds size limit (" + (isImage ? "5MB" : "10MB") + ")");
+                    continue;
+                }
+
+                String storageDirectory = isImage ? "dental-images" : "documents";
+                try {
+                    String filePath = fileStorageService.storeFile(file, storageDirectory);
+
+                    MediaFile mediaFile = new MediaFile();
+                    mediaFile.setExamination(examination);
+                    mediaFile.setFilePath(filePath);
+                    mediaFile.setFileType("other_document");
+                    mediaFile.setTreatmentPhase(TreatmentPhase.PRE);
+                    mediaFile.setUploadedAt(LocalDateTime.now());
+                    mediaFileRepository.save(mediaFile);
+
+                    Map<String, Object> item = new HashMap<>();
+                    item.put("id", mediaFile.getId());
+                    item.put("filePath", mediaFile.getFilePath());
+                    item.put("fileType", mediaFile.getFileType());
+                    item.put("isPdf", !isImage);
+                    item.put("originalFilename", file.getOriginalFilename());
+                    saved.add(item);
+                    uploadedCount++;
+                } catch (Exception e) {
+                    errors.add("Failed to save " + (file.getOriginalFilename() != null ? file.getOriginalFilename() : "file") + ": " + e.getMessage());
+                }
+            }
+
+            Map<String, Object> body = new HashMap<>();
+            body.put("success", true);
+            body.put("uploadedCount", uploadedCount);
+            body.put("failedCount", files.length - uploadedCount);
+            body.put("savedFiles", saved);
+            if (!errors.isEmpty()) {
+                body.put("errors", errors);
+            }
+            return ResponseEntity.ok(body);
+        } catch (Exception e) {
+            log.error("Error in bulk media upload: {}", e.getMessage(), e);
             return ResponseEntity.badRequest().body(Map.of(
                 "success", false,
                 "message", e.getMessage()

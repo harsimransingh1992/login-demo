@@ -1909,15 +1909,6 @@
                                                             <span class="tooltip-text">Procedure is already
                                                                 started</span>
                                                         </c:when>
-                                                        <c:when
-                                                            test="${empty examination.upperDenturePicturePath or empty examination.lowerDenturePicturePath}">
-                                                            <a id="startProcedureBtn" href="#"
-                                                                class="btn btn-primary disabled" disabled>
-                                                                <i class="fas fa-play"></i> Start Procedure
-                                                            </a>
-                                                            <span class="tooltip-text">Please upload both upper and
-                                                                lower arch pictures to start</span>
-                                                        </c:when>
                                                         <c:otherwise>
                                                             <a id="startProcedureBtn"
                                                                 href="${pageContext.request.contextPath}/patients/examination/${examination.id}/procedures"
@@ -2157,6 +2148,10 @@
                                                     <button type="button" id="add-image-btn" class="btn btn-primary">
                                                         <i class="fas fa-plus"></i> Add New File
                                                     </button>
+                                                    <button type="button" id="bulk-upload-btn" class="btn btn-primary" style="margin-left:8px;">
+                                                        <i class="fas fa-file-upload"></i> Bulk Upload
+                                                    </button>
+                                                    <input type="file" id="bulk-upload-input" multiple accept="image/*,application/pdf" style="display:none" />
                                                 </div>
                                             </div>
                                         </div>
@@ -2579,6 +2574,68 @@
 
                                 // Initialize dental images upload functionality
                                 initializeArchUpload();
+                                initializeBulkUpload();
+
+                                // Require at least one media before starting the procedure
+                                const startBtn = document.getElementById('startProcedureBtn');
+                                if (startBtn) {
+                                    startBtn.addEventListener('click', async function (e) {
+                                        const btn = this;
+                                        const isDisabled = btn.classList.contains('disabled') || btn.getAttribute('disabled') !== null;
+                                        const targetHref = btn.getAttribute('href');
+                                        if (isDisabled || !targetHref || targetHref === '#') {
+                                            return; // ignore disabled or no-op buttons
+                                        }
+
+                                        e.preventDefault();
+
+                                        // Resolve examinationId from hidden input or URL
+                                        let examinationId = document.getElementById('examinationId') ? document.getElementById('examinationId').value : null;
+                                        if (!examinationId) {
+                                            const match = window.location.pathname.match(/\/examination\/(\d+)/);
+                                            if (match) {
+                                                examinationId = match[1];
+                                            }
+                                        }
+
+                                        let hasMedia = false;
+
+                                        // Try server-side check first
+                                        try {
+                                            const csrfToken = document.querySelector('meta[name="_csrf"]').content;
+                                            const csrfHeader = document.querySelector('meta[name="_csrf_header"]').content;
+                                            const resp = await fetch(`${contextPath}/patients/examination/${examinationId}/media-files`, {
+                                                method: 'GET',
+                                                headers: {
+                                                    'Content-Type': 'application/json',
+                                                    [csrfHeader]: csrfToken
+                                                },
+                                                credentials: 'same-origin'
+                                            });
+                                            if (resp.ok) {
+                                                const data = await resp.json();
+                                                hasMedia = data && data.success && Array.isArray(data.mediaFiles) && data.mediaFiles.length > 0;
+                                            }
+                                        } catch (err) {
+                                            // Fallback to DOM-based check if network fails
+                                        }
+
+                                        // DOM fallback: check if any media cards are present
+                                        if (!hasMedia) {
+                                            const grid = document.getElementById('existing-images-grid');
+                                            if (grid) {
+                                                const cards = grid.querySelectorAll('.image-card');
+                                                hasMedia = cards.length > 0;
+                                            }
+                                        }
+
+                                        if (hasMedia) {
+                                            window.location.href = targetHref;
+                                        } else {
+                                            alert('Please upload at least one media file before starting the procedure.');
+                                        }
+                                    });
+                                }
 
                                 // Form submission removed - form is now read-only
                                 /*
@@ -2797,47 +2854,15 @@
                                 // No doctor assignment messaging here anymore
                             }
 
-                            // Enable/disable Start Procedure button when both pre-treatment arches are uploaded and no procedure started
+                            // Enable Start Procedure button if no procedure is started (image checks removed)
                             function updateStartProcedureState() {
                                 const btn = document.getElementById('startProcedureBtn');
                                 if (!btn) return;
-                                // Already started? do nothing
                                 const procedureAlreadyStarted = '${not empty examination.procedure}' === 'true';
                                 if (procedureAlreadyStarted) return;
-
-                                const existingImagesGrid = document.getElementById('existing-images-grid');
-                                let hasPreTreatmentUpperArch = false;
-                                let hasPreTreatmentLowerArch = false;
-
-                                if (existingImagesGrid) {
-                                    const imageCards = existingImagesGrid.querySelectorAll('.image-card');
-                                    imageCards.forEach(card => {
-                                        const img = card.querySelector('img');
-                                        const imageType = img ? img.getAttribute('alt') : '';
-                                        const treatmentPhaseElement = card.querySelector('.treatment-phase');
-                                        const isPreTreatment = treatmentPhaseElement && treatmentPhaseElement.classList.contains('phase-pre');
-                                        
-                                        if (imageType === 'upper_arch' && isPreTreatment) hasPreTreatmentUpperArch = true;
-                                        if (imageType === 'lower_arch' && isPreTreatment) hasPreTreatmentLowerArch = true;
-                                    });
-                                }
-
-                                // Check legacy fields for backward compatibility (these are considered pre-treatment by default)
-                                if (!hasPreTreatmentUpperArch || !hasPreTreatmentLowerArch) {
-                                    hasPreTreatmentUpperArch = '${not empty examination.upperDenturePicturePath}' === 'true' || hasPreTreatmentUpperArch;
-                                    hasPreTreatmentLowerArch = '${not empty examination.lowerDenturePicturePath}' === 'true' || hasPreTreatmentLowerArch;
-                                }
-
-                                const canStart = hasPreTreatmentUpperArch && hasPreTreatmentLowerArch;
-                                if (canStart) {
-                                    btn.classList.remove('disabled');
-                                    btn.removeAttribute('disabled');
-                                    btn.setAttribute('href', '${pageContext.request.contextPath}/patients/examination/${examination.id}/procedures');
-                                } else {
-                                    btn.classList.add('disabled');
-                                    btn.setAttribute('disabled', 'disabled');
-                                    btn.setAttribute('href', '#');
-                                }
+                                btn.classList.remove('disabled');
+                                btn.removeAttribute('disabled');
+                                btn.setAttribute('href', '${pageContext.request.contextPath}/patients/examination/${examination.id}/procedures');
                             }
 
                             function initializeArchUpload() {
@@ -2906,6 +2931,112 @@
                                 if (modal) {
                                     modal.style.display = 'none';
                                 }
+                            }
+
+                            function initializeBulkUpload() {
+                                const bulkBtn = document.getElementById('bulk-upload-btn');
+                                const bulkInput = document.getElementById('bulk-upload-input');
+
+                                if (!bulkBtn || !bulkInput) {
+                                    return;
+                                }
+
+                                bulkBtn.addEventListener('click', () => {
+                                    bulkInput.value = '';
+                                    bulkInput.click();
+                                });
+
+                                bulkInput.addEventListener('change', async (event) => {
+                                    const files = Array.from(event.target.files || []);
+                                    if (!files.length) return;
+
+                                    let examinationId = document.getElementById('examinationId')?.value;
+                                    if (!examinationId) {
+                                        const urlPath = window.location.pathname;
+                                        const match = urlPath.match(/\/examination\/(\d+)/);
+                                        if (match) {
+                                            examinationId = match[1];
+                                        }
+                                    }
+
+                                    if (!examinationId) {
+                                        alert('Examination ID not found');
+                                        return;
+                                    }
+
+                                    const originalHtml = bulkBtn.innerHTML;
+                                    bulkBtn.disabled = true;
+                                    bulkBtn.innerHTML = '<i class="fas fa-spinner fa-spin"></i> Uploading...';
+
+                                    try {
+                                        // Validate and compress using existing image compression logic
+                                        const errors = [];
+                                        const processedFiles = await Promise.all(files.map(async (file) => {
+                                            const isImage = file.type && file.type.startsWith('image/');
+                                            const isPdf = file.type === 'application/pdf';
+
+                                            if (!isImage && !isPdf) {
+                                                errors.push('Unsupported file type: ' + (file.name || 'file'));
+                                                return null;
+                                            }
+
+                                            const maxSize = isPdf ? 10 * 1024 * 1024 : 5 * 1024 * 1024;
+                                            if (file.size > maxSize) {
+                                                errors.push((file.name || 'file') + ' exceeds size limit (' + (isPdf ? '10MB' : '5MB') + ')');
+                                                return null;
+                                            }
+
+                                            if (isImage) {
+                                                try {
+                                                    const compressed = await ImageCompression.compressImage(file);
+                                                    return compressed;
+                                                } catch (e) {
+                                                    errors.push('Failed to compress ' + (file.name || 'image') + ': ' + e.message);
+                                                    return null;
+                                                }
+                                            }
+                                            // PDFs: return as is
+                                            return file;
+                                        }));
+
+                                        const uploadables = processedFiles.filter(f => !!f);
+                                        if (!uploadables.length) {
+                                            alert('No valid files to upload.\n' + (errors.length ? errors.join('\n') : ''));
+                                            return;
+                                        }
+
+                                        const formData = new FormData();
+                                        formData.append('examinationId', examinationId);
+                                        uploadables.forEach(f => formData.append('files', f));
+
+                                        const response = await fetch('/patients/examination/upload-bulk-media', {
+                                            method: 'POST',
+                                            headers: {
+                                                'X-CSRF-TOKEN': document.querySelector('meta[name="_csrf"]').content
+                                            },
+                                            body: formData
+                                        });
+
+                                        const result = await response.json();
+                                        if (result.success) {
+                                            const count = result.uploadedCount || uploadables.length;
+                                            const failed = result.failedCount || 0;
+                                            let message = 'Uploaded ' + count + ' file(s) successfully';
+                                            if (failed || errors.length) {
+                                                message += '\n' + [...(result.errors || []), ...errors].join('\n');
+                                            }
+                                            alert(message);
+                                            loadExistingImages();
+                                        } else {
+                                            alert('Bulk upload failed: ' + (result.message || 'Unknown error'));
+                                        }
+                                    } catch (err) {
+                                        alert('Error during bulk upload: ' + err.message);
+                                    } finally {
+                                        bulkBtn.disabled = false;
+                                        bulkBtn.innerHTML = originalHtml;
+                                    }
+                                });
                             }
 
                             // Update file input accept attribute based on selected file type
