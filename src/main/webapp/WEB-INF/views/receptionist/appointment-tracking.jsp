@@ -516,7 +516,11 @@
                                         <td>
                                             <c:choose>
                                                 <c:when test="${not empty appointment.patient}">
-                                                    ${appointment.patient.firstName} ${appointment.patient.lastName}
+                                                    <a href="${pageContext.request.contextPath}/patients/details/${appointment.patient.id}"
+                                                       class="patient-name-link registered-patient"
+                                                       title="Click to view patient details">
+                                                        ${appointment.patient.firstName} ${appointment.patient.lastName}
+                                                    </a>
                                                 </c:when>
                                                 <c:otherwise>
                                                     <c:out value="${appointment.patientName != null ? appointment.patientName : 'Walk-in Patient'}"/>
@@ -555,9 +559,19 @@
                                             <c:set var="isCompleted" value="${appointment.status == 'COMPLETED'}"/>
                                             <c:set var="hasNotes" value="${not empty appointment.notes}"/>
                                             <c:set var="shouldDisable" value="${isCompleted or hasNotes}"/>
-                                            <button class="btn ${shouldDisable ? 'btn-secondary' : 'btn-success'} btn-sm" title="${isCompleted ? 'Cannot add notes to completed appointments' : (hasNotes ? 'Notes already added - cannot edit further' : 'Add follow-up notes')}" ${shouldDisable ? 'disabled' : ''} onclick="showNotesInput(${appointment.id})">
-                                                <i class="fas fa-edit"></i> Add Notes
-                                            </button>
+                                            <c:set var="btnTitle" value="${isCompleted ? 'Cannot add notes to completed appointments' : (hasNotes ? 'Notes already added - cannot edit further' : 'Add follow-up notes')}"/>
+                                            <c:choose>
+                                                <c:when test="${shouldDisable}">
+                                                    <button class="btn btn-secondary btn-sm" title="${btnTitle}" disabled="disabled" onclick="showNotesInput(${appointment.id})">
+                                                        <i class="fas fa-edit"></i> Add Notes
+                                                    </button>
+                                                </c:when>
+                                                <c:otherwise>
+                                                    <button class="btn btn-success btn-sm" title="${btnTitle}" onclick="showNotesInput(${appointment.id})">
+                                                        <i class="fas fa-edit"></i> Add Notes
+                                                    </button>
+                                                </c:otherwise>
+                                            </c:choose>
                                         </td>
                                     </tr>
                                 </c:forEach>
@@ -647,52 +661,57 @@
             </c:if>
         });
         
-        // The following functions are no longer needed as pagination is server-side
-        // function updatePagination() {
-        //     const container = document.getElementById('paginationContainer');
-        //     const info = document.getElementById('paginationInfo');
-        //     const controls = document.getElementById('paginationControls');
-        //     const pageSizeSelect = document.getElementById('pageSizeSelect');
-        //     if (totalAppointments === 0) {
-        //         container.style.display = 'none';
-        //         return;
-        //     }
-        //     container.style.display = 'flex';
-        //     // Info text
-        //     const start = (currentPage * pageSize) + 1;
-        //     const end = Math.min((currentPage * pageSize) + document.getElementById('appointmentsTableBody').rows.length, totalAppointments);
-        //     info.textContent = `Showing ${start} to ${end} of ${totalAppointments} appointments`;
-        //     // Page size selector
-        //     pageSizeSelect.value = pageSize;
-        //     // Page buttons
-        //     let html = '';
-        //     if (currentPage > 0) {
-        //         html += `<a href="javascript:void(0)" onclick="goToPage(${currentPage - 1})" class="pagination-button"><i class="fas fa-chevron-left"></i> Previous</a>`;
-        //     }
-        //     // Show up to 5 page numbers, with ellipsis if needed
-        //     let startPage = Math.max(0, currentPage - 2);
-        //     let endPage = Math.min(totalPages - 1, currentPage + 2);
-        //     if (currentPage <= 2) endPage = Math.min(4, totalPages - 1);
-        //     if (currentPage >= totalPages - 3) startPage = Math.max(0, totalPages - 5);
-        //     for (let i = startPage; i <= endPage; i++) {
-        //         if (i === currentPage) {
-        //             html += `<span class="pagination-button active">${i + 1}</span>`;
-        //         } else {
-        //             html += `<a href="javascript:void(0)" onclick="goToPage(${i})" class="pagination-button">${i + 1}</a>`;
-        //         }
-        //     }
-        //     if (endPage < totalPages - 1) {
-        //         html += `<span class="pagination-button">...</span>`;
-        //         html += `<a href="javascript:void(0)" onclick="goToPage(${totalPages - 1})" class="pagination-button">${totalPages}</a>`;
-        //     }
-        //     if (currentPage < totalPages - 1) {
-        //         html += `<a href="javascript:void(0)" onclick="goToPage(${currentPage + 1})" class="pagination-button">Next <i class="fas fa-chevron-right"></i></a>`;
-        //     }
-        //     controls.innerHTML = html;
-        // }
-        // function goToPage(page) {
-        //     searchAppointments(page);
-        // }
+        <%-- The following functions were previously used for client-side pagination.
+             They are not needed anymore (pagination is server-side), and they
+             contained JavaScript template literals with `${...}` that could be
+             parsed by JSP EL. Keeping them in a JSP comment to avoid EL parsing.
+             
+             function updatePagination() {
+                 const container = document.getElementById('paginationContainer');
+                 const info = document.getElementById('paginationInfo');
+                 const controls = document.getElementById('paginationControls');
+                 const pageSizeSelect = document.getElementById('pageSizeSelect');
+                 if (totalAppointments === 0) {
+                     container.style.display = 'none';
+                     return;
+                 }
+                 container.style.display = 'flex';
+                 // Info text
+                 const start = (currentPage * pageSize) + 1;
+                 const end = Math.min((currentPage * pageSize) + document.getElementById('appointmentsTableBody').rows.length, totalAppointments);
+                 info.textContent = `Showing ${start} to ${end} of ${totalAppointments} appointments`;
+                 // Page size selector
+                 pageSizeSelect.value = pageSize;
+                 // Page buttons
+                 let html = '';
+                 if (currentPage > 0) {
+                     html += `<a href="javascript:void(0)" onclick="goToPage(${currentPage - 1})" class="pagination-button"><i class="fas fa-chevron-left"></i> Previous</a>`;
+                 }
+                 // Show up to 5 page numbers, with ellipsis if needed
+                 let startPage = Math.max(0, currentPage - 2);
+                 let endPage = Math.min(totalPages - 1, currentPage + 2);
+                 if (currentPage <= 2) endPage = Math.min(4, totalPages - 1);
+                 if (currentPage >= totalPages - 3) startPage = Math.max(0, totalPages - 5);
+                 for (let i = startPage; i <= endPage; i++) {
+                     if (i === currentPage) {
+                         html += `<span class="pagination-button active">${i + 1}</span>`;
+                     } else {
+                         html += `<a href="javascript:void(0)" onclick="goToPage(${i})" class="pagination-button">${i + 1}</a>`;
+                     }
+                 }
+                 if (endPage < totalPages - 1) {
+                     html += `<span class="pagination-button">...</span>`;
+                     html += `<a href="javascript:void(0)" onclick="goToPage(${totalPages - 1})" class="pagination-button">${totalPages}</a>`;
+                 }
+                 if (currentPage < totalPages - 1) {
+                     html += `<a href="javascript:void(0)" onclick="goToPage(${currentPage + 1})" class="pagination-button">Next <i class="fas fa-chevron-right"></i></a>`;
+                 }
+                 controls.innerHTML = html;
+             }
+             function goToPage(page) {
+                 searchAppointments(page);
+             }
+        --%>
         function changePageSize(size) {
             // Get current URL parameters
             const urlParams = new URLSearchParams(window.location.search);

@@ -244,6 +244,11 @@
                                         <button type="submit" class="btn-secondary"><i class="fas fa-power-off"></i>
                                             Logout</button>
                                     </form>
+                                    <sec:authorize access="hasAnyRole('ADMIN','CLINIC_OWNER')">
+                                        <button type="button" id="btnPurgeAll" class="btn-danger" style="margin-left:12px;">
+                                            <i class="fas fa-trash-alt"></i> Purge All Patients
+                                        </button>
+                                    </sec:authorize>
                                 </div>
 
                                 <div class="search-container">
@@ -349,6 +354,15 @@
                                                                 </c:choose>
                                                             </div>
                                                         </sec:authorize>
+                                                        <sec:authorize access="hasAnyRole('ADMIN','CLINIC_OWNER')">
+                                                            <div class="action-buttons" style="margin-top:8px;">
+                                                                <button type="button" class="btn-danger btn-purge"
+                                                                    data-patient-id="${patient.id}"
+                                                                    data-patient-name="${fn:escapeXml(patient.firstName)} ${fn:escapeXml(patient.lastName)}">
+                                                                    <i class="fas fa-trash-alt"></i> Purge Patient
+                                                                </button>
+                                                            </div>
+                                                        </sec:authorize>
                                                         <sec:authorize
                                                             access="hasRole('DOCTOR') or hasRole('OPD_DOCTOR')">
                                                             <span
@@ -375,10 +389,38 @@
                                             <div class="page-size-selector">
                                                 <label for="pageSize">Show:</label>
                                                 <select id="pageSize" onchange="changePageSize(this.value)">
-                                                    <option value="10" ${pageSize==10 ? 'selected' : '' }>10</option>
-                                                    <option value="20" ${pageSize==20 ? 'selected' : '' }>20</option>
-                                                    <option value="50" ${pageSize==50 ? 'selected' : '' }>50</option>
-                                                    <option value="100" ${pageSize==100 ? 'selected' : '' }>100</option>
+                                                    <c:choose>
+                                                        <c:when test="${pageSize == 10}">
+                                                            <option value="10" selected="selected">10</option>
+                                                        </c:when>
+                                                        <c:otherwise>
+                                                            <option value="10">10</option>
+                                                        </c:otherwise>
+                                                    </c:choose>
+                                                    <c:choose>
+                                                        <c:when test="${pageSize == 20}">
+                                                            <option value="20" selected="selected">20</option>
+                                                        </c:when>
+                                                        <c:otherwise>
+                                                            <option value="20">20</option>
+                                                        </c:otherwise>
+                                                    </c:choose>
+                                                    <c:choose>
+                                                        <c:when test="${pageSize == 50}">
+                                                            <option value="50" selected="selected">50</option>
+                                                        </c:when>
+                                                        <c:otherwise>
+                                                            <option value="50">50</option>
+                                                        </c:otherwise>
+                                                    </c:choose>
+                                                    <c:choose>
+                                                        <c:when test="${pageSize == 100}">
+                                                            <option value="100" selected="selected">100</option>
+                                                        </c:when>
+                                                        <c:otherwise>
+                                                            <option value="100">100</option>
+                                                        </c:otherwise>
+                                                    </c:choose>
                                                 </select>
                                             </div>
 
@@ -386,25 +428,62 @@
                                             <div class="sort-controls">
                                                 <label for="sort">Sort by:</label>
                                                 <select id="sort" onchange="changeSort(this.value)">
-                                                    <option value="id" ${sort=='id' ? 'selected' : '' }>ID</option>
-                                                    <option value="firstName" ${sort=='firstName' ? 'selected' : '' }>
-                                                        Name</option>
-                                                    <option value="registrationDate" ${sort=='registrationDate'
-                                                        ? 'selected' : '' }>Registration Date</option>
-                                                    <option value="dateOfBirth" ${sort=='dateOfBirth' ? 'selected' : ''
-                                                        }>Date of Birth</option>
+                                                    <c:choose>
+                                                        <c:when test="${sort == 'id'}">
+                                                            <option value="id" selected="selected">ID</option>
+                                                        </c:when>
+                                                        <c:otherwise>
+                                                            <option value="id">ID</option>
+                                                        </c:otherwise>
+                                                    </c:choose>
+                                                    <c:choose>
+                                                        <c:when test="${sort == 'firstName'}">
+                                                            <option value="firstName" selected="selected">Name</option>
+                                                        </c:when>
+                                                        <c:otherwise>
+                                                            <option value="firstName">Name</option>
+                                                        </c:otherwise>
+                                                    </c:choose>
+                                                    <c:choose>
+                                                        <c:when test="${sort == 'registrationDate'}">
+                                                            <option value="registrationDate" selected="selected">Registration Date</option>
+                                                        </c:when>
+                                                        <c:otherwise>
+                                                            <option value="registrationDate">Registration Date</option>
+                                                        </c:otherwise>
+                                                    </c:choose>
+                                                    <c:choose>
+                                                        <c:when test="${sort == 'dateOfBirth'}">
+                                                            <option value="dateOfBirth" selected="selected">Date of Birth</option>
+                                                        </c:when>
+                                                        <c:otherwise>
+                                                            <option value="dateOfBirth">Date of Birth</option>
+                                                        </c:otherwise>
+                                                    </c:choose>
                                                 </select>
                                                 <select id="direction" onchange="changeDirection(this.value)">
-                                                    <option value="desc" ${direction=='desc' ? 'selected' : '' }>Desc
-                                                    </option>
-                                                    <option value="asc" ${direction=='asc' ? 'selected' : '' }>Asc
-                                                    </option>
+                                                    <c:choose>
+                                                        <c:when test="${direction == 'desc'}">
+                                                            <option value="desc" selected="selected">Desc</option>
+                                                        </c:when>
+                                                        <c:otherwise>
+                                                            <option value="desc">Desc</option>
+                                                        </c:otherwise>
+                                                    </c:choose>
+                                                    <c:choose>
+                                                        <c:when test="${direction == 'asc'}">
+                                                            <option value="asc" selected="selected">Asc</option>
+                                                        </c:when>
+                                                        <c:otherwise>
+                                                            <option value="asc">Asc</option>
+                                                        </c:otherwise>
+                                                    </c:choose>
                                                 </select>
                                             </div>
 
                                             <!-- Navigation Buttons -->
                                             <c:if test="${currentPage > 0}">
-                                                <a href="javascript:void(0)" onclick="goToPage(${currentPage - 1})"
+                                                <a href="#" data-page="${currentPage - 1}"
                                                     class="pagination-button">
                                                     <i class="fas fa-chevron-left"></i> Previous
                                                 </a>
@@ -416,16 +495,16 @@
                                                         <span class="pagination-button active">${pageNum + 1}</span>
                                                     </c:when>
                                                     <c:when test="${pageNum == 0}">
-                                                        <a href="javascript:void(0)" onclick="goToPage(${pageNum})"
+                                                        <a href="#" data-page="${pageNum}"
                                                             class="pagination-button">${pageNum + 1}</a>
                                                     </c:when>
                                                     <c:when test="${pageNum == totalPages - 1}">
-                                                        <a href="javascript:void(0)" onclick="goToPage(${pageNum})"
+                                                        <a href="#" data-page="${pageNum}"
                                                             class="pagination-button">${pageNum + 1}</a>
                                                     </c:when>
                                                     <c:when
                                                         test="${pageNum >= currentPage - 2 and pageNum <= currentPage + 2}">
-                                                        <a href="javascript:void(0)" onclick="goToPage(${pageNum})"
+                                                        <a href="#" data-page="${pageNum}"
                                                             class="pagination-button">${pageNum + 1}</a>
                                                     </c:when>
                                                     <c:when test="${pageNum == currentPage - 3}">
@@ -438,7 +517,7 @@
                                             </c:forEach>
 
                                             <c:if test="${currentPage < totalPages - 1}">
-                                                <a href="javascript:void(0)" onclick="goToPage(${currentPage + 1})"
+                                                <a href="#" data-page="${currentPage + 1}"
                                                     class="pagination-button">
                                                     Next <i class="fas fa-chevron-right"></i>
                                                 </a>
@@ -739,6 +818,46 @@
                                 }
                             });
 
+                            async function purgePatient(patientId, patientName) {
+                                const pid = String(patientId || '').trim();
+                                if (!pid) {
+                                    alert('Invalid patient id. Please refresh and try again.');
+                                    return;
+                                }
+
+                                const csrfToken = document.querySelector('meta[name="_csrf"]').content;
+                                const csrfHeaderName = (document.querySelector('meta[name="_csrf_header"]')?.content) || 'X-CSRF-TOKEN';
+                                const url = "${pageContext.request.contextPath}/patients/purge/" + encodeURIComponent(pid);
+
+                                try {
+                                    const response = await fetch(url, {
+                                        method: 'POST',
+                                        headers: {
+                                            [csrfHeaderName]: csrfToken
+                                        },
+                                        credentials: 'same-origin'
+                                    });
+
+                                    if (response.ok) {
+                                        const data = await response.json();
+                                        alert(data.message || 'Patient purged successfully');
+                                        window.location.reload();
+                                    } else {
+                                        let message = 'Failed to purge patient';
+                                        try {
+                                            const data = await response.json();
+                                            message = data.message || message;
+                                        } catch (_) {
+                                            // ignore parse errors
+                                        }
+                                        alert(message);
+                                    }
+                                } catch (err) {
+                                    console.error('Error purging patient:', err);
+                                    alert('Network error while purging patient. Please try again.');
+                                }
+                            }
+
                             async function uncheck(patientId) {
                                 // Find the button that was clicked
                                 const button = event.target.closest('button');
@@ -817,6 +936,70 @@
                                 urlParams.set('page', '0'); // Reset to first page when changing direction
                                 window.location.href = window.location.pathname + '?' + urlParams.toString();
                             }
+
+                            // Delegated event handlers
+                            document.addEventListener('click', function (e) {
+                                const purgeBtn = e.target.closest('button.btn-purge');
+                                if (purgeBtn) {
+                                    e.preventDefault();
+                                    const pid = purgeBtn.getAttribute('data-patient-id');
+                                    const pname = purgeBtn.getAttribute('data-patient-name') || 'Patient';
+                                    purgePatient(pid, pname);
+                                    return;
+                                }
+
+                                const pageLink = e.target.closest('a.pagination-button[data-page]');
+                                if (pageLink) {
+                                    e.preventDefault();
+                                    const page = pageLink.getAttribute('data-page');
+                                    goToPage(page);
+                                }
+                            });
+
+                            // Bulk purge all patients button handler
+                            (function () {
+                                const purgeAllBtn = document.getElementById('btnPurgeAll');
+                                if (!purgeAllBtn) return;
+                                purgeAllBtn.addEventListener('click', async function (e) {
+                                    e.preventDefault();
+                                    const btn = e.currentTarget;
+                                    btn.disabled = true;
+                                    const originalHtml = btn.innerHTML;
+                                    btn.innerHTML = '<i class="fas fa-spinner fa-spin"></i> Purging...';
+
+                                    const tokenMeta = document.querySelector('meta[name="_csrf"]');
+                                    const headerMeta = document.querySelector('meta[name="_csrf_header"]');
+                                    const csrfHeaderName = headerMeta && headerMeta.content ? headerMeta.content : 'X-CSRF-TOKEN';
+                                    const csrfToken = tokenMeta && tokenMeta.content ? tokenMeta.content : '';
+                                    const url = '${pageContext.request.contextPath}/patients/purge-all';
+
+                                    try {
+                                        const resp = await fetch(url, {
+                                            method: 'POST',
+                                            headers: {
+                                                'Content-Type': 'application/json',
+                                                [csrfHeaderName]: csrfToken
+                                            },
+                                            body: JSON.stringify({})
+                                        });
+                                        const data = await resp.json();
+                                        if (!resp.ok || !data.success) {
+                                            const msg = (data && data.message) ? data.message : ('HTTP ' + resp.status);
+                                            alert('Bulk purge failed: ' + msg);
+                                        } else {
+                                            const count = (data.purgedCount != null) ? data.purgedCount : 0;
+                                            alert('Bulk purge completed. Deleted patients: ' + count);
+                                            window.location.reload();
+                                        }
+                                    } catch (err) {
+                                        console.error('Bulk purge error', err);
+                                        alert('Bulk purge error: ' + err);
+                                    } finally {
+                                        btn.disabled = false;
+                                        btn.innerHTML = originalHtml;
+                                    }
+                                });
+                            })();
                         </script>
                     </body>
 

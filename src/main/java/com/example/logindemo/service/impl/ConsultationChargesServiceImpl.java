@@ -181,4 +181,54 @@ public class ConsultationChargesServiceImpl implements ConsultationChargesServic
             throw new RuntimeException("Failed to collect consultation charges: " + e.getMessage());
         }
     }
+
+    @Override
+    public ToothClinicalExamination findRecentConsultationPayment(Long patientId, String clinicId, int days) {
+        try {
+            Optional<ClinicModel> clinicOpt = clinicRepository.findByClinicId(clinicId);
+            if (clinicOpt.isEmpty()) {
+                log.warn("Clinic not found for recent consultation check: {}", clinicId);
+                return null;
+            }
+            ClinicModel clinic = clinicOpt.get();
+
+            // Resolve the consultation procedure for this clinic tier
+            List<ProcedurePrice> allProcedures = procedurePriceRepository.findByCityTier(clinic.getCityTier());
+            Optional<ProcedurePrice> consultationOpt = allProcedures.stream()
+                .filter(p -> "Consultation Fees".equals(p.getProcedureName()) &&
+                           DentalDepartment.DIAGNOSIS_ORAL_MEDICINE_RADIOLOGY.equals(p.getDentalDepartment()))
+                .findFirst();
+
+            if (consultationOpt.isEmpty()) {
+                log.warn("Consultation procedure not found for clinic tier in recent check: {}", clinic.getCityTier());
+                return null;
+            }
+            ProcedurePrice consultationProcedure = consultationOpt.get();
+
+            // Look back window
+            java.time.LocalDateTime cutoff = java.time.LocalDateTime.now().minusDays(days);
+
+            // Query examinations for patient and clinic, then filter by procedure and status
+            List<ToothClinicalExamination> exams = toothClinicalExaminationRepository
+                .findByPatient_IdAndExaminationClinic_ClinicId(patientId, clinicId);
+
+            return exams.stream()
+                .filter(e -> e.getProcedure() != null && consultationProcedure.getId().equals(e.getProcedure().getId()))
+                .filter(e -> e.getProcedureStatus() != null && e.getProcedureStatus() == ProcedureStatus.PAYMENT_COMPLETED)
+                .filter(e -> {
+                    java.time.LocalDateTime ts = e.getExaminationDate() != null ? e.getExaminationDate() : e.getCreatedAt();
+                    return ts != null && !ts.isBefore(cutoff);
+                })
+                .sorted((a, b) -> {
+                    java.time.LocalDateTime ta = a.getExaminationDate() != null ? a.getExaminationDate() : a.getCreatedAt();
+                    java.time.LocalDateTime tb = b.getExaminationDate() != null ? b.getExaminationDate() : b.getCreatedAt();
+                    return tb.compareTo(ta); // descending
+                })
+                .findFirst()
+                .orElse(null);
+        } catch (Exception e) {
+            log.error("Error checking recent consultation payment for patient: {} clinic: {}", patientId, clinicId, e);
+            return null;
+        }
+    }
 }

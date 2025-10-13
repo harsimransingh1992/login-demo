@@ -1089,10 +1089,56 @@
                                 }
                             }
 
-                            function formatDate(dateString) {
-                                if (!dateString) return 'N/A';
-                                const date = new Date(dateString);
-                                return date.toLocaleDateString('en-IN');
+                            function formatDate(dateInput) {
+                                if (!dateInput) return 'N/A';
+
+                                // If LocalDateTime serialized as array: [Y, M, D, h, m, s, ns]
+                                if (Array.isArray(dateInput)) {
+                                    const [year, month, day, hour = 0, minute = 0, second = 0, nano = 0] = dateInput;
+                                    const ms = Math.floor((nano || 0) / 1_000_000);
+                                    const d = new Date(Number(year), Number(month) - 1, Number(day), Number(hour), Number(minute), Number(second), ms);
+                                    return isNaN(d.getTime()) ? 'N/A' : d.toLocaleDateString('en-IN');
+                                }
+
+                                // If numeric epoch
+                                if (typeof dateInput === 'number') {
+                                    const d = new Date(dateInput);
+                                    return isNaN(d.getTime()) ? 'N/A' : d.toLocaleDateString('en-IN');
+                                }
+
+                                // If string, normalize common formats
+                                if (typeof dateInput === 'string') {
+                                    let s = dateInput.trim();
+                                    // Convert "yyyy-MM-dd HH:mm:ss" -> ISO by replacing space with 'T'
+                                    if (/^\d{4}-\d{2}-\d{2} \d{2}:\d{2}(:\d{2})?$/.test(s)) {
+                                        s = s.replace(' ', 'T');
+                                    }
+                                    const d = new Date(s);
+                                    return isNaN(d.getTime()) ? 'N/A' : d.toLocaleDateString('en-IN');
+                                }
+
+                                // If object (possible LocalDateTime-like JSON)
+                                if (typeof dateInput === 'object') {
+                                    const year = dateInput.year || (dateInput.date && dateInput.date.year);
+                                    let month = dateInput.monthValue || dateInput.month || (dateInput.date && dateInput.date.month);
+                                    const day = dateInput.dayOfMonth || dateInput.day || (dateInput.date && dateInput.date.day);
+                                    const hour = dateInput.hour || 0;
+                                    const minute = dateInput.minute || 0;
+                                    const second = dateInput.second || 0;
+
+                                    if (year && month && day) {
+                                        // Handle month as name string
+                                        if (typeof month === 'string') {
+                                            const months = ['JANUARY','FEBRUARY','MARCH','APRIL','MAY','JUNE','JULY','AUGUST','SEPTEMBER','OCTOBER','NOVEMBER','DECEMBER'];
+                                            const idx = months.indexOf(month.toUpperCase());
+                                            month = idx >= 0 ? idx + 1 : month;
+                                        }
+                                        const d = new Date(Number(year), Number(month) - 1, Number(day), Number(hour), Number(minute), Number(second));
+                                        return isNaN(d.getTime()) ? 'N/A' : d.toLocaleDateString('en-IN');
+                                    }
+                                }
+
+                                return 'N/A';
                             }
 
                             // Payment form functions

@@ -7,6 +7,11 @@
     let capturedBlob = null;
     let fileInputId = null;
     let previewSelector = null;
+    let autoSubmit = false;
+    let formSelector = null;
+    let uploadUrl = null;
+    let csrfHeader = null;
+    let csrfToken = null;
 
     function startWebcam() {
         return navigator.mediaDevices.getUserMedia({
@@ -88,13 +93,47 @@
                         const img = document.createElement('img');
                         img.src = e.target.result;
                         img.alt = 'Preview';
-                        img.style.maxWidth = '100%';
-                        img.style.height = 'auto';
+                        // Fill container; works for circle and box previews
+                        img.style.width = '100%';
+                        img.style.height = '100%';
+                        img.style.objectFit = 'cover';
                         img.style.borderRadius = '8px';
                         preview.appendChild(img);
                     }
                 };
                 reader.readAsDataURL(capturedFile);
+                // If uploadUrl is provided, upload immediately via AJAX
+                if (uploadUrl) {
+                    const fd = new FormData();
+                    fd.append('profilePicture', capturedFile);
+                    const headers = {};
+                    if (csrfHeader && csrfToken) {
+                        headers[csrfHeader] = csrfToken;
+                    }
+                    fetch(uploadUrl, { method: 'POST', body: fd, headers })
+                        .then(function(res) { return res.json(); })
+                        .then(function(json) {
+                            if (json && json.success) {
+                                // Update the on-page avatar image src to new uploads path if present
+                                var contextPath = document.body.getAttribute('data-context-path') || '';
+                                var profileImg = document.getElementById('profileImg');
+                                if (profileImg && json.path) {
+                                    profileImg.src = contextPath + '/uploads/' + json.path;
+                                }
+                            } else {
+                                alert((json && json.message) || 'Failed to upload profile picture');
+                            }
+                        })
+                        .catch(function(err) {
+                            console.error('Upload error:', err);
+                            alert('Error uploading image.');
+                        });
+                } else if (autoSubmit && formSelector) {
+                    const formEl = document.querySelector(formSelector);
+                    if (formEl) {
+                        setTimeout(function() { formEl.submit(); }, 50);
+                    }
+                }
                 // Hide modal and stop webcam
                 $(webcamModal).modal('hide');
                 stopWebcam();
@@ -119,10 +158,15 @@
     window.openWebcamModal = function(opts) {
         fileInputId = opts.fileInputId;
         previewSelector = opts.previewSelector;
+        autoSubmit = !!opts.autoSubmit;
+        formSelector = opts.formSelector || null;
+        uploadUrl = opts.uploadUrl || null;
+        csrfHeader = opts.csrfHeader || null;
+        csrfToken = opts.csrfToken || null;
         webcamModal = document.getElementById('webcamModal');
         startWebcam().then(function() {
             setupHandlers();
             $(webcamModal).modal('show');
         });
     };
-})(window); 
+})(window);

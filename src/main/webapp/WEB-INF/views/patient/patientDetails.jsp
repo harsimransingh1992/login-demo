@@ -4271,6 +4271,16 @@
                                                 <i class="fas fa-trash"></i>
                                             </button>
                                         </c:if>
+
+                                        <!-- Admin-only Purge button: force delete examination and payments -->
+                                        <sec:authorize access="hasAnyRole('ADMIN','CLINIC_OWNER')">
+                                            <button class="btn btn-sm btn-warning has-tooltip" 
+                                                    data-tooltip="Admin Purge (force delete)" 
+                                                    data-exam-id="${exam.id}"
+                                                    onclick="event.stopPropagation(); confirmPurgeExamination(${exam.id}, '${exam.toothNumber}', '${exam.examinationDate}')">
+                                                <i class="fas fa-broom"></i>
+                                            </button>
+                                        </sec:authorize>
                                     </div>
                                 </td>
                             </tr>
@@ -5141,6 +5151,47 @@
                 }
             } catch (error) {
                 showAlertModal('An error occurred while deleting the examination.', 'error');
+            }
+        }
+
+        // Admin-only purge examination functionality
+        function confirmPurgeExamination(examId, toothNumber, examinationDate) {
+            const toothDisplay = toothNumber === 'GENERAL_CONSULTATION' ? 'General Consultation' : toothNumber.replace('TOOTH_', '');
+            const formattedDate = formatDateTime12Hour(examinationDate);
+
+            showConfirmationModal(
+                'Purge Examination',
+                `This will permanently delete the examination for ${toothDisplay} on ${formattedDate}, including associated payments and related records. This action is admin-only and cannot be undone.`,
+                'Purge',
+                'Cancel',
+                function() {
+                    purgeExamination(examId);
+                }
+            );
+        }
+
+        async function purgeExamination(examId) {
+            try {
+                const response = await fetch(joinUrl(contextPath, '/patients/examination/' + examId + '/purge'), {
+                    method: 'POST',
+                    headers: {
+                        'Content-Type': 'application/json',
+                        'X-CSRF-TOKEN': document.querySelector('meta[name="_csrf"]').content
+                    }
+                });
+
+                const result = await response.json();
+
+                if (result.success) {
+                    showAlertModal('Examination purged successfully.', 'success');
+                    setTimeout(() => {
+                        window.location.reload();
+                    }, 1500);
+                } else {
+                    showAlertModal('Error: ' + (result.message || 'Failed to purge examination'), 'error');
+                }
+            } catch (error) {
+                showAlertModal('An error occurred while purging the examination.', 'error');
             }
         }
         

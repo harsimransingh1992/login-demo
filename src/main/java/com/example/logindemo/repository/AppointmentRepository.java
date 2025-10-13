@@ -8,6 +8,8 @@ import org.springframework.data.domain.Page;
 import org.springframework.data.domain.Pageable;
 import org.springframework.data.jpa.repository.JpaRepository;
 import org.springframework.data.jpa.repository.Query;
+import org.springframework.data.jpa.repository.Modifying;
+import org.springframework.data.repository.query.Param;
 import org.springframework.stereotype.Repository;
 
 import java.time.LocalDateTime;
@@ -60,7 +62,16 @@ public interface AppointmentRepository extends JpaRepository<Appointment, Long> 
 
     List<Appointment> findByAppointmentDateTimeBetween(LocalDateTime start, LocalDateTime end);
     List<Appointment> findByDoctor(User doctor);
+    // Find appointments by patient entity
     List<Appointment> findByPatient(User patient);
+
+    // Find appointments by patient ID (for safe lookups/detach operations)
+    List<Appointment> findByPatient_Id(Long patientId);
+
+    // Bulk delete appointments by patient ID
+    @Modifying(clearAutomatically = true)
+    @Query("DELETE FROM Appointment a WHERE a.patient.id = :patientId")
+    void deleteByPatient_Id(@Param("patientId") Long patientId);
     List<Appointment> findByStatus(AppointmentStatus status);
     List<Appointment> findByDoctorAndAppointmentDateTimeBetween(User doctor, LocalDateTime start, LocalDateTime end);
     List<Appointment> findByPatientAndAppointmentDateTimeBetween(User patient, LocalDateTime start, LocalDateTime end);
@@ -103,4 +114,4 @@ public interface AppointmentRepository extends JpaRepository<Appointment, Long> 
 
     Page<Appointment> findByClinicAndAppointmentDateTimeBetweenAndStatusOrderByAppointmentDateTimeDesc(
         ClinicModel clinic, LocalDateTime start, LocalDateTime end, AppointmentStatus status, Pageable pageable);
-} 
+}

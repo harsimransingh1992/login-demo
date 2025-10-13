@@ -354,7 +354,7 @@
         }
     </style>
 </head>
-<body>
+<body data-context-path="${pageContext.request.contextPath}">
     <div class="welcome-container">
         <jsp:include page="/WEB-INF/views/common/menu.jsp" />
         <div class="main-content">
@@ -378,7 +378,7 @@
                     <div class="success-message">${success}</div>
                 </c:if>
                 
-                <form:form action="${pageContext.request.contextPath}/patients/update" method="post" modelAttribute="patient" enctype="multipart/form-data">
+                <form:form id="editPatientForm" action="${pageContext.request.contextPath}/patients/update" method="post" modelAttribute="patient" enctype="multipart/form-data">
                     <form:hidden path="id" />
                     
                     <div class="form-section">
@@ -390,7 +390,7 @@
                                 <label for="profilePicture">Profile Picture</label>
                                 <div style="display: flex; align-items: center; gap: 20px; margin-bottom: 10px;">
                                     <!-- Profile picture container -->
-                                    <div style="width: 120px; height: 120px; border-radius: 50%; overflow: hidden; border: 2px solid #e0e0e0; display: flex; align-items: center; justify-content: center; background-color: #f9f9f9;">
+                                    <div id="profilePreviewContainer" style="width: 120px; height: 120px; border-radius: 50%; overflow: hidden; border: 2px solid #e0e0e0; display: flex; align-items: center; justify-content: center; background-color: #f9f9f9;">
                                         <c:choose>
                                             <c:when test="${not empty patient.profilePicturePath}">
                                                 <!-- Make the image itself clickable -->
@@ -412,7 +412,13 @@
                                             <i class="fas fa-upload"></i> ${not empty patient.profilePicturePath ? 'Change Picture' : 'Upload Picture'}
                                         </label>
                                         <button type="button" id="webcamBtn" class="btn btn-info btn-webcam" style="margin-left: 10px;"
-                                            onclick="openWebcamModal({ fileInputId: 'profilePicture', previewSelector: '.profile-preview' })">
+                                            onclick="openWebcamModal({ 
+                                                fileInputId: 'profilePicture', 
+                                                previewSelector: '#profilePreviewContainer', 
+                                                uploadUrl: '${pageContext.request.contextPath}/patients/${patient.id}/profile-picture',
+                                                csrfHeader: '${_csrf.headerName}',
+                                                csrfToken: '${_csrf.token}'
+                                            })">
                                             <i class="fas fa-camera"></i> Use Camera
                                         </button>
                                         <c:if test="${not empty patient.profilePicturePath}">
@@ -721,9 +727,9 @@
                         
                         reader.onload = function(e) {
                             // Find the image or create one if it doesn't exist
-                            let imgPreview = document.querySelector('.form-group div div img');
+                            let imgPreview = document.querySelector('#profilePreviewContainer img');
                             if (!imgPreview) {
-                                const previewContainer = document.querySelector('.form-group div div');
+                                const previewContainer = document.querySelector('#profilePreviewContainer');
                                 // Remove the icon if it exists
                                 const icon = previewContainer.querySelector('i');
                                 if (icon) {
@@ -743,6 +749,36 @@
                         };
                         
                         reader.readAsDataURL(this.files[0]);
+
+                        // Upload immediately via AJAX
+                        const fd = new FormData();
+                        fd.append('profilePicture', this.files[0]);
+                        const headers = {};
+                        headers['${_csrf.headerName}'] = '${_csrf.token}';
+                        fetch('${pageContext.request.contextPath}/patients/${patient.id}/profile-picture', {
+                            method: 'POST',
+                            headers,
+                            body: fd
+                        })
+                        .then(function(res) { return res.json(); })
+                        .then(function(json) {
+                            if (json && json.success) {
+                                const profileImg = document.getElementById('profileImg');
+                                if (profileImg && json.path) {
+                                    profileImg.src = '${pageContext.request.contextPath}/uploads/' + json.path;
+                                }
+                                const removeBtn = document.getElementById('removeProfilePicture');
+                                if (removeBtn) removeBtn.style.display = 'block';
+                                const flag = document.getElementById('removeProfilePictureFlag');
+                                if (flag) flag.value = 'false';
+                            } else {
+                                alert((json && json.message) || 'Failed to upload profile picture');
+                            }
+                        })
+                        .catch(function(err) {
+                            console.error('Upload error:', err);
+                            alert('Error uploading image.');
+                        });
                     }
                 });
             }
@@ -755,7 +791,7 @@
                     document.getElementById('removeProfilePictureFlag').value = 'true';
                     
                     // Update the UI to show the profile picture has been removed
-                    const imgContainer = document.querySelector('.form-group div div');
+                    const imgContainer = document.querySelector('#profilePreviewContainer');
                     imgContainer.innerHTML = '<i class="fas fa-user-circle" style="font-size: 3rem; color: #c0c0c0;"></i>';
                     
                     // Clear the file input
