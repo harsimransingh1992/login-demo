@@ -123,6 +123,9 @@ public class PatientController {
     @Autowired
     private PaymentEntryRepository paymentEntryRepository;
 
+    @Autowired
+    private SmsNotificationService smsNotificationService;
+
     @InitBinder
     public void initBinder(WebDataBinder binder) {
         // Register custom date editor for dateOfBirth
@@ -3387,10 +3390,25 @@ public class PatientController {
             
             // Save appointment
             Appointment savedAppointment = appointmentRepository.save(appointment);
-            
+
             log.info("Appointment scheduled - ID: {}, Patient: {}, Date: {}, Time: {}", 
                 savedAppointment.getId(), patient.getFirstName() + " " + patient.getLastName(), 
                 appointmentDate, appointmentTime);
+
+            // Send SMS notification for scheduled appointment (gated by sms.enabled)
+            try {
+                SmsAppointmentNotificationRequest smsReq = new SmsAppointmentNotificationRequest();
+                smsReq.setAppointmentId(savedAppointment.getId());
+                smsReq.setPatientId(patient.getId());
+                smsReq.setPatientName(savedAppointment.getPatientName());
+                smsReq.setPhoneNumber(savedAppointment.getPatientMobile());
+                smsReq.setClinicName(clinic.getClinicName());
+                smsReq.setScheduledAt(savedAppointment.getAppointmentDateTime().toString());
+                String smsResult = smsNotificationService.sendScheduled(smsReq);
+                log.info("Scheduled appointment SMS result: {}", smsResult);
+            } catch (Exception smsEx) {
+                log.warn("Failed to send scheduled appointment SMS for appointment {}: {}", savedAppointment.getId(), smsEx.getMessage());
+            }
             
             return ResponseEntity.ok(Map.of(
                 "success", true,
