@@ -491,7 +491,8 @@
         /* JIRA-like status dropdown */
         .status-dropdown {
             position: relative;
-            display: inline-block;
+            display: inline-flex;
+            align-items: center;
         }
         
         .status-dropdown-btn {
@@ -3087,6 +3088,9 @@
                         <button class="btn btn-success" id="printPrescriptionBtn" type="button" style="margin-left: 10px;">
                             <i class="fas fa-print"></i> Print Prescription
                         </button>
+                        <button type="button" id="statusRefreshBtn" class="btn-quick" title="Refresh status and clinical info">
+                            <i class="fas fa-sync-alt"></i> Refresh
+                        </button>
                     </div>
                 </div>
                 
@@ -4101,21 +4105,63 @@
             const statusDropdown = document.querySelector('.status-dropdown');
             const statusDropdownContent = document.querySelector('.status-dropdown-content');
             const statusOptions = document.querySelectorAll('.status-option');
+            // Track current status client-side to avoid stale JSP values when not reloading
+            window.currentProcedureStatus = window.currentProcedureStatus || '${examination.procedureStatus}';
+            const STATUS_LABELS = { OPEN: 'Open', IN_PROGRESS: 'In Progress', CLOSED: 'Closed', CANCELLED: 'Cancelled', REOPEN: 'Reopen' };
+            function closeStatusDropdown() {
+                try {
+                    const dropdown = document.querySelector('.status-dropdown');
+                    const content = document.querySelector('.status-dropdown-content');
+                    if (content) content.classList.remove('show');
+                    const icon = dropdown ? dropdown.querySelector('.dropdown-icon i') : null;
+                    if (icon) icon.style.transform = 'rotate(0deg)';
+                } catch (_) { /* no-op */ }
+            }
+            function applyProcedureStatusUI(newStatus, newLabel) {
+                try {
+                    const dropdown = document.querySelector('.status-dropdown');
+                    if (!dropdown) return;
+                    const textEl = dropdown.querySelector('.status-text');
+                    if (textEl && newLabel) {
+                        textEl.textContent = newLabel;
+                    }
+                    const dotEl = dropdown.querySelector('.status-dot');
+                    if (dotEl && newStatus) {
+                        const known = ['open','in_progress','closed','cancelled','reopen'];
+                        known.forEach(c => dotEl.classList.remove(c));
+                        dotEl.classList.add(String(newStatus).toLowerCase());
+                    }
+                    const btnEl = dropdown.querySelector('.status-dropdown-btn');
+                    if (btnEl) {
+                        if (newStatus === 'CANCELLED') {
+                            btnEl.classList.add('cancelled');
+                        } else {
+                            btnEl.classList.remove('cancelled');
+                        }
+                    }
+                    window.currentProcedureStatus = newStatus;
+                } catch (e) {
+                    // On any unexpected UI error, keep current state (fallback handled in callers)
+                }
+            }
             
             
             
             if (statusDropdown) {
-                statusDropdown.addEventListener('click', function(e) {
-                    e.stopPropagation();
-                    const statusDropdownBtn = this.querySelector('.status-dropdown-btn');
-                    if (statusDropdownBtn && !statusDropdownBtn.classList.contains('disabled') && !statusDropdownBtn.classList.contains('cancelled')) {
+                const statusDropdownBtnEl = document.getElementById('statusDropdownBtn');
+                if (statusDropdownBtnEl) {
+                    statusDropdownBtnEl.addEventListener('click', function(e) {
+                        e.stopPropagation();
+                        if (this.classList.contains('disabled') || this.classList.contains('cancelled')) {
+                            return;
+                        }
                         statusDropdownContent.classList.toggle('show');
-                        const dropdownIcon = statusDropdownBtn.querySelector('.dropdown-icon i');
+                        const dropdownIcon = this.querySelector('.dropdown-icon i');
                         if (dropdownIcon) {
                             dropdownIcon.style.transform = statusDropdownContent.classList.contains('show') ? 'rotate(180deg)' : 'rotate(0deg)';
                         }
-                    }
-                });
+                    });
+                }
                 
                 // Close dropdown when clicking outside
                 document.addEventListener('click', function(e) {
@@ -4132,7 +4178,9 @@
                 statusOptions.forEach(option => {
                     option.addEventListener('click', function() {
                         const newStatus = this.getAttribute('data-status');
-                        const currentStatus = '${examination.procedureStatus}';
+                        const currentStatus = window.currentProcedureStatus || '${examination.procedureStatus}';
+                        const labelEl = this.querySelector('.status-text');
+                        const newLabel = labelEl ? labelEl.textContent : (STATUS_LABELS[newStatus] || newStatus);
                         
                         if (newStatus) {
                             // Prevent selecting the same status
@@ -4146,7 +4194,7 @@
                                 return;
                             }
                             
-                            updateProcedureStatus(newStatus);
+                            updateProcedureStatus(newStatus, newLabel);
                         }
                         statusDropdownContent.classList.remove('show');
                         const dropdownIcon = statusDropdown.querySelector('.dropdown-icon i');
@@ -4155,6 +4203,122 @@
                         }
                     });
                 });
+            }
+
+            // Bind status option events for dynamically refreshed content
+            function bindStatusOptionEvents() {
+                const newOptions = document.querySelectorAll('.status-option');
+                newOptions.forEach(option => {
+                    option.addEventListener('click', function() {
+                        const newStatus = this.getAttribute('data-status');
+                        const labelEl = this.querySelector('.status-text');
+                        const newLabel = labelEl ? labelEl.textContent : newStatus;
+                        if (newStatus) {
+                            updateProcedureStatus(newStatus, newLabel);
+                        }
+                    });
+                });
+            }
+
+            // Refresh lifecycle sections and status without full page reload
+            function refreshLifecycleUI() {
+                try {
+                    const btn = document.getElementById('statusRefreshBtn');
+                    const icon = btn ? btn.querySelector('i') : null;
+                    if (btn) btn.disabled = true;
+                    if (icon) icon.classList.add('fa-spin');
+
+                    const url = window.location.pathname;
+                    $.get(url)
+                        .done(function(html) {
+                            const $container = $('<div>').append($.parseHTML(html));
+
+                            // Update allowed transitions inside dropdown content
+                            const $newDropdownContent = $container.find('.status-dropdown-content').first();
+                            if ($newDropdownContent.length) {
+                                $('.status-dropdown-content').html($newDropdownContent.html());
+                                bindStatusOptionEvents();
+                            }
+
+                            // Update current status label and dot style
+                            const $newCurrentStatus = $container.find('#statusDropdown .current-status').first();
+                            if ($newCurrentStatus.length) {
+                                const newLabel = $newCurrentStatus.find('.status-text').text();
+                                const newDotClass = $newCurrentStatus.find('.status-dot').attr('class') || '';
+                                const statusClass = (newDotClass.split(' ').find(c => ['open','in_progress','closed','cancelled','reopen'].includes(c))) || null;
+
+                                const labelEl = document.querySelector('#statusDropdown .status-text');
+                                if (labelEl && newLabel) labelEl.textContent = newLabel;
+
+                                const dotEl = document.querySelector('#statusDropdown .status-dot');
+                                if (dotEl) {
+                                    ['open','in_progress','closed','cancelled','reopen'].forEach(c => dotEl.classList.remove(c));
+                                    if (statusClass) dotEl.classList.add(statusClass);
+                                }
+
+                                if (statusClass) {
+                                    const map = {open:'OPEN', in_progress:'IN_PROGRESS', closed:'CLOSED', cancelled:'CANCELLED', reopen:'REOPEN'};
+                                    window.currentProcedureStatus = map[statusClass] || window.currentProcedureStatus;
+                                }
+                            }
+
+                            // Refresh clinical-info layout including procedure-info-grid
+                            const $newLayout = $container.find('.clinical-info-layout').first();
+                            if ($newLayout.length) {
+                                $('.clinical-info-layout').html($newLayout.html());
+                            }
+                        })
+                        .fail(function() {
+                            alert('Refresh failed; reloading page to keep UI consistent.');
+                            window.location.reload();
+                        })
+                        .always(function() {
+                            if (btn) btn.disabled = false;
+                            if (icon) icon.classList.remove('fa-spin');
+                        });
+                } catch (e) {
+                    // On any unexpected error, perform a safe reload
+                    alert('Unexpected error during refresh. Reloading the page.');
+                    window.location.reload();
+                }
+            }
+
+            // Hook refresh button
+            (function() {
+                const refreshBtn = document.getElementById('statusRefreshBtn');
+                if (refreshBtn) {
+                    refreshBtn.addEventListener('click', function(e) {
+                        e.preventDefault();
+                        e.stopPropagation();
+                        refreshLifecycleUI();
+                    });
+                }
+            })();
+
+            // Refresh only the follow-up container without full page reload
+            function refreshFollowUpContainer() {
+                try {
+                    const url = window.location.pathname;
+                    $.get(url)
+                        .done(function(html) {
+                            const $container = $('<div>').append($.parseHTML(html));
+                            const $newFollowUp = $container.find('.container.follow-up-container').first();
+                            if ($newFollowUp.length) {
+                                $('.container.follow-up-container').html($newFollowUp.html());
+                                // Reinitialize follow-up modal/events if available
+                                (typeof initializeFollowUpModal === 'function') && initializeFollowUpModal();
+                            }
+                        })
+                        .fail(function() {
+                            // Fallback to full page reload to keep state consistent
+                            alert('Refresh failed; reloading page to update Next Sitting section.');
+                            window.location.reload();
+                        });
+                } catch (e) {
+                    // On any unexpected error, perform a safe reload
+                    alert('Unexpected error while refreshing Next Sitting section. Reloading the page.');
+                    window.location.reload();
+                }
             }
             
             // Update procedure status directly (without X-ray)
@@ -4216,7 +4380,14 @@
                     
                     if (result.success) {
                         alert('Status updated successfully!');
-                        window.location.reload();
+                        // Update UI without full page reload
+                        applyProcedureStatusUI(newStatus, STATUS_LABELS[newStatus] || newStatus);
+                        // Ensure dropdown closes after status change
+                        closeStatusDropdown();
+                        // If moved to Next Sitting Scheduled, refresh follow-up container
+                        if (newStatus === 'FOLLOW_UP_SCHEDULED') {
+                            refreshFollowUpContainer();
+                        }
                     } else {
                         // Check if it's a payment pending error
                         if (result.message && result.message.includes('payment') && result.message.includes('pending')) {
@@ -4231,7 +4402,7 @@
             }
             
             // Update procedure status
-            async function updateProcedureStatus(newStatus) {
+            async function updateProcedureStatus(newStatus, newLabel) {
                 const examinationId = $('#examinationId').val();
                 
                 // Get CSRF token
@@ -4239,7 +4410,7 @@
                 const header = $("meta[name='_csrf_header']").attr("content");
                 
                 // Check if X-ray is required for closing
-                const currentStatus = '${examination.procedureStatus}';
+                const currentStatus = window.currentProcedureStatus || '${examination.procedureStatus}';
                 
                 if (newStatus === 'CLOSED' && currentStatus !== 'CLOSED' && !xrayUploadComplete) {
                     window.pendingStatusUpdate = newStatus;
@@ -4297,21 +4468,32 @@
                     if (result.success) {
                         // Show success notification
                         const notification = document.querySelector('.status-notification');
-                        notification.style.display = 'block';
-                        setTimeout(() => {
-                            notification.style.display = 'none';
-                        }, 3000);
-                        
-                        // Reload page to reflect changes
-                        setTimeout(() => {
-                        window.location.reload();
-                        }, 1000);
+                        if (notification) {
+                            notification.style.display = 'block';
+                            setTimeout(() => {
+                                notification.style.display = 'none';
+                            }, 3000);
+                        }
+                        // Update UI without full page reload
+                        applyProcedureStatusUI(newStatus, newLabel);
+                        // Ensure dropdown closes after status change
+                        closeStatusDropdown();
+                        // If moved to Next Sitting Scheduled, refresh follow-up container
+                        if (newStatus === 'FOLLOW_UP_SCHEDULED') {
+                            refreshFollowUpContainer();
+                        }
                     } else {
                         alert(result.message || 'Failed to update status');
                         return;
                     }
                 } catch (error) {
-                    alert('Failed to update status. Please try again.');
+                    // Fallback to reload to avoid any regression
+                    try {
+                        alert('Failed to update status. Refreshing to sync state.');
+                        window.location.reload();
+                    } catch (e) {
+                        alert('Failed to update status. Please try again.');
+                    }
                 }
             }
             
