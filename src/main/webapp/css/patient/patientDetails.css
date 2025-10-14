@@ -1185,3 +1185,31 @@ body {
     color: #7b1fa2;
     border: 1px solid #e1bee7;
 }
+/* ---- Bulk Upload: Arch Upload Section (minimal styles) ---- */
+.arch-upload-section {
+  border: 1px solid #e5e7eb;
+  border-radius: 8px;
+  padding: 12px;
+  background: #fafafa;
+}
+.arch-upload-section .file-upload-controls {
+  display: flex;
+  gap: 12px;
+  align-items: center;
+  margin-bottom: 10px;
+}
+.arch-upload-section .help-text {
+  color: #6b7280;
+  font-size: 0.9rem;
+}
+.file-list {
+  margin-top: 8px;
+}
+.file-list-item {
+  padding: 6px 8px;
+  border: 1px dashed #cbd5e1;
+  border-radius: 6px;
+  margin-bottom: 6px;
+  background: #fff;
+  font-size: 0.95rem;
+}

@@ -185,8 +185,9 @@ public class PatientServiceImpl implements PatientService{
             patient.setRegisteredClinic(currentUser.getClinic());
             patient.setCreatedAt(new Date());
             
-            // Generate and set registration code
-            String registrationCode = generateRegistrationCode();
+            // Persist first to obtain DB-generated ID, then set a unique registration code
+            patient = patientRepository.save(patient);
+            String registrationCode = String.valueOf(patient.getId());
             patient.setRegistrationCode(registrationCode);
             patientDTO.setRegistrationCode(registrationCode);
             
@@ -216,7 +217,7 @@ public class PatientServiceImpl implements PatientService{
             // Set registration date
             patient.setRegistrationDate(new Date());
             
-            // Save the patient
+            // Save the patient with registration code set
             patientRepository.save(patient);
             log.info("Successfully registered patient with ID: {} and registration code: {} by user: {} at clinic: {}", 
                 patient.getId(), registrationCode, currentUser.getUsername(), currentUser.getClinic().getClinicName());

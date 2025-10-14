@@ -24,6 +24,7 @@
     <script src="${pageContext.request.contextPath}/js/common.js"></script>
     <script src="${pageContext.request.contextPath}/js/color-code-component.js"></script>
     <script src="${pageContext.request.contextPath}/js/chairside-note-component.js"></script>
+    <script src="${pageContext.request.contextPath}/js/imageCompression.js"></script>
     <!-- Add flatpickr CSS and JS -->
     <link rel="stylesheet" href="https://cdn.jsdelivr.net/npm/flatpickr/dist/flatpickr.min.css">
     <script src="https://cdn.jsdelivr.net/npm/flatpickr"></script>
@@ -359,6 +360,9 @@
             const selectedCount = selectedCheckboxes.length;
             const selectedCountDisplay = document.getElementById('selectedCountDisplay');
             const createFileBtn = document.getElementById('createFileFromTableBtn');
+            const bulkUploadBtn = document.getElementById('bulkUploadSelectedBtn');
+            const bulkAssignBtn = document.getElementById('bulkAssignDoctorBtn');
+            const bulkSendForPaymentBtn = document.getElementById('bulkSendForPaymentBtn');
             const selectedCountSpan = document.getElementById('selectedExaminationCount');
 
             selectedCountSpan.textContent = selectedCount;
@@ -366,9 +370,15 @@
             if (selectedCount > 0) {
                 selectedCountDisplay.style.display = 'inline';
                 createFileBtn.style.display = 'inline-block';
+                if (bulkUploadBtn) bulkUploadBtn.style.display = 'inline-block';
+                if (bulkAssignBtn) bulkAssignBtn.style.display = 'inline-block';
+                if (bulkSendForPaymentBtn) bulkSendForPaymentBtn.style.display = 'inline-block';
             } else {
                 selectedCountDisplay.style.display = 'none';
                 createFileBtn.style.display = 'none';
+                if (bulkUploadBtn) bulkUploadBtn.style.display = 'none';
+                if (bulkAssignBtn) bulkAssignBtn.style.display = 'none';
+                if (bulkSendForPaymentBtn) bulkSendForPaymentBtn.style.display = 'none';
             }
         }
 
@@ -491,11 +501,16 @@
         }
 
         // Modal Functions
-        function showAlertModal(message, type = 'info') {
+        let alertOnCloseCallback = null;
+
+        function showAlertModal(message, type = 'info', onClose = null) {
             const modal = document.getElementById('alertModal');
             const title = document.getElementById('alertTitle');
             const messageEl = document.getElementById('alertMessage');
             const icon = document.getElementById('alertIcon');
+
+            // Set onClose callback if provided
+            alertOnCloseCallback = typeof onClose === 'function' ? onClose : null;
 
             // Set title based on type
             switch(type) {
@@ -526,6 +541,12 @@
 
         function closeAlertModal() {
             document.getElementById('alertModal').style.display = 'none';
+            if (typeof alertOnCloseCallback === 'function') {
+                const cb = alertOnCloseCallback;
+                // Clear before calling to avoid re-entry issues
+                alertOnCloseCallback = null;
+                try { cb(); } catch (e) { /* ignore */ }
+            }
         }
 
         function showConfirmationModal(title, message, confirmText = 'Confirm', cancelText = 'Cancel', onConfirm) {
@@ -3505,7 +3526,12 @@
                     </div>
                     <div class="info-item">
                         <span class="info-label">Occupation</span>
-                        <span class="info-value">${not empty patient.occupation ? patient.occupation.displayName : 'Not specified'}</span>
+                        <span class="info-value">
+                            <c:choose>
+                                <c:when test="${not empty patient.occupation}">${fn:escapeXml(patient.occupation.displayName)}</c:when>
+                                <c:otherwise>Not specified</c:otherwise>
+                            </c:choose>
+                        </span>
                     </div>
                 </div>
                 
@@ -3517,7 +3543,12 @@
                     </div>
                     <div class="info-item">
                         <span class="info-label">Email</span>
-                        <span class="info-value">${not empty patient.email ? patient.email : 'Not provided'}</span>
+                        <span class="info-value">
+                            <c:choose>
+                                <c:when test="${not empty patient.email}">${fn:escapeXml(patient.email)}</c:when>
+                                <c:otherwise>Not provided</c:otherwise>
+                            </c:choose>
+                        </span>
                     </div>
                 </div>
                 
@@ -3525,19 +3556,39 @@
                     <h3>Address Information</h3>
                     <div class="info-item">
                         <span class="info-label">Street Address</span>
-                        <span class="info-value">${not empty patient.streetAddress ? patient.streetAddress : 'Not provided'}</span>
+                        <span class="info-value">
+                            <c:choose>
+                                <c:when test="${not empty patient.streetAddress}">${fn:escapeXml(patient.streetAddress)}</c:when>
+                                <c:otherwise>Not provided</c:otherwise>
+                            </c:choose>
+                        </span>
                     </div>
                     <div class="info-item">
                         <span class="info-label">State</span>
-                        <span class="info-value">${not empty patient.state ? patient.state : 'Not provided'}</span>
+                        <span class="info-value">
+                            <c:choose>
+                                <c:when test="${not empty patient.state}">${fn:escapeXml(patient.state)}</c:when>
+                                <c:otherwise>Not provided</c:otherwise>
+                            </c:choose>
+                        </span>
                     </div>
                     <div class="info-item">
                         <span class="info-label">City</span>
-                        <span class="info-value">${not empty patient.city ? patient.city : 'Not provided'}</span>
+                        <span class="info-value">
+                            <c:choose>
+                                <c:when test="${not empty patient.city}">${fn:escapeXml(patient.city)}</c:when>
+                                <c:otherwise>Not provided</c:otherwise>
+                            </c:choose>
+                        </span>
                     </div>
                     <div class="info-item">
                         <span class="info-label">Pincode</span>
-                        <span class="info-value">${not empty patient.pincode ? patient.pincode : 'Not provided'}</span>
+                        <span class="info-value">
+                            <c:choose>
+                                <c:when test="${not empty patient.pincode}">${fn:escapeXml(patient.pincode)}</c:when>
+                                <c:otherwise>Not provided</c:otherwise>
+                            </c:choose>
+                        </span>
                     </div>
                 </div>
                 
@@ -3545,7 +3596,12 @@
                     <h3>Medical Information</h3>
                     <div class="info-item">
                         <span class="info-label">Medical History</span>
-                        <span class="info-value">${not empty patient.medicalHistory ? patient.medicalHistory : 'None reported'}</span>
+                        <span class="info-value">
+                            <c:choose>
+                                <c:when test="${not empty patient.medicalHistory}">${fn:escapeXml(patient.medicalHistory)}</c:when>
+                                <c:otherwise>None reported</c:otherwise>
+                            </c:choose>
+                        </span>
                     </div>
                 </div>
                 
@@ -3563,7 +3619,12 @@
                     </div>
                     <div class="info-item">
                         <span class="info-label">Referral Source</span>
-                        <span class="info-value">${not empty patient.referralModel ? patient.referralModel.displayName : 'Not specified'}</span>
+                        <span class="info-value">
+                            <c:choose>
+                                <c:when test="${not empty patient.referralModel}">${fn:escapeXml(patient.referralModel.displayName)}</c:when>
+                                <c:otherwise>Not specified</c:otherwise>
+                            </c:choose>
+                        </span>
                     </div>
                     <div class="info-item">
                         <span class="info-label">Current Status</span>
@@ -3627,11 +3688,21 @@
                     <h3>Emergency Contact</h3>
                     <div class="info-item">
                         <span class="info-label">Emergency Contact Name</span>
-                        <span class="info-value">${not empty patient.emergencyContactName ? patient.emergencyContactName : 'Not provided'}</span>
+                        <span class="info-value">
+                            <c:choose>
+                                <c:when test="${not empty patient.emergencyContactName}">${fn:escapeXml(patient.emergencyContactName)}</c:when>
+                                <c:otherwise>Not provided</c:otherwise>
+                            </c:choose>
+                        </span>
                     </div>
                     <div class="info-item">
                         <span class="info-label">Emergency Contact Phone</span>
-                        <span class="info-value">${not empty patient.emergencyContactPhoneNumber ? patient.emergencyContactPhoneNumber : 'Not provided'}</span>
+                        <span class="info-value">
+                            <c:choose>
+                                <c:when test="${not empty patient.emergencyContactPhoneNumber}">${fn:escapeXml(patient.emergencyContactPhoneNumber)}</c:when>
+                                <c:otherwise>Not provided</c:otherwise>
+                            </c:choose>
+                        </span>
                     </div>
                 </div>
             </div>
@@ -3934,7 +4005,12 @@
         <div class="patient-details-container clinical-files-section">
             <div class="patient-header collapsible-header" onclick="toggleClinicalFiles()">
                 <h2><i class="fas fa-folder-medical"></i> Clinical Files 
-                    <span class="file-count">(${not empty clinicalFiles ? fn:length(clinicalFiles) : 0})</span>
+                    <span class="file-count">(
+                        <c:choose>
+                            <c:when test="${not empty clinicalFiles}">${fn:length(clinicalFiles)}</c:when>
+                            <c:otherwise>0</c:otherwise>
+                        </c:choose>
+                    )</span>
                     <i class="fas fa-chevron-down toggle-icon" id="clinicalFilesToggleIcon"></i>
                 </h2>
             </div>
@@ -3946,19 +4022,40 @@
                             <c:forEach items="${clinicalFiles}" var="file">
                                 <div class="clinical-file-entry">
                                     <div class="file-info">
-                                        <div class="file-main">
-                                            <div class="file-number">${file.fileNumber}</div>
-                                            <div class="file-title">${not empty file.title ? file.title : 'Untitled File'}</div>
-                                            <div class="file-status status-${not empty file.status ? file.status.name().toLowerCase() : 'active'}">${not empty file.status ? file.status.name() : 'ACTIVE'}</div>
-                                        </div>
+                                            <div class="file-main">
+                                                <div class="file-number">${file.fileNumber}</div>
+                                                <c:choose>
+                                                    <c:when test="${not empty file.title}">
+                                                        <div class="file-title">${fn:escapeXml(file.title)}</div>
+                                                    </c:when>
+                                                    <c:otherwise>
+                                                        <div class="file-title">Untitled File</div>
+                                                    </c:otherwise>
+                                                </c:choose>
+                                                <c:choose>
+                                                    <c:when test="${not empty file.status}">
+                                                        <c:set var="statusName" value="${file.status.name()}"/>
+                                                        <div class="file-status status-${fn:toLowerCase(statusName)}">${statusName}</div>
+                                                    </c:when>
+                                                    <c:otherwise>
+                                                        <div class="file-status status-active">ACTIVE</div>
+                                                    </c:otherwise>
+                                                </c:choose>
+                                            </div>
                                         <div class="file-details">
                                             <span class="detail-item">
                                                 <i class="fas fa-calendar"></i>
-                                                ${not empty file.createdAtFormatted ? file.createdAtFormatted : 'Not available'}
+                                                <c:choose>
+                                                    <c:when test="${not empty file.createdAtFormatted}">${fn:escapeXml(file.createdAtFormatted)}</c:when>
+                                                    <c:otherwise>Not available</c:otherwise>
+                                                </c:choose>
                                             </span>
                                             <span class="detail-item">
                                                 <i class="fas fa-list"></i>
-                                                ${not empty file.examinationCount ? file.examinationCount : 0} examinations
+                                                <c:choose>
+                                                    <c:when test="${not empty file.examinationCount}">${file.examinationCount}</c:when>
+                                                    <c:otherwise>0</c:otherwise>
+                                                </c:choose> examinations
                                             </span>
                                             <c:if test="${not empty file.totalAmount and file.totalAmount != null}">
                                                 <span class="detail-item">
@@ -4099,6 +4196,17 @@
                                             onclick="createClinicalFileFromTable()" style="display: none;">
                                         <i class="fas fa-folder-medical"></i> Create Clinical File
                                     </button>
+                                    <button type="button" id="bulkUploadSelectedBtn" class="btn btn-secondary btn-sm" 
+                                            onclick="openBulkUploadSelectedModal()" style="display: none;">
+                                        <i class="fas fa-upload"></i> Bulk Upload to Selected
+                                    </button>
+                                    <button type="button" id="bulkAssignDoctorBtn" class="btn btn-secondary btn-sm" onclick="openBulkAssignDoctorModal()" style="display: none;">
+                                        <i class="fas fa-user-md"></i> Assign Doctor to Selected
+                                    </button>
+                                    <button type="button" id="bulkSendForPaymentBtn" class="btn btn-secondary btn-sm" onclick="openBulkSendForPaymentModal()" style="display: none;">
+                                        <i class="fas fa-file-invoice-dollar"></i> Send Selected for Payment
+                                    </button>
+                                    <input type="file" id="bulkSelectedInput" multiple accept="image/*,application/pdf" style="display: none;" />
                                 </div>
                             </div>
                         </sec:authorize>
@@ -4252,8 +4360,19 @@
                                         </a>
                                         <c:set var="canDup" value="${duplicateAllowed[exam.id]}"/>
                                         <c:set var="canDupAndCheckedIn" value="${canDup && patient.checkedIn}"/>
+                                        <c:choose>
+                                            <c:when test="${canDupAndCheckedIn}">
+                                                <c:set var="dupTooltip" value="Duplicate"/>
+                                            </c:when>
+                                            <c:when test="${canDup}">
+                                                <c:set var="dupTooltip" value="Patient must be checked in to duplicate"/>
+                                            </c:when>
+                                            <c:otherwise>
+                                                <c:set var="dupTooltip" value="Cannot duplicate"/>
+                                            </c:otherwise>
+                                        </c:choose>
                                         <button class="btn btn-sm has-tooltip" 
-                                                data-tooltip="${canDupAndCheckedIn ? 'Duplicate' : (canDup ? 'Patient must be checked in to duplicate' : 'Cannot duplicate')}" 
+                                                data-tooltip="${dupTooltip}" 
                                                 data-exam-id="${exam.id}"
                                                 onclick="event.stopPropagation(); duplicateExaminationFromEl(this)"
                                                 <c:if test="${!canDupAndCheckedIn}">disabled style="opacity:0.6; cursor:not-allowed;"</c:if>>
@@ -4266,7 +4385,9 @@
                                             <button class="btn btn-sm btn-danger has-tooltip" 
                                                     data-tooltip="${canDelete ? 'Delete Examination' : 'Cannot delete - payment collected'}" 
                                                     data-exam-id="${exam.id}"
-                                                    onclick="event.stopPropagation(); if(this.disabled){return false;} confirmDeleteExamination(${exam.id}, '${exam.toothNumber}', '${exam.examinationDate}')"
+                                                    data-tooth="${fn:escapeXml(exam.toothNumber)}"
+                                                    data-exam-date="${fn:escapeXml(exam.examinationDate)}"
+                                                    onclick="onDeleteExamClick(event, this)"
                                                     <c:if test="${!canDelete}">disabled style="opacity:0.6; cursor:not-allowed;"</c:if>>
                                                 <i class="fas fa-trash"></i>
                                             </button>
@@ -4277,7 +4398,9 @@
                                             <button class="btn btn-sm btn-warning has-tooltip" 
                                                     data-tooltip="Admin Purge (force delete)" 
                                                     data-exam-id="${exam.id}"
-                                                    onclick="event.stopPropagation(); confirmPurgeExamination(${exam.id}, '${exam.toothNumber}', '${exam.examinationDate}')">
+                                                    data-tooth="${fn:escapeXml(exam.toothNumber)}"
+                                                    data-exam-date="${fn:escapeXml(exam.examinationDate)}"
+                                                    onclick="onPurgeExamClick(event, this)">
                                                 <i class="fas fa-broom"></i>
                                             </button>
                                         </sec:authorize>
@@ -4334,6 +4457,37 @@
                 </div>
             </c:if>
                     </div>
+    </div>
+
+    <!-- Bulk Assign Doctor to Selected Examinations Modal -->
+    <div id="bulkAssignDoctorModal" class="modal">
+        <div class="modal-content">
+            <div class="modal-header">
+                <h2>Assign Doctor to Selected Examinations</h2>
+                <span class="close" onclick="closeBulkAssignDoctorModal()">&times;</span>
+            </div>
+            <div class="modal-body">
+                <p class="text-muted">
+                    Selected examinations: <strong><span id="bulkAssignSelectedCount">0</span></strong>
+                </p>
+                <div class="form-group">
+                    <label for="bulkAssignDoctorSelect">Select Doctor</label>
+                    <select id="bulkAssignDoctorSelect" class="form-control" required>
+                        <option value="">-- Choose Doctor --</option>
+                        <c:forEach var="doctor" items="${doctorDetails}">
+                            <option value="${doctor.id}">${doctor.firstName} ${doctor.lastName}</option>
+                        </c:forEach>
+                    </select>
+                </div>
+                <small class="form-help">This assigns the selected doctor to all checked examinations.</small>
+            </div>
+            <div class="modal-footer">
+                <button type="button" class="btn btn-secondary btn-sm" id="assignBulkDoctorBtn" onclick="assignDoctorToSelected()">
+                    <i class="fas fa-user-check"></i> Assign to Selected
+                </button>
+                <button type="button" class="btn btn-secondary btn-sm" onclick="closeBulkAssignDoctorModal()">Cancel</button>
+            </div>
+        </div>
     </div>
 
 
@@ -4855,6 +5009,84 @@
         </div>
     </div>
 
+    <!-- Bulk Upload to Selected Examinations Modal -->
+    <div id="bulkUploadSelectedModal" class="modal">
+        <div class="modal-content image-upload-modal">
+            <div class="modal-header">
+                <h2>Bulk Upload to Selected Examinations</h2>
+                <span class="close" onclick="closeBulkUploadSelectedModal()">&times;</span>
+            </div>
+            <div class="modal-body">
+                <div class="arch-upload-section">
+                    <p class="text-muted">
+                        Selected examinations: <strong><span id="bulkSelectedCount">0</span></strong>
+                    </p>
+                    <div class="file-upload-controls">
+                        <button type="button" class="btn btn-secondary" onclick="document.getElementById('bulkSelectedInput').click()">
+                            <i class="fas fa-file-upload"></i> Choose Files
+                        </button>
+                        <span class="help-text">You can upload images (JPG/PNG) or PDFs. Images will be compressed automatically.</span>
+                    </div>
+                    <div id="bulkSelectedFileList" class="file-list"></div>
+                </div>
+            </div>
+            <div class="modal-footer">
+                <button type="button" class="btn btn-primary" id="uploadBulkSelectedBtn" onclick="uploadBulkFilesToSelected()">
+                    <i class="fas fa-cloud-upload-alt"></i> Upload to Selected
+                </button>
+                <button type="button" class="btn btn-secondary" onclick="closeBulkUploadSelectedModal()">Cancel</button>
+            </div>
+        </div>
+    </div>
+
+    <!-- Bulk Send for Payment Modal -->
+    <div id="bulkSendForPaymentModal" class="modal">
+        <div class="modal-content">
+            <div class="modal-header">
+                <h2>Send Selected for Payment</h2>
+                <span class="close" onclick="closeBulkSendForPaymentModal()">&times;</span>
+            </div>
+            <div class="modal-body">
+                <p class="text-muted">
+                    Selected examinations: <strong><span id="bulkSendSelectedCount">0</span></strong>
+                </p>
+                <div class="validation-summary" id="bulkPaymentValidation" style="display: none; background: #fff3cd; border: 1px solid #ffe08a; border-radius: 6px; padding: 12px; margin-bottom: 12px;">
+                    <div style="display:flex; align-items:center; gap:8px; margin-bottom:6px;">
+                        <i class="fas fa-exclamation-triangle" style="color:#856404;"></i>
+                        <strong style="color:#856404;">Some selected records cannot be sent for payment</strong>
+                    </div>
+                    <ul id="bulkPaymentValidationList" style="margin:0 0 6px 18px; padding:0;">
+                    </ul>
+                    <small style="color:#856404;">Only procedures with status <strong>OPEN</strong> can be sent for payment.</small>
+                </div>
+                <div class="progress-section" id="bulkPaymentProgress" style="display:none;">
+                    <div style="margin-bottom:8px; color:#2c3e50;">
+                        <i class="fas fa-spinner fa-spin"></i> Processing bulk update...
+                    </div>
+                    <div style="background:#ecf0f1; border-radius:4px; height:10px; overflow:hidden;">
+                        <div id="bulkPaymentProgressBar" style="background:#3498db; width:0%; height:10px; transition: width 0.3s ease;"></div>
+                    </div>
+                </div>
+                <div class="result-section" id="bulkPaymentResult" style="display:none; margin-top:12px;">
+                    <div id="bulkPaymentResultSummary" style="margin-bottom:8px; color:#2c3e50;"></div>
+                    <div id="bulkPaymentErrorContainer" style="display:none; background:#fdecea; border:1px solid #f5c6cb; border-radius:6px; padding:10px;">
+                        <div style="display:flex; align-items:center; gap:8px; margin-bottom:6px; color:#721c24;">
+                            <i class="fas fa-times-circle"></i>
+                            <strong>Errors</strong>
+                        </div>
+                        <ul id="bulkPaymentErrorList" style="margin:0 0 6px 18px; padding:0; color:#721c24;"></ul>
+                    </div>
+                </div>
+            </div>
+            <div class="modal-footer">
+                <button type="button" class="btn btn-primary btn-sm" id="confirmBulkSendForPaymentBtn" onclick="sendSelectedForPayment()">
+                    <i class="fas fa-paper-plane"></i> Send for Payment
+                </button>
+                <button type="button" class="btn btn-secondary btn-sm" onclick="closeBulkSendForPaymentModal()">Cancel</button>
+            </div>
+        </div>
+    </div>
+
     <script>
         // Clinical File Functions
         function toggleClinicalFiles() {
@@ -4977,6 +5209,116 @@
                     }
                 }
             });
+        }
+    </script>
+    
+    <script>
+        // Bulk Assign Doctor to Selected Examinations
+        function openBulkAssignDoctorModal() {
+            const selectedCheckboxes = document.querySelectorAll('.examination-checkbox:checked');
+            if (selectedCheckboxes.length === 0) {
+                showAlertModal('Please select at least one examination to assign a doctor.', 'warning');
+                return;
+            }
+            // Count only examinations without an already assigned doctor
+            let assignableCount = 0;
+            selectedCheckboxes.forEach(cb => {
+                const row = cb.closest('tr');
+                const doctorCell = row ? row.querySelector('td[data-doctor]') : null;
+                const hasAssigned = doctorCell && (doctorCell.getAttribute('data-doctor') || '').trim() !== '';
+                if (!hasAssigned) assignableCount++;
+            });
+            const countEl = document.getElementById('bulkAssignSelectedCount');
+            if (countEl) countEl.textContent = assignableCount;
+            if (assignableCount === 0) {
+                showAlertModal('All selected examinations already have a treating doctor assigned. No changes can be made via bulk assignment.', 'warning');
+                return;
+            }
+            const select = document.getElementById('bulkAssignDoctorSelect');
+            if (select) select.value = '';
+            document.getElementById('bulkAssignDoctorModal').style.display = 'block';
+        }
+
+        function closeBulkAssignDoctorModal() {
+            document.getElementById('bulkAssignDoctorModal').style.display = 'none';
+            const select = document.getElementById('bulkAssignDoctorSelect');
+            if (select) select.value = '';
+        }
+
+        async function assignDoctorToSelected() {
+            const selectedCheckboxes = document.querySelectorAll('.examination-checkbox:checked');
+            if (selectedCheckboxes.length === 0) {
+                showAlertModal('Please select at least one examination.', 'warning');
+                return;
+            }
+            const select = document.getElementById('bulkAssignDoctorSelect');
+            const doctorId = select ? select.value : '';
+            if (!doctorId) {
+                showAlertModal('Please choose a doctor to assign.', 'warning');
+                return;
+            }
+
+            // Split into eligible and blocked (already assigned) examinations
+            const eligibleIds = [];
+            const blockedIds = [];
+            selectedCheckboxes.forEach(cb => {
+                const row = cb.closest('tr');
+                const doctorCell = row ? row.querySelector('td[data-doctor]') : null;
+                const hasAssigned = doctorCell && (doctorCell.getAttribute('data-doctor') || '').trim() !== '';
+                if (hasAssigned) {
+                    blockedIds.push(Number(cb.value));
+                } else {
+                    eligibleIds.push(Number(cb.value));
+                }
+            });
+            if (eligibleIds.length === 0) {
+                showAlertModal('All selected examinations already have a treating doctor assigned and cannot be modified.', 'warning');
+                return;
+            }
+            if (blockedIds.length > 0) {
+                showAlertModal(blockedIds.length + ' selected examinations already have a treating doctor assigned and will be skipped.', 'info');
+            }
+
+            const btn = document.getElementById('assignBulkDoctorBtn');
+            const originalHtml = btn ? btn.innerHTML : '';
+            if (btn) {
+                btn.disabled = true;
+                btn.innerHTML = '<i class="fas fa-spinner fa-spin"></i> Assigning...';
+            }
+
+            try {
+                const resp = await fetch(joinUrl(contextPath, '/patients/tooth-examination/assign-doctor-bulk'), {
+                    method: 'POST',
+                    headers: {
+                        'Content-Type': 'application/json',
+                        'X-CSRF-TOKEN': document.querySelector('meta[name="_csrf"]').content
+                    },
+                    body: JSON.stringify({ examinationIds: eligibleIds, doctorId: Number(doctorId) })
+                });
+                let json = {};
+                try { json = await resp.json(); } catch (e) {}
+                if (resp.ok && json && (json.success === undefined || json.success)) {
+                    const count = json.assignedCount || eligibleIds.length;
+                    const failed = (json.failedIds && json.failedIds.length) ? json.failedIds.length : 0;
+                    const skipped = blockedIds.length;
+                    const parts = [];
+                    parts.push(count + ' successful');
+                    if (failed > 0) parts.push(failed + ' failed');
+                    if (skipped > 0) parts.push(skipped + ' skipped (already assigned)');
+                    const msg = 'Assignment completed: ' + parts.join(', ') + '.';
+                    showAlertModal(msg, failed === 0 ? 'success' : 'warning');
+                    closeBulkAssignDoctorModal();
+                } else {
+                    showAlertModal('Failed to assign doctor: ' + (json && json.message ? json.message : 'Unknown error'), 'error');
+                }
+            } catch (err) {
+                showAlertModal('Error assigning doctor: ' + err.message, 'error');
+            } finally {
+                if (btn) {
+                    btn.disabled = false;
+                    btn.innerHTML = originalHtml;
+                }
+            }
         }
     </script>
 
@@ -5114,6 +5456,19 @@
         }
         
         // Delete examination functionality
+        function onDeleteExamClick(event, button) {
+            try {
+                event.stopPropagation();
+                if (button.disabled) { return false; }
+                const examId = parseInt(button.dataset.examId, 10);
+                const toothNumber = button.dataset.tooth || '';
+                const examinationDate = button.dataset.examDate || '';
+                confirmDeleteExamination(examId, toothNumber, examinationDate);
+            } catch (e) {
+                console.error('Delete click handler error:', e);
+            }
+        }
+
         function confirmDeleteExamination(examId, toothNumber, examinationDate) {
             const toothDisplay = toothNumber === 'GENERAL_CONSULTATION' ? 'General Consultation' : toothNumber.replace('TOOTH_', '');
             const formattedDate = formatDateTime12Hour(examinationDate);
@@ -5155,6 +5510,18 @@
         }
 
         // Admin-only purge examination functionality
+        function onPurgeExamClick(event, button) {
+            try {
+                event.stopPropagation();
+                const examId = parseInt(button.dataset.examId, 10);
+                const toothNumber = button.dataset.tooth || '';
+                const examinationDate = button.dataset.examDate || '';
+                confirmPurgeExamination(examId, toothNumber, examinationDate);
+            } catch (e) {
+                console.error('Purge click handler error:', e);
+            }
+        }
+
         function confirmPurgeExamination(examId, toothNumber, examinationDate) {
             const toothDisplay = toothNumber === 'GENERAL_CONSULTATION' ? 'General Consultation' : toothNumber.replace('TOOTH_', '');
             const formattedDate = formatDateTime12Hour(examinationDate);
@@ -5248,7 +5615,7 @@
         }
         
         function loadCustomerLedger() {
-            const patientId = ${patient.id};
+            const patientId = parseInt('${patient.id}', 10);
             const loadingDiv = document.getElementById('ledgerLoading');
             const contentDiv = document.getElementById('ledgerContent');
             const errorDiv = document.getElementById('ledgerError');
@@ -5377,8 +5744,8 @@
         }
         
         function downloadLedgerCSV() {
-            const patientId = ${patient.id};
-            const patientName = '${patient.firstName} ${patient.lastName}';
+            const patientId = parseInt('${patient.id}', 10);
+            const patientName = "${fn:replace(fn:escapeXml(patient.firstName), '"', '\\"')} ${fn:replace(fn:escapeXml(patient.lastName), '"', '\\"')}";
             
             fetch('/payment-management/patient/' + patientId + '/transactions')
                 .then(response => response.json())
@@ -5443,6 +5810,297 @@
             }
         }
     </script>
+
+    <script>
+        // Bulk Upload to Selected Examinations
+        let bulkSelectedFiles = [];
+
+        function getSelectedExaminationIds() {
+            const selectedCheckboxes = document.querySelectorAll('.examination-checkbox:checked');
+            return Array.from(selectedCheckboxes).map(cb => cb.value);
+        }
+
+        function openBulkUploadSelectedModal() {
+            const selectedIds = getSelectedExaminationIds();
+            if (selectedIds.length === 0) {
+                showAlertModal('Please select at least one examination to upload files.', 'warning');
+                return;
+            }
+            document.getElementById('bulkSelectedCount').textContent = selectedIds.length;
+            bulkSelectedFiles = [];
+            const input = document.getElementById('bulkSelectedInput');
+            if (input) input.value = '';
+            const list = document.getElementById('bulkSelectedFileList');
+            if (list) list.innerHTML = '';
+            document.getElementById('bulkUploadSelectedModal').style.display = 'block';
+        }
+
+        function closeBulkUploadSelectedModal() {
+            document.getElementById('bulkUploadSelectedModal').style.display = 'none';
+            bulkSelectedFiles = [];
+            const input = document.getElementById('bulkSelectedInput');
+            if (input) input.value = '';
+            const list = document.getElementById('bulkSelectedFileList');
+            if (list) list.innerHTML = '';
+        }
+
+        function renderBulkSelectedFileList(files) {
+            const list = document.getElementById('bulkSelectedFileList');
+            if (!list) return;
+            list.innerHTML = '';
+            files.forEach(f => {
+                const sizeMB = (f.size / (1024 * 1024)).toFixed(2);
+                const item = document.createElement('div');
+                item.className = 'file-list-item';
+                item.textContent = f.name + ' (' + sizeMB + ' MB)';
+                list.appendChild(item);
+            });
+        }
+
+        async function handleBulkSelectedFiles(fileList) {
+            bulkSelectedFiles = [];
+            const files = Array.from(fileList || []);
+            for (const file of files) {
+                const isPdf = file.type === 'application/pdf' || file.name.toLowerCase().endsWith('.pdf');
+                let finalFile = file;
+                if (!isPdf) {
+                    try {
+                        // Basic image compression; options can be tuned if needed
+                        finalFile = await ImageCompression.compressImage(file);
+                    } catch (e) {
+                        // Fallback to original file on compression error
+                        finalFile = file;
+                    }
+                }
+                bulkSelectedFiles.push(finalFile);
+            }
+            renderBulkSelectedFileList(bulkSelectedFiles);
+        }
+
+        (function initBulkSelectedInput(){
+            const input = document.getElementById('bulkSelectedInput');
+            if (input) {
+                input.addEventListener('change', async function(e){
+                    await handleBulkSelectedFiles(e.target.files);
+                });
+            }
+        })();
+
+        async function uploadBulkFilesToSelected() {
+            const selectedIds = getSelectedExaminationIds();
+            if (selectedIds.length === 0) {
+                showAlertModal('Please select at least one examination.', 'warning');
+                return;
+            }
+            if (bulkSelectedFiles.length === 0) {
+                showAlertModal('Please choose files to upload.', 'warning');
+                return;
+            }
+
+            const token = document.querySelector('meta[name="_csrf"]').content;
+            let successCount = 0;
+            let failCount = 0;
+
+            for (const examId of selectedIds) {
+                const fd = new FormData();
+                fd.append('examinationId', examId);
+                bulkSelectedFiles.forEach(f => fd.append('files', f));
+
+                try {
+                    const resp = await fetch(joinUrl(contextPath, '/patients/examination/upload-bulk-media'), {
+                        method: 'POST',
+                        headers: { 'X-CSRF-TOKEN': token },
+                        body: fd
+                    });
+                    let json = {};
+                    try { json = await resp.json(); } catch (e) {}
+                    if (resp.ok && (json.success === undefined || json.success)) {
+                        successCount++;
+                    } else {
+                        failCount++;
+                    }
+                } catch (e) {
+                    failCount++;
+                }
+            }
+
+            if (failCount === 0) {
+                showAlertModal('Uploaded to ' + successCount + ' examinations successfully.', 'success');
+                closeBulkUploadSelectedModal();
+            } else {
+                showAlertModal('Upload completed: ' + successCount + ' successful, ' + failCount + ' failed.', 'warning');
+            }
+        }
+
+        // Bulk Send for Payment
+        function openBulkSendForPaymentModal() {
+            const selectedIds = getSelectedExaminationIds();
+            if (selectedIds.length === 0) {
+                showAlertModal('Please select at least one examination to send for payment.', 'warning');
+                return;
+            }
+
+            // Update selected count
+            const countEl = document.getElementById('bulkSendSelectedCount');
+            if (countEl) countEl.textContent = selectedIds.length;
+
+            // Client-side validation: show non-open records
+            const validationList = document.getElementById('bulkPaymentValidationList');
+            const validationBox = document.getElementById('bulkPaymentValidation');
+            if (validationList && validationBox) {
+                validationList.innerHTML = '';
+                let invalidCount = 0;
+                selectedIds.forEach(id => {
+                    const checkbox = document.querySelector('.examination-checkbox[value="' + id + '"]');
+                    if (checkbox) {
+                        const row = checkbox.closest('tr');
+                        const statusCell = row ? row.querySelector('td:nth-child(8)') : null;
+                        const statusText = statusCell ? statusCell.textContent.trim().toUpperCase() : '';
+                        if (statusText !== 'OPEN') {
+                            invalidCount++;
+                            const li = document.createElement('li');
+                            li.textContent = 'Examination ' + id + ' is ' + (statusText || 'UNKNOWN') + ' and cannot be sent';
+                            validationList.appendChild(li);
+                        }
+                    }
+                });
+                validationBox.style.display = invalidCount > 0 ? 'block' : 'none';
+            }
+
+            // Reset progress/result sections
+            const progressBox = document.getElementById('bulkPaymentProgress');
+            const progressBar = document.getElementById('bulkPaymentProgressBar');
+            const resultBox = document.getElementById('bulkPaymentResult');
+            const errorContainer = document.getElementById('bulkPaymentErrorContainer');
+            const errorList = document.getElementById('bulkPaymentErrorList');
+            const resultSummary = document.getElementById('bulkPaymentResultSummary');
+            if (progressBox) progressBox.style.display = 'none';
+            if (progressBar) progressBar.style.width = '0%';
+            if (resultBox) resultBox.style.display = 'none';
+            if (errorContainer) errorContainer.style.display = 'none';
+            if (errorList) errorList.innerHTML = '';
+            if (resultSummary) resultSummary.textContent = '';
+
+            document.getElementById('bulkSendForPaymentModal').style.display = 'block';
+        }
+
+        function closeBulkSendForPaymentModal() {
+            document.getElementById('bulkSendForPaymentModal').style.display = 'none';
+        }
+
+        async function sendSelectedForPayment() {
+            const selectedIds = getSelectedExaminationIds();
+            if (selectedIds.length === 0) {
+                showAlertModal('Please select at least one examination to send for payment.', 'warning');
+                return;
+            }
+
+            // Show progress UI
+            const progressBox = document.getElementById('bulkPaymentProgress');
+            const progressBar = document.getElementById('bulkPaymentProgressBar');
+            const resultBox = document.getElementById('bulkPaymentResult');
+            const errorContainer = document.getElementById('bulkPaymentErrorContainer');
+            const errorList = document.getElementById('bulkPaymentErrorList');
+            const resultSummary = document.getElementById('bulkPaymentResultSummary');
+            const confirmBtn = document.getElementById('confirmBulkSendForPaymentBtn');
+            if (progressBox) progressBox.style.display = 'block';
+            if (progressBar) progressBar.style.width = '25%';
+            if (confirmBtn) {
+                confirmBtn.disabled = true;
+                confirmBtn.innerHTML = '<i class="fas fa-spinner fa-spin"></i> Processing...';
+            }
+
+            const token = document.querySelector('meta[name="_csrf"]').content;
+            const payload = {
+                examinationIds: selectedIds
+            };
+
+            try {
+                const resp = await fetch(joinUrl(contextPath, '/patients/examinations/status/payment-pending/bulk'), {
+                    method: 'POST',
+                    headers: {
+                        'Content-Type': 'application/json',
+                        'X-CSRF-TOKEN': token
+                    },
+                    body: JSON.stringify(payload)
+                });
+
+                let json = {};
+                try { json = await resp.json(); } catch (e) {}
+
+                if (progressBar) progressBar.style.width = '60%';
+
+                if (!resp.ok) {
+                    const errMsg = (json && json.message) ? json.message : 'Failed to update procedure status';
+                    if (resultBox) resultBox.style.display = 'block';
+                    if (resultSummary) resultSummary.textContent = errMsg;
+                    if (errorContainer) errorContainer.style.display = 'none';
+                    if (progressBox) progressBox.style.display = 'none';
+                    if (confirmBtn) {
+                        confirmBtn.disabled = false;
+                        confirmBtn.innerHTML = '<i class="fas fa-paper-plane"></i> Send for Payment';
+                    }
+                    return;
+                }
+
+                const updatedIds = (json && json.updatedIds) ? json.updatedIds : [];
+                const errors = (json && json.errors) ? json.errors : [];
+                const updatedCount = (json && typeof json.updatedCount === 'number') ? json.updatedCount : updatedIds.length;
+                const failedCount = (json && typeof json.failedCount === 'number') ? json.failedCount : errors.length;
+                const totalCount = (json && typeof json.totalCount === 'number') ? json.totalCount : selectedIds.length;
+
+                // Update UI for updated rows
+                updatedIds.forEach(id => {
+                    const checkbox = document.querySelector('.examination-checkbox[value="' + id + '"]');
+                    if (checkbox) {
+                        const row = checkbox.closest('tr');
+                        const statusCell = row ? row.querySelector('td:nth-child(8)') : null;
+                        if (statusCell) statusCell.textContent = 'PAYMENT_PENDING';
+                    }
+                });
+
+                if (progressBar) progressBar.style.width = '100%';
+                if (resultBox) resultBox.style.display = 'block';
+                if (progressBox) progressBox.style.display = 'none';
+                if (resultSummary) {
+                    const baseMsg = (json && json.message) ? json.message : (json && json.success ? 'Updated successfully' : 'Partial update completed');
+                    resultSummary.textContent = baseMsg + ' (' + updatedCount + '/' + totalCount + ' updated, ' + failedCount + ' failed)';
+                }
+
+                // Show errors if present
+                if (errors && errors.length > 0 && errorContainer && errorList) {
+                    errorContainer.style.display = 'block';
+                    errorList.innerHTML = '';
+                    errors.forEach(err => {
+                        const li = document.createElement('li');
+                        li.textContent = 'Examination ' + (err.examinationId || '-') + ': ' + (err.message || 'Unknown error');
+                        errorList.appendChild(li);
+                    });
+                } else if (errorContainer) {
+                    errorContainer.style.display = 'none';
+                }
+
+                // Show success notification and optionally close modal after short delay
+                if (json && json.success) {
+                    showAlertModal('Successfully sent selected examinations for payment.', 'success', () => { window.location.reload(); });
+                    setTimeout(() => { closeBulkSendForPaymentModal(); }, 1200);
+                } else {
+                    // Graceful handling: keep modal open with results and allow closing via Cancel/X
+                    showAlertModal('Partial update completed. Some records could not be updated.', 'warning', () => { window.location.reload(); });
+                }
+            } catch (e) {
+                if (resultBox) resultBox.style.display = 'block';
+                if (resultSummary) resultSummary.textContent = 'Network error while updating statuses: ' + e.message;
+                if (errorContainer) errorContainer.style.display = 'none';
+                if (progressBox) progressBox.style.display = 'none';
+            } finally {
+                if (confirmBtn) {
+                    confirmBtn.disabled = false;
+                    confirmBtn.innerHTML = '<i class="fas fa-paper-plane"></i> Send for Payment';
+                }
+            }
+        }
+    </script>
      
      <!-- Hidden Print Content -->
      <div class="print-content" id="printContent">
@@ -5460,10 +6118,18 @@
                  <strong>Phone Number:</strong> ${patient.phoneNumber}
              </div>
              <div class="detail-item" style="display: block; text-align: center; margin-bottom: 10px; font-size: 14pt;">
-                 <strong>Medical History:</strong> ${not empty patient.medicalHistory ? patient.medicalHistory : 'None reported'}
+                <strong>Medical History:</strong>
+                <c:choose>
+                    <c:when test="${not empty patient.medicalHistory}">${fn:escapeXml(patient.medicalHistory)}</c:when>
+                    <c:otherwise>None reported</c:otherwise>
+                </c:choose>
              </div>
              <div class="detail-item" style="display: block; text-align: center; margin-bottom: 10px; font-size: 14pt;">
-                 <strong>Branch:</strong> ${not empty patient.registeredClinic ? patient.registeredClinic.clinicName : 'Not specified'}
+                <strong>Branch:</strong>
+                <c:choose>
+                    <c:when test="${not empty patient.registeredClinic}">${fn:escapeXml(patient.registeredClinic.clinicName)}</c:when>
+                    <c:otherwise>Not specified</c:otherwise>
+                </c:choose>
              </div>
              <div class="detail-item" style="display: block; text-align: center; margin-bottom: 10px; font-size: 14pt;">
                  <strong>Registration Code:</strong> ${patient.registrationCode}
