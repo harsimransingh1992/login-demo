@@ -48,6 +48,7 @@ public interface PatientRepository extends JpaRepository<Patient, Long> {
     
     // Pagination methods
     Page<Patient> findByFirstNameContainingIgnoreCaseOrLastNameContainingIgnoreCase(String firstName, String lastName, Pageable pageable);
+    Page<Patient> findByFirstNameContainingIgnoreCaseAndLastNameContainingIgnoreCase(String firstName, String lastName, Pageable pageable);
     Page<Patient> findByPhoneNumberContaining(String phoneNumber, Pageable pageable);
     Page<Patient> findByRegistrationCodeContainingIgnoreCase(String registrationCode, Pageable pageable);
     

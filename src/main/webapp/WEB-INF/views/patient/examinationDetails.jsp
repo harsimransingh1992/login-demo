@@ -3328,9 +3328,12 @@
                                     const phaseDisplayName = treatmentPhase === 'post' ? 'Post-Treatment' : 'Pre-Treatment';
                                     const phaseClass = treatmentPhase === 'post' ? 'phase-post' : 'phase-pre';
 
-                                    // Determine if it's an image or PDF
-                                    const imageTypes = ['upper_arch', 'lower_arch', 'xray'];
-                                    const isImage = imageTypes.includes(fileType);
+                                    // Determine type by file extension
+                                    const fileName = (filePath || '').split('/').pop();
+                                    const ext = (fileName && fileName.indexOf('.') !== -1) ? fileName.split('.').pop().toLowerCase() : '';
+                                    const imageExts = ['jpg', 'jpeg', 'png', 'gif', 'bmp', 'webp'];
+                                    const isImage = imageExts.includes(ext);
+                                    const isPdf = ext === 'pdf';
 
                                     if (isImage) {
                                         // Handle image files
@@ -3339,13 +3342,13 @@
                                         // Use string concatenation instead of template literals
                                         const imageCard = '<div class="image-card">' +
                                             '<img src="' + imageSrc + '" ' +
-                                            'alt="' + fileType + '" ' +
-                                            'onclick="openImageModal(\'' + imageSrc + '\', \'' + fileType + '\')">' +
+                                            'alt="' + displayName + '" ' +
+                                            'onclick="openImageModal(\'' + imageSrc + '\', \'' + displayName + '\')">' +
                                             '<div class="image-type">' + displayName + '</div>' +
                                             '<div class="treatment-phase ' + phaseClass + '">' + phaseDisplayName + '</div>' +
                                             '<div class="image-actions">' +
                                             '<button type="button" class="btn btn-sm btn-primary" ' +
-                                            'onclick="openImageModal(\'' + imageSrc + '\', \'' + fileType + '\')">' +
+                                            'onclick="openImageModal(\'' + imageSrc + '\', \'' + displayName + '\')">' +
                                             '<i class="fas fa-search-plus"></i> View</button>' +
                                             '<button type="button" class="btn btn-sm btn-danger" ' +
                                             'onclick="deleteImage(' + fileId + ')">' +
@@ -3354,7 +3357,7 @@
                                             '</div>';
 
                                         return imageCard;
-                                    } else {
+                                    } else if (isPdf) {
                                         // Handle PDF files
                                         const pdfSrc = '/uploads/' + filePath;
                                         const fileName = filePath.split('/').pop();

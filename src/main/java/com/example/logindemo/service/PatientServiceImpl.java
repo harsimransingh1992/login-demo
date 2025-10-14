@@ -256,7 +256,19 @@ public class PatientServiceImpl implements PatientService{
         
         switch (searchType) {
             case "name":
-                patientsPage = patientRepository.findByFirstNameContainingIgnoreCaseOrLastNameContainingIgnoreCase(query, query, pageable);
+                if (query != null) {
+                    String normalized = query.trim().replaceAll("\\s+", " ");
+                    if (normalized.contains(" ")) {
+                        String[] parts = normalized.split(" ");
+                        String first = parts[0];
+                        String last = normalized.substring(first.length() + 1);
+                        patientsPage = patientRepository.findByFirstNameContainingIgnoreCaseAndLastNameContainingIgnoreCase(first, last, pageable);
+                    } else {
+                        patientsPage = patientRepository.findByFirstNameContainingIgnoreCaseOrLastNameContainingIgnoreCase(normalized, normalized, pageable);
+                    }
+                } else {
+                    patientsPage = patientRepository.findAll(pageable);
+                }
                 break;
             case "phone":
                 patientsPage = patientRepository.findByPhoneNumberContaining(query, pageable);

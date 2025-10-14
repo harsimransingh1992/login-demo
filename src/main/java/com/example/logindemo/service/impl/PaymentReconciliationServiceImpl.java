@@ -39,22 +39,34 @@ public class PaymentReconciliationServiceImpl implements PaymentReconciliationSe
             .collect(Collectors.toList());
 
         ReconciliationResponse response = new ReconciliationResponse();
-        
-        // Calculate total collections (sum of all payment entries in the date range)
-        double totalCollections = examinations.stream()
+
+        // Collect payment entries for the day within the clinic
+        List<PaymentEntry> dayEntries = examinations.stream()
             .flatMap(exam -> exam.getPaymentEntries() != null ? exam.getPaymentEntries().stream() : java.util.stream.Stream.empty())
             .filter(entry -> entry.getPaymentDate() != null &&
                 !entry.getPaymentDate().isBefore(startOfDay) && entry.getPaymentDate().isBefore(endOfDay))
-            .mapToDouble(PaymentEntry::getAmount)
-                .sum();
-        response.setTotalCollections(totalCollections);
+            .collect(Collectors.toList());
+
+        // Calculate gross (captures/authorizations), refunds, and net collections
+        double grossCollections = dayEntries.stream()
+            .filter(entry -> entry.getTransactionType() != null &&
+                    (entry.getTransactionType() == com.example.logindemo.model.TransactionType.CAPTURE ||
+                     entry.getTransactionType() == com.example.logindemo.model.TransactionType.AUTHORIZATION))
+            .mapToDouble(e -> e.getAmount() != null ? e.getAmount() : 0.0)
+            .sum();
+
+        double totalRefunds = dayEntries.stream()
+            .filter(entry -> entry.getTransactionType() == com.example.logindemo.model.TransactionType.REFUND)
+            .mapToDouble(e -> e.getAmount() != null ? e.getAmount() : 0.0)
+            .sum();
+
+        double netCollections = grossCollections - totalRefunds;
+        response.setGrossCollections(grossCollections);
+        response.setTotalRefunds(totalRefunds);
+        response.setTotalCollections(netCollections);
 
         // Calculate total transactions (number of payment entries in the date range)
-        int totalTransactions = (int) examinations.stream()
-            .flatMap(exam -> exam.getPaymentEntries() != null ? exam.getPaymentEntries().stream() : java.util.stream.Stream.empty())
-            .filter(entry -> entry.getPaymentDate() != null &&
-                !entry.getPaymentDate().isBefore(startOfDay) && entry.getPaymentDate().isBefore(endOfDay))
-            .count();
+        int totalTransactions = dayEntries.size();
         response.setTotalTransactions(totalTransactions);
 
         // Calculate pending amount (examinations with no payment entries in the date range)
@@ -69,15 +81,15 @@ public class PaymentReconciliationServiceImpl implements PaymentReconciliationSe
         response.setPendingAmount(pendingAmount);
 
         // Calculate payment mode breakdown (sum by mode for payment entries in the date range)
-        Map<String, Double> paymentModeBreakdown = examinations.stream()
-            .flatMap(exam -> exam.getPaymentEntries() != null ? exam.getPaymentEntries().stream() : java.util.stream.Stream.empty())
-            .filter(entry -> entry.getPaymentDate() != null &&
-                !entry.getPaymentDate().isBefore(startOfDay) && entry.getPaymentDate().isBefore(endOfDay))
+        Map<String, Double> paymentModeBreakdown = dayEntries.stream()
             .filter(entry -> entry.getPaymentMode() != null && entry.getAmount() != null)
-                .collect(Collectors.groupingBy(
+            .collect(Collectors.groupingBy(
                 entry -> entry.getPaymentMode().toString(),
-                Collectors.summingDouble(PaymentEntry::getAmount)
-                ));
+                Collectors.summingDouble(entry -> {
+                    double amt = entry.getAmount() != null ? entry.getAmount() : 0.0;
+                    return entry.getTransactionType() == com.example.logindemo.model.TransactionType.REFUND ? -amt : amt;
+                })
+            ));
         response.setPaymentModeBreakdown(paymentModeBreakdown);
 
         // Add transaction details (one per payment entry in the date range)
@@ -116,6 +128,17 @@ public class PaymentReconciliationServiceImpl implements PaymentReconciliationSe
                         dto.setTransactionType(entry.getTransactionType() != null ? entry.getTransactionType().toString() : "CAPTURE");
                     // Set examination date
                         dto.setExaminationDate(exam.getExaminationDate() != null ? exam.getExaminationDate().toString() : "N/A");
+                    // Set handler names
+                        dto.setRecordedByName(entry.getRecordedBy() != null ?
+                                ((entry.getRecordedBy().getFirstName() != null ? entry.getRecordedBy().getFirstName() : "") +
+                                 " " +
+                                 (entry.getRecordedBy().getLastName() != null ? entry.getRecordedBy().getLastName() : "")).trim()
+                                : "N/A");
+                        dto.setRefundApprovedByName(entry.getRefundApprovedBy() != null ?
+                                ((entry.getRefundApprovedBy().getFirstName() != null ? entry.getRefundApprovedBy().getFirstName() : "") +
+                                 " " +
+                                 (entry.getRefundApprovedBy().getLastName() != null ? entry.getRefundApprovedBy().getLastName() : "")).trim()
+                                : null);
                     return dto;
                     });
                 })

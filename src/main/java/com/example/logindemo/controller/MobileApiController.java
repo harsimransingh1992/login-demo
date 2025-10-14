@@ -317,20 +317,8 @@ public class MobileApiController {
                 return createErrorResponse("Examination is not from today", HttpStatus.FORBIDDEN);
             }
 
-            // Check if user is authorized (OPD doctor or assigned doctor)
-            boolean isAuthorized = false;
-            if (examination.getOpdDoctor() != null && examination.getOpdDoctor().getId().equals(user.getId())) {
-                isAuthorized = true;
-            }
-            if (examination.getAssignedDoctor() != null && examination.getAssignedDoctor().getId().equals(user.getId())) {
-                isAuthorized = true;
-            }
-
-            if (!isAuthorized) {
-                log.warn("Mobile examination access denied: User {} not authorized for examination {}", 
-                        user.getUsername(), request.getExaminationId());
-                return createErrorResponse("Access denied: You are not authorized to view this examination", HttpStatus.FORBIDDEN);
-            }
+            // Authorization check removed per updated requirements.
+            // Allow viewing examination details without user-specific role association.
 
             // Create success response with basic patient information
             Map<String, Object> response = new HashMap<>();
@@ -860,4 +848,4 @@ public class MobileApiController {
         public String getUsername() { return username; }
         public void setUsername(String username) { this.username = username; }
     }
-} 
+}

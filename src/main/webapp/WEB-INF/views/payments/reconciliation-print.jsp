@@ -204,6 +204,14 @@
                 <div class="summary-value">₹<fmt:formatNumber value="${reconciliationData.totalCollections}" pattern="#,##0.00"/></div>
             </div>
             <div class="summary-card">
+                <div class="summary-label">Gross Collections</div>
+                <div class="summary-value">₹<fmt:formatNumber value="${reconciliationData.grossCollections}" pattern="#,##0.00"/></div>
+            </div>
+            <div class="summary-card">
+                <div class="summary-label">Total Refunds</div>
+                <div class="summary-value">₹<fmt:formatNumber value="${reconciliationData.totalRefunds}" pattern="#,##0.00"/></div>
+            </div>
+            <div class="summary-card">
                 <div class="summary-label">Total Transactions</div>
                 <div class="summary-value">${reconciliationData.totalTransactions}</div>
             </div>
@@ -240,6 +248,7 @@
                         <th>Amount</th>
                         <th>Payment Mode</th>
                         <th>Status</th>
+                        <th>Handled By</th>
                     </tr>
                 </thead>
                 <tbody>
@@ -277,6 +286,23 @@
                             </td>
                             <td>${transaction.paymentMode}</td>
                             <td>${transaction.status}</td>
+                            <td>
+                                <c:choose>
+                                    <c:when test="${transaction.transactionType == 'REFUND'}">
+                                        <c:choose>
+                                            <c:when test="${not empty transaction.refundApprovedByName}">
+                                                ${transaction.refundApprovedByName}
+                                            </c:when>
+                                            <c:otherwise>
+                                                ${transaction.recordedByName}
+                                            </c:otherwise>
+                                        </c:choose>
+                                    </c:when>
+                                    <c:otherwise>
+                                        ${transaction.recordedByName}
+                                    </c:otherwise>
+                                </c:choose>
+                            </td>
                         </tr>
                     </c:forEach>
                 </tbody>
@@ -296,4 +322,4 @@
         <p>PeriDesk Dental Management System</p>
     </div>
 </body>
-</html> 
+</html>

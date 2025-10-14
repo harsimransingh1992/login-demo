@@ -3556,16 +3556,8 @@ public class PatientController {
             
             ToothClinicalExamination examination = examinationOpt.get();
             
-            // Verify the examination belongs to the current clinic only if clinic context is available
-            if (clinicId != null) {
-                ClinicModel examClinic = examination.getExaminationClinic();
-                String examClinicId = (examClinic != null ? examClinic.getClinicId() : null);
-                if (examClinicId != null && !examClinicId.equals(clinicId)) {
-                    response.put("success", false);
-                    response.put("message", "You don't have permission to view this examination");
-                    return response;
-                }
-            }
+            // Previous clinic-based permission check removed per updated requirements.
+            // Access to examination payment history is now allowed without clinic validation.
             
             // Create examination data
             Map<String, Object> examinationData = new HashMap<>();

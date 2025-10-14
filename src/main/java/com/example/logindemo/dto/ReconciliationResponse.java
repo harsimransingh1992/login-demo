@@ -6,6 +6,8 @@ import java.util.Map;
 
 @Data
 public class ReconciliationResponse {
+    private double grossCollections;
+    private double totalRefunds;
     private double totalCollections;
     private int totalTransactions;
     private double pendingAmount;
@@ -24,5 +26,7 @@ public class ReconciliationResponse {
         private String collectionDate;
         private String transactionType;
         private String examinationDate;
+        private String recordedByName;
+        private String refundApprovedByName;
     }
-} 
+}

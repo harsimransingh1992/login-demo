@@ -488,12 +488,8 @@ public class PendingPaymentController {
             
             ToothClinicalExamination examination = examinationOpt.get();
             
-            // Verify the examination belongs to the current clinic
-            if (!examination.getExaminationClinic().getClinicId().equals(clinicId)) {
-                response.put("success", false);
-                response.put("message", "You don't have permission to view this examination");
-                return response;
-            }
+            // Previous clinic-based view permission check removed per updated requirements.
+            // Payment history can be viewed regardless of clinic association.
             
             // Create examination data
             Map<String, Object> examinationData = new HashMap<>();
