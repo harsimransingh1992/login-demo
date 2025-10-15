@@ -2071,7 +2071,11 @@
                                         patientTitle: patientTitle
                                     };
                                 });
-                                var events = allEvents.slice();
+                                // Exclude cancelled appointments from calendar view
+                                var events = allEvents.filter(function (ev) {
+                                    var status = (ev.className && ev.className[0] || '').replace('appt-', '');
+                                    return status !== 'cancelled';
+                                });
                                 // Set fixed time window from 8 AM to 11:59 PM
                                 var minHour = 8;
                                 var maxHour = 24;
@@ -2194,7 +2198,8 @@
                                 $('#todayBtn').on('click', function () { calendarEl.fullCalendar('today'); syncUrlWithCalendar(); });
                                 // Populate doctor filter
                                 try {
-                                    var uniqueDoctors = Array.from(new Set(allEvents.map(function (e) { return e.doctorName || ''; }))).filter(Boolean).sort();
+                                    // Build doctor filter list from non-cancelled events only
+                                    var uniqueDoctors = Array.from(new Set(events.map(function (e) { return e.doctorName || ''; }))).filter(Boolean).sort();
                                     var sel = document.getElementById('doctorFilter');
                                     if (sel) {
                                         uniqueDoctors.forEach(function (name) {
@@ -2205,7 +2210,8 @@
                                         });
                                         sel.addEventListener('change', function () {
                                             var selected = sel.value;
-                                            var filtered = selected ? allEvents.filter(function (e) { return e.doctorName === selected; }) : allEvents.slice();
+                                            // Keep cancelled appointments hidden when filtering by doctor
+                                            var filtered = selected ? events.filter(function (e) { return e.doctorName === selected; }) : events.slice();
                                             calendarEl.fullCalendar('removeEvents');
                                             calendarEl.fullCalendar('addEventSource', filtered);
                                             calendarEl.fullCalendar('rerenderEvents');
