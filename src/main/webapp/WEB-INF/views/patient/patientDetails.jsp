@@ -3395,6 +3395,46 @@
             border-color: #3498db;
         }
 
+        /* Layout optimization: arrange info sections side-by-side while responsive */
+        .patient-details-container .patient-info {
+            display: grid;
+            grid-template-columns: repeat(2, minmax(0, 1fr));
+            gap: 16px 24px;
+        }
+        @media (max-width: 992px) {
+            .patient-details-container .patient-info {
+                grid-template-columns: 1fr;
+            }
+        }
+
+        /* Preserve section styling and improve readability */
+        .patient-details-container .info-section {
+            background: #ffffff;
+            border: 1px solid #e9ecef;
+            border-radius: 8px;
+            padding: 16px;
+        }
+
+        /* Align labels and values side-by-side within items */
+        .patient-details-container .info-item {
+            display: grid;
+            grid-template-columns: 200px 1fr;
+            align-items: center;
+            column-gap: 12px;
+            row-gap: 6px;
+            padding: 6px 0;
+            border-bottom: 1px dashed #f0f2f5;
+        }
+        .patient-details-container .info-item:last-child {
+            border-bottom: none;
+        }
+        .patient-details-container .info-label {
+            color: #6c757d;
+        }
+        .patient-details-container .info-value {
+            color: #343a40;
+        }
+
 
 
     </style>
