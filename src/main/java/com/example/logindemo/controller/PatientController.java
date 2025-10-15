@@ -786,6 +786,104 @@ public class PatientController {
         }
     }
 
+    @PostMapping("/tooth-examination/assign-doctor-bulk")
+    @ResponseBody
+    @Transactional
+    public ResponseEntity<?> assignDoctorToExaminationBulk(@RequestBody Map<String, Object> request) {
+        try {
+            // Get current user to check role
+            String currentUsername = PeriDeskUtils.getCurrentClinicUserName();
+            User currentUser = userService.findByUsername(currentUsername)
+                .orElseThrow(() -> new RuntimeException("Current user not found"));
+
+            // Check if user is a receptionist - prevent them from assigning doctors
+            if (currentUser.getRole() == UserRole.RECEPTIONIST) {
+                log.warn("Receptionist {} attempted bulk doctor assignment", currentUsername);
+                return ResponseEntity.status(HttpStatus.FORBIDDEN).body(Map.of(
+                    "success", false,
+                    "message", "Receptionists are not authorized to assign doctors to examinations. Please contact a doctor or staff member."
+                ));
+            }
+
+            Object idsObj = request.get("examinationIds");
+            Object doctorIdObj = request.get("doctorId");
+
+            if (idsObj == null || doctorIdObj == null) {
+                return ResponseEntity.badRequest().body(Map.of(
+                    "success", false,
+                    "message", "Missing examinationIds or doctorId"
+                ));
+            }
+
+            Long doctorId = ((Number) doctorIdObj).longValue();
+            List<Long> examinationIds = new ArrayList<>();
+            if (idsObj instanceof List<?>) {
+                for (Object o : (List<?>) idsObj) {
+                    if (o instanceof Number) {
+                        examinationIds.add(((Number) o).longValue());
+                    } else if (o instanceof String) {
+                        try {
+                            examinationIds.add(Long.parseLong((String) o));
+                        } catch (NumberFormatException nfe) {
+                            log.warn("Invalid examinationId in payload: {}", o);
+                        }
+                    }
+                }
+            } else {
+                return ResponseEntity.badRequest().body(Map.of(
+                    "success", false,
+                    "message", "examinationIds must be an array"
+                ));
+            }
+
+            if (examinationIds.isEmpty()) {
+                return ResponseEntity.badRequest().body(Map.of(
+                    "success", false,
+                    "message", "No valid examinationIds provided"
+                ));
+            }
+
+            int assignedCount = 0;
+            List<Long> failedIds = new ArrayList<>();
+            List<Long> skippedIds = new ArrayList<>();
+
+            for (Long examId : examinationIds) {
+                try {
+                    Optional<ToothClinicalExamination> examOpt = toothClinicalExaminationRepository.findById(examId);
+                    if (!examOpt.isPresent()) {
+                        log.warn("Examination {} not found for bulk assignment", examId);
+                        failedIds.add(examId);
+                        continue;
+                    }
+                    ToothClinicalExamination exam = examOpt.get();
+                    if (exam.getAssignedDoctor() != null) {
+                        // Skip reassignment for examinations that already have a treating doctor
+                        skippedIds.add(examId);
+                        continue;
+                    }
+                    patientService.assignDoctorToExamination(examId, doctorId);
+                    assignedCount++;
+                } catch (Exception ex) {
+                    log.error("Failed to assign doctor {} to examination {}: {}", doctorId, examId, ex.getMessage());
+                    failedIds.add(examId);
+                }
+            }
+
+            Map<String, Object> response = new HashMap<>();
+            response.put("success", true);
+            response.put("assignedCount", assignedCount);
+            response.put("failedIds", failedIds);
+            response.put("skippedIds", skippedIds);
+            return ResponseEntity.ok(response);
+        } catch (Exception e) {
+            log.error("Error in bulk doctor assignment: {}", e.getMessage());
+            return ResponseEntity.badRequest().body(Map.of(
+                "success", false,
+                "message", e.getMessage()
+            ));
+        }
+    }
+
     @GetMapping("/examination")
     public String getAllExaminations() {
         log.info("Redirecting from /examination endpoint to patient list");
@@ -2100,23 +2198,23 @@ public class PatientController {
         log.info("=== ENDPOINT HIT: /update-procedure-status ===");
         log.info("Request received: {}", request);
         log.info("Request class: {}", request.getClass().getName());
-        
+
         try {
             Long examinationId = Long.valueOf(request.get("examinationId").toString());
             String status = request.get("status").toString();
-            
+
             log.info("=== STATUS UPDATE REQUEST ===");
             log.info("Examination ID: {}", examinationId);
             log.info("Requested Status: {}", status);
-            
+
             // Get the examination
             ToothClinicalExamination examination = toothClinicalExaminationRepository.findById(examinationId)
                 .orElseThrow(() -> new RuntimeException("Examination not found"));
-            
+
             // Validate status transition
             ProcedureStatus currentStatus = examination.getProcedureStatus();
             ProcedureStatus newStatus = ProcedureStatus.valueOf(status);
-            
+
             log.info("Current Status: {}", currentStatus);
             log.info("New Status: {}", newStatus);
             log.info("Allowed transitions from {}: {}", currentStatus, currentStatus.getAllowedTransitions());
@@ -2125,7 +2223,7 @@ public class PatientController {
             List<FollowUpRecord> followUpRecords = followUpService.getFollowUpsForExamination(examination);
             boolean hasActiveFollowUps = followUpRecords.stream()
                 .anyMatch(followUp -> followUp.getStatus() == FollowUpStatus.SCHEDULED);
-            
+
             log.info("Follow-up records found: {}", followUpRecords.size());
             log.info("Has active follow-ups: {}", hasActiveFollowUps);
             if (hasActiveFollowUps) {
@@ -2139,11 +2237,11 @@ public class PatientController {
             boolean isReopenToInProgress = (currentStatus == ProcedureStatus.REOPEN && newStatus == ProcedureStatus.IN_PROGRESS);
             boolean isFollowUpCompleted = (newStatus == ProcedureStatus.FOLLOW_UP_COMPLETED);
             boolean isAlreadyClosed = (currentStatus == ProcedureStatus.CLOSED);
-            
+
             log.info("Is REOPEN->IN_PROGRESS transition: {}", isReopenToInProgress);
             log.info("Is Next-Sitting Completed transition: {}", isFollowUpCompleted);
             log.info("Is already CLOSED: {}", isAlreadyClosed);
-            
+
             if (hasActiveFollowUps && !isFollowUpCompleted && !isReopenToInProgress && !isAlreadyClosed) {
                 log.warn("BLOCKED: Cannot change procedure status while follow-ups are scheduled");
                 return ResponseEntity.badRequest()
@@ -2164,7 +2262,7 @@ public class PatientController {
                         "message", "Cannot close the case because payment is still pending. Please collect the full payment before closing the case."
                     ));
             }
-            
+
             if (!currentStatus.getAllowedTransitions().contains(newStatus)) {
                 log.warn("BLOCKED: Invalid status transition from {} to {}", currentStatus, newStatus);
                 return ResponseEntity.badRequest()
@@ -2174,12 +2272,12 @@ public class PatientController {
                         "message", "Invalid status transition from " + currentStatus + " to " + newStatus
                     ));
             }
-            
+
             log.info("PROCEEDING: Status transition validation passed");
-            
+
             // Update the status
             examination.setProcedureStatus(newStatus);
-            
+
             // Set timestamps based on status
             if (newStatus == ProcedureStatus.IN_PROGRESS) {
                 examination.setProcedureStartTime(LocalDateTime.now());
@@ -2188,11 +2286,11 @@ public class PatientController {
                 examination.setProcedureEndTime(LocalDateTime.now());
                 log.info("Set procedure end time for COMPLETED status");
             }
-            
+
             // Save the examination
             toothClinicalExaminationRepository.save(examination);
             log.info("Examination saved with new status: {}", newStatus);
-            
+
             // Create a lifecycle transition record
             ProcedureLifecycleTransition transition = new ProcedureLifecycleTransition();
             transition.setExamination(examination);
@@ -2202,11 +2300,11 @@ public class PatientController {
             transition.setCompleted(true);
             transition.setTransitionedBy(getCurrentUser());
             procedureLifecycleTransitionRepository.save(transition);
-            
+
             log.info("=== STATUS UPDATE SUCCESS ===");
-            log.info("Successfully updated examination {} status from {} to {}", 
+            log.info("Successfully updated examination {} status from {} to {}",
                     examinationId, currentStatus, newStatus);
-            
+
             return ResponseEntity.ok()
                 .contentType(org.springframework.http.MediaType.APPLICATION_JSON)
                 .body(Map.of(
@@ -2215,7 +2313,7 @@ public class PatientController {
                     "newStatus", newStatus.name(),
                     "newStatusLabel", newStatus.getLabel()
                 ));
-            
+
         } catch (Exception e) {
             log.error("=== STATUS UPDATE ERROR ===");
             log.error("Error updating examination status: {}", e.getMessage(), e);
@@ -2225,6 +2323,151 @@ public class PatientController {
                     "success", false,
                     "message", e.getMessage()
                 ));
+        }
+    }
+
+    @PostMapping("/examinations/status/payment-pending/bulk")
+    @ResponseBody
+    @Transactional
+    public ResponseEntity<?> bulkSendForPayment(@RequestBody Map<String, Object> request) {
+        try {
+            Object idsObj = request.get("examinationIds");
+            if (idsObj == null) {
+                return ResponseEntity.badRequest().body(Map.of(
+                    "success", false,
+                    "message", "Missing examinationIds"
+                ));
+            }
+
+            // Parse IDs from array (numbers or strings)
+            List<Long> examinationIds = new ArrayList<>();
+            if (idsObj instanceof List<?>) {
+                for (Object o : (List<?>) idsObj) {
+                    if (o instanceof Number) {
+                        examinationIds.add(((Number) o).longValue());
+                    } else if (o instanceof String) {
+                        try {
+                            examinationIds.add(Long.parseLong((String) o));
+                        } catch (NumberFormatException nfe) {
+                            // Skip invalid
+                        }
+                    }
+                }
+            } else {
+                return ResponseEntity.badRequest().body(Map.of(
+                    "success", false,
+                    "message", "examinationIds must be an array"
+                ));
+            }
+
+            if (examinationIds.isEmpty()) {
+                return ResponseEntity.badRequest().body(Map.of(
+                    "success", false,
+                    "message", "No valid examinationIds provided"
+                ));
+            }
+
+            // Get current user (for transition record and clinic validation)
+            String currentUsername = com.example.logindemo.utils.PeriDeskUtils.getCurrentClinicUserName();
+            User currentUser = userService.findByUsername(currentUsername)
+                .orElse(null);
+
+            List<Long> updatedIds = new ArrayList<>();
+            List<Map<String, Object>> errors = new ArrayList<>();
+
+            for (Long examId : examinationIds) {
+                try {
+                    Optional<ToothClinicalExamination> examOpt = toothClinicalExaminationRepository.findById(examId);
+                    if (examOpt.isEmpty()) {
+                        errors.add(Map.of(
+                            "examinationId", examId,
+                            "message", "Examination not found"
+                        ));
+                        continue;
+                    }
+
+                    ToothClinicalExamination exam = examOpt.get();
+
+                    // Optional clinic validation - ensure operation within same clinic
+                    if (currentUser != null && exam.getExaminationClinic() != null && currentUser.getClinic() != null) {
+                        String userClinicId = currentUser.getClinic().getClinicId();
+                        String examClinicId = exam.getExaminationClinic().getClinicId();
+                        if (userClinicId != null && examClinicId != null && !userClinicId.equals(examClinicId)) {
+                            errors.add(Map.of(
+                                "examinationId", examId,
+                                "message", "You don't have permission to update this examination"
+                            ));
+                            continue;
+                        }
+                    }
+
+                    ProcedureStatus currentStatus = exam.getProcedureStatus();
+                    ProcedureStatus targetStatus = ProcedureStatus.PAYMENT_PENDING;
+
+                    if (currentStatus == null) {
+                        errors.add(Map.of(
+                            "examinationId", examId,
+                            "message", "Current status is not set"
+                        ));
+                        continue;
+                    }
+
+                    // Only allow if transition is permitted by lifecycle
+                    if (!currentStatus.getAllowedTransitions().contains(targetStatus)) {
+                        errors.add(Map.of(
+                            "examinationId", examId,
+                            "message", "Invalid transition from " + currentStatus + " to PAYMENT_PENDING"
+                        ));
+                        continue;
+                    }
+
+                    // Skip if already in target status
+                    if (currentStatus == ProcedureStatus.PAYMENT_PENDING) {
+                        errors.add(Map.of(
+                            "examinationId", examId,
+                            "message", "Already PAYMENT_PENDING"
+                        ));
+                        continue;
+                    }
+
+                    // Perform update
+                    exam.setProcedureStatus(targetStatus);
+                    toothClinicalExaminationRepository.save(exam);
+
+                    // Record lifecycle transition
+                    ProcedureLifecycleTransition transition = new ProcedureLifecycleTransition();
+                    transition.setExamination(exam);
+                    transition.setStageName(targetStatus.toString());
+                    transition.setStageDescription(getStatusDescription(targetStatus));
+                    transition.setTransitionTime(java.time.LocalDateTime.now());
+                    transition.setCompleted(true);
+                    transition.setTransitionedBy(currentUser != null ? currentUser : getCurrentUser());
+                    procedureLifecycleTransitionRepository.save(transition);
+
+                    updatedIds.add(examId);
+                } catch (Exception ex) {
+                    errors.add(Map.of(
+                        "examinationId", examId,
+                        "message", ex.getMessage()
+                    ));
+                }
+            }
+
+            Map<String, Object> response = new HashMap<>();
+            boolean allSucceeded = errors.isEmpty() && updatedIds.size() == examinationIds.size();
+            response.put("success", allSucceeded);
+            response.put("updatedIds", updatedIds);
+            response.put("updatedCount", updatedIds.size());
+            response.put("failedCount", examinationIds.size() - updatedIds.size());
+            response.put("totalCount", examinationIds.size());
+            response.put("errors", errors);
+            response.put("message", allSucceeded ? "Updated successfully" : "Partial update completed");
+            return ResponseEntity.ok(response);
+        } catch (Exception e) {
+            return ResponseEntity.badRequest().body(Map.of(
+                "success", false,
+                "message", e.getMessage()
+            ));
         }
     }
     

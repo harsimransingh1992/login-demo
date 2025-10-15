@@ -4753,25 +4753,24 @@
                             function updateViewProcedureButtonState(mediaFiles) {
                                 const viewProcedureBtn = document.getElementById('viewProcedureBtn');
                                 if (!viewProcedureBtn) return;
-                                
+
                                 // Check if procedure is attached (if button exists and is not disabled due to no procedure)
                                 const hasProcedure = !viewProcedureBtn.classList.contains('btn-secondary');
-                                
+
                                 if (!hasProcedure) {
                                     // No procedure attached, keep button disabled
                                     return;
                                 }
-                                
-                                // Check if we have both upper_arch and lower_arch images
-                                const hasUpperArch = mediaFiles && mediaFiles.some(file => file.fileType === 'upper_arch');
-                                const hasLowerArch = mediaFiles && mediaFiles.some(file => file.fileType === 'lower_arch');
-                                
-                                if (hasUpperArch && hasLowerArch) {
+
+                                // Relaxed validation: enable if there is any media on the examination
+                                const hasAnyMedia = Array.isArray(mediaFiles) && mediaFiles.length > 0;
+
+                                if (hasAnyMedia) {
                                     // Enable the button
                                     viewProcedureBtn.classList.remove('disabled');
                                     viewProcedureBtn.removeAttribute('disabled');
                                     viewProcedureBtn.href = '${pageContext.request.contextPath}/patients/examination/${examination.id}/lifecycle';
-                                    
+
                                     // Update tooltip
                                     const tooltip = viewProcedureBtn.nextElementSibling;
                                     if (tooltip && tooltip.classList.contains('tooltip-text')) {
@@ -4782,11 +4781,11 @@
                                     viewProcedureBtn.classList.add('disabled');
                                     viewProcedureBtn.setAttribute('disabled', 'disabled');
                                     viewProcedureBtn.href = '#';
-                                    
+
                                     // Update tooltip
                                     const tooltip = viewProcedureBtn.nextElementSibling;
                                     if (tooltip && tooltip.classList.contains('tooltip-text')) {
-                                        tooltip.textContent = 'Please upload both upper and lower arch pictures to view procedure';
+                                        tooltip.textContent = 'Please upload at least one media file to view procedure';
                                     }
                                 }
                             }
