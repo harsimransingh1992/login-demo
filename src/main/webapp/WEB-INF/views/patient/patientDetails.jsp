@@ -258,7 +258,7 @@
         }
 
         function generateAutoFileName() {
-            const patientName = '${patient.firstName} ${patient.lastName}';
+            const patientName = "${fn:escapeXml(patient.firstName)} ${fn:escapeXml(patient.lastName)}";
             const today = new Date();
             const dateStr = today.toLocaleDateString('en-GB'); // DD/MM/YYYY format
             const timeStr = today.toLocaleTimeString('en-US', { 
@@ -359,7 +359,6 @@
             const selectedCheckboxes = document.querySelectorAll('.examination-checkbox:checked');
             const selectedCount = selectedCheckboxes.length;
             const selectedCountDisplay = document.getElementById('selectedCountDisplay');
-            const createFileBtn = document.getElementById('createFileFromTableBtn');
             const bulkUploadBtn = document.getElementById('bulkUploadSelectedBtn');
             const bulkAssignBtn = document.getElementById('bulkAssignDoctorBtn');
             const bulkSendForPaymentBtn = document.getElementById('bulkSendForPaymentBtn');
@@ -369,13 +368,11 @@
 
             if (selectedCount > 0) {
                 selectedCountDisplay.style.display = 'inline';
-                createFileBtn.style.display = 'inline-block';
                 if (bulkUploadBtn) bulkUploadBtn.style.display = 'inline-block';
                 if (bulkAssignBtn) bulkAssignBtn.style.display = 'inline-block';
                 if (bulkSendForPaymentBtn) bulkSendForPaymentBtn.style.display = 'inline-block';
             } else {
                 selectedCountDisplay.style.display = 'none';
-                createFileBtn.style.display = 'none';
                 if (bulkUploadBtn) bulkUploadBtn.style.display = 'none';
                 if (bulkAssignBtn) bulkAssignBtn.style.display = 'none';
                 if (bulkSendForPaymentBtn) bulkSendForPaymentBtn.style.display = 'none';
@@ -392,7 +389,7 @@
             }
 
             // Generate auto file name
-            const patientName = '${patient.firstName} ${patient.lastName}';
+            const patientName = "${fn:escapeXml(patient.firstName)} ${fn:escapeXml(patient.lastName)}";
             const today = new Date();
             const dateStr = today.toLocaleDateString('en-GB');
             const timeStr = today.toLocaleTimeString('en-US', { 
@@ -4072,13 +4069,13 @@
                                         </a>
                                         <c:if test="${not empty file.status and file.status.name() == 'ACTIVE'}">
                                             <button type="button" class="btn btn-sm btn-warning" 
-                                                    onclick="closeClinicalFile(${file.id})">
+                                                    onclick="closeClinicalFile('${file.id}')">
                                                 <i class="fas fa-lock"></i> Close
                                             </button>
                                         </c:if>
                                         <c:if test="${not empty file.status and file.status.name() == 'CLOSED'}">
                                             <button type="button" class="btn btn-sm btn-success" 
-                                                    onclick="reopenClinicalFile(${file.id})">
+                                                    onclick="reopenClinicalFile('${file.id}')">
                                                 <i class="fas fa-unlock"></i> Reopen
                                             </button>
                                         </c:if>
@@ -4186,16 +4183,13 @@
                             </small>
                         </div>
                         
-                        <sec:authorize access="hasRole('OPD_DOCTOR')">
+                        <sec:authorize access="hasAnyRole('DOCTOR','OPD_DOCTOR','ADMIN','CLINIC_OWNER','RECEPTIONIST')">
                             <div class="clinical-file-actions-row">
                                 <div class="clinical-file-actions">
                                     <span id="selectedCountDisplay" class="selected-count" style="display: none;">
                                         <span id="selectedExaminationCount">0</span> examinations selected
                                     </span>
-                                    <button type="button" id="createFileFromTableBtn" class="btn btn-primary btn-sm" 
-                                            onclick="createClinicalFileFromTable()" style="display: none;">
-                                        <i class="fas fa-folder-medical"></i> Create Clinical File
-                                    </button>
+                                    
                                     <button type="button" id="bulkUploadSelectedBtn" class="btn btn-secondary btn-sm" 
                                             onclick="openBulkUploadSelectedModal()" style="display: none;">
                                         <i class="fas fa-upload"></i> Bulk Upload to Selected
@@ -4213,11 +4207,44 @@
                     </div>
 
                     <div class="table-responsive">
+                <!-- Debug: Authentication and gate checks -->
+                <c:if test="${empty examinationHistory}">
+                    <script>
+                        console.log('[Exams] examinationHistory is EMPTY for this patient');
+                    </script>
+                </c:if>
+                <script>
+                    console.log('[Auth] user:', '<sec:authentication property="name"/>');
+                    console.log('[Auth] authorities:', '<sec:authentication property="authorities"/>');
+                    console.log('[Exams] debug script loaded');
+                    document.addEventListener('DOMContentLoaded', function() {
+                        try {
+                            const hasSelectAll = !!document.getElementById('selectAllExaminations');
+                            const rowCheckboxCount = document.querySelectorAll('.examination-checkbox').length;
+                            console.log('[Exams] selectAll present:', hasSelectAll);
+                            console.log('[Exams] row checkbox count:', rowCheckboxCount);
+                        } catch (e) {
+                            console.log('[Exams] DOM debug error:', e && e.message ? e.message : e);
+                        }
+                    });
+                </script>
+                <sec:authorize access="hasAnyRole('DOCTOR','OPD_DOCTOR','ADMIN')">
+                    <script>console.log('[Gate] hasAnyRole(DOCTOR,OPD_DOCTOR,ADMIN): TRUE');</script>
+                </sec:authorize>
+                <sec:authorize access="!hasAnyRole('DOCTOR','OPD_DOCTOR','ADMIN')">
+                    <script>console.log('[Gate] hasAnyRole(DOCTOR,OPD_DOCTOR,ADMIN): FALSE');</script>
+                </sec:authorize>
+                <sec:authorize access="hasAnyRole('DOCTOR','OPD_DOCTOR','ADMIN','CLINIC_OWNER','RECEPTIONIST')">
+                    <script>console.log('[Gate] header roles allowed: TRUE');</script>
+                </sec:authorize>
+                <sec:authorize access="!hasAnyRole('DOCTOR','OPD_DOCTOR','ADMIN','CLINIC_OWNER','RECEPTIONIST')">
+                    <script>console.log('[Gate] header roles allowed: FALSE');</script>
+                </sec:authorize>
                 <table id="examinationHistoryTable" class="table">
                             <thead>
                             <tr>
                                 <th width="50">
-                                    <sec:authorize access="hasRole('OPD_DOCTOR')">
+                                    <sec:authorize access="hasAnyRole('DOCTOR','OPD_DOCTOR','ADMIN','CLINIC_OWNER','RECEPTIONIST')">
                                         <input type="checkbox" id="selectAllExaminations" onchange="toggleSelectAllExaminations()">
                                     </sec:authorize>
                                 </th>
@@ -4238,7 +4265,7 @@
                         <c:forEach items="${examinationHistory}" var="exam" varStatus="status">
                             <tr class="examination-row" onclick="openExaminationDetails('${exam.id}')">
                                 <td>
-                                    <sec:authorize access="hasRole('OPD_DOCTOR')">
+                                    <sec:authorize access="hasAnyRole('DOCTOR','OPD_DOCTOR','ADMIN')">
                                         <input type="checkbox" class="examination-checkbox" value="${exam.id}" onclick="event.stopPropagation();">
                                     </sec:authorize>
                                 </td>
@@ -5695,15 +5722,15 @@
                 console.log('Display transaction type:', displayTransactionType);
                 
                 row.innerHTML = `
-                    <td>` + formattedDate + `</td>
-                    <td>` + (transaction.procedureName || 'N/A') + `</td>
-                    <td class="` + (isRefund ? 'text-danger' : 'text-success') + `" style="font-weight: 600;">
-                        ` + amountDisplay + `
+                    <td>${formattedDate}</td>
+                    <td>${transaction.procedureName || 'N/A'}</td>
+                    <td class="${isRefund ? 'text-danger' : 'text-success'}" style="font-weight: 600;">
+                        ${amountDisplay}
                     </td>
-                    <td><span class="badge badge-` + (isRefund ? 'danger' : 'success') + `">` + displayTransactionType + `</span></td>
-                    <td>` + (transaction.paymentMode || 'N/A') + `</td>
-                    <td>` + (transaction.refundReason || '-') + `</td>
-                    <td>` + (transaction.remarks || '-') + `</td>
+                    <td><span class="badge badge-${isRefund ? 'danger' : 'success'}">${displayTransactionType}</span></td>
+                    <td>${transaction.paymentMode || 'N/A'}</td>
+                    <td>${transaction.refundReason || '-'}</td>
+                    <td>${transaction.remarks || '-'}</td>
                 `;
                 
                 // Add row-level color coding
@@ -5745,7 +5772,7 @@
         
         function downloadLedgerCSV() {
             const patientId = parseInt('${patient.id}', 10);
-            const patientName = "${fn:replace(fn:escapeXml(patient.firstName), '"', '\\"')} ${fn:replace(fn:escapeXml(patient.lastName), '"', '\\"')}";
+            const patientName = "${fn:escapeXml(patient.firstName)} ${fn:escapeXml(patient.lastName)}";
             
             fetch('/payment-management/patient/' + patientId + '/transactions')
                 .then(response => response.json())
@@ -5940,6 +5967,9 @@
                 return;
             }
 
+            // Reset any in-progress guard for bulk send
+            window._sendingBulkPayment = false;
+
             // Update selected count
             const countEl = document.getElementById('bulkSendSelectedCount');
             if (countEl) countEl.textContent = selectedIds.length;
@@ -5989,6 +6019,11 @@
         }
 
         async function sendSelectedForPayment() {
+            // Prevent multiple rapid clicks / duplicate submissions
+            if (window._sendingBulkPayment) {
+                return;
+            }
+
             const selectedIds = getSelectedExaminationIds();
             if (selectedIds.length === 0) {
                 showAlertModal('Please select at least one examination to send for payment.', 'warning');
@@ -6009,6 +6044,9 @@
                 confirmBtn.disabled = true;
                 confirmBtn.innerHTML = '<i class="fas fa-spinner fa-spin"></i> Processing...';
             }
+
+            // Mark operation started
+            window._sendingBulkPayment = true;
 
             const token = document.querySelector('meta[name="_csrf"]').content;
             const payload = {
@@ -6038,8 +6076,12 @@
                     if (progressBox) progressBox.style.display = 'none';
                     if (confirmBtn) {
                         confirmBtn.disabled = false;
-                        confirmBtn.innerHTML = '<i class="fas fa-paper-plane"></i> Send for Payment';
+                        confirmBtn.classList.remove('btn-success','btn-warning');
+                        confirmBtn.classList.add('btn-primary');
+                        confirmBtn.innerHTML = '<i class="fas fa-redo"></i> Retry';
                     }
+                    // Allow retry
+                    window._sendingBulkPayment = false;
                     return;
                 }
 
@@ -6082,22 +6124,61 @@
 
                 // Show success notification and optionally close modal after short delay
                 if (json && json.success) {
+                    // On success, mark button as completed and prevent further clicks
+                    if (confirmBtn) {
+                        confirmBtn.disabled = true;
+                        confirmBtn.classList.remove('btn-primary','btn-warning');
+                        confirmBtn.classList.add('btn-success');
+                        confirmBtn.innerHTML = '<i class="fas fa-check"></i> Sent';
+                    }
+
+                    // Uncheck updated rows and update bulk action visibility
+                    updatedIds.forEach(id => {
+                        const checkbox = document.querySelector('.examination-checkbox[value="' + id + '"]');
+                        if (checkbox) { checkbox.checked = false; }
+                    });
+                    if (typeof updateTableSelectionCount === 'function') {
+                        updateTableSelectionCount();
+                    }
+
                     showAlertModal('Successfully sent selected examinations for payment.', 'success', () => { window.location.reload(); });
                     setTimeout(() => { closeBulkSendForPaymentModal(); }, 1200);
                 } else {
+                    // Partial success: disable button to avoid repeated clicks, keep modal open to review issues
+                    if (confirmBtn) {
+                        confirmBtn.disabled = true;
+                        confirmBtn.classList.remove('btn-primary','btn-success');
+                        confirmBtn.classList.add('btn-warning');
+                        confirmBtn.innerHTML = '<i class="fas fa-exclamation-circle"></i> Review Issues';
+                    }
+
+                    // Uncheck successfully updated rows to avoid re-sending them
+                    updatedIds.forEach(id => {
+                        const checkbox = document.querySelector('.examination-checkbox[value="' + id + '"]');
+                        if (checkbox) { checkbox.checked = false; }
+                    });
+                    if (typeof updateTableSelectionCount === 'function') {
+                        updateTableSelectionCount();
+                    }
+
                     // Graceful handling: keep modal open with results and allow closing via Cancel/X
-                    showAlertModal('Partial update completed. Some records could not be updated.', 'warning', () => { window.location.reload(); });
+                    showAlertModal('Partial update completed. Some records could not be updated.', 'warning');
                 }
             } catch (e) {
                 if (resultBox) resultBox.style.display = 'block';
                 if (resultSummary) resultSummary.textContent = 'Network error while updating statuses: ' + e.message;
                 if (errorContainer) errorContainer.style.display = 'none';
                 if (progressBox) progressBox.style.display = 'none';
-            } finally {
+                // Allow retry on network error
                 if (confirmBtn) {
                     confirmBtn.disabled = false;
-                    confirmBtn.innerHTML = '<i class="fas fa-paper-plane"></i> Send for Payment';
+                    confirmBtn.classList.remove('btn-success','btn-warning');
+                    confirmBtn.classList.add('btn-primary');
+                    confirmBtn.innerHTML = '<i class="fas fa-redo"></i> Retry';
                 }
+                window._sendingBulkPayment = false;
+            } finally {
+                // Do not re-enable the button here; handled per outcome above
             }
         }
     </script>
