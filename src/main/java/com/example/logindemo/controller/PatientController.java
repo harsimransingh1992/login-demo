@@ -577,6 +577,20 @@ public class PatientController {
             
             // Get paginated examination history
             Page<ToothClinicalExaminationDTO> examinationPage = toothClinicalExaminationService.getToothClinicalExaminationForPatientIdPaginated(patient.get().getId(), page, size);
+            // Populate assignedDoctorName on each DTO for direct JSP rendering
+            try {
+                for (ToothClinicalExaminationDTO dto : examinationPage.getContent()) {
+                    Long assignedId = dto.getAssignedDoctorId();
+                    if (assignedId != null) {
+                        userService.getUserById(assignedId).ifPresentOrElse(
+                            userDto -> dto.setAssignedDoctorName((userDto.getFirstName() + " " + userDto.getLastName()).trim()),
+                            () -> dto.setAssignedDoctorName("Unknown Doctor")
+                        );
+                    }
+                }
+            } catch (Exception e) {
+                log.warn("Could not populate assignedDoctorName on examination DTOs: {}", e.getMessage());
+            }
             model.addAttribute("examinationHistory", examinationPage.getContent());
             model.addAttribute("currentPage", page);
             model.addAttribute("totalPages", examinationPage.getTotalPages());
@@ -605,6 +619,8 @@ public class PatientController {
             allDoctors.addAll(doctors);
             allDoctors.addAll(opdDoctors);
             model.addAttribute("doctorDetails", allDoctors);
+
+            // Remove map-based doctor name lookup; names are now populated in DTOs
 
             // Get pending payments for this patient using the same method as WelcomeController
             try {
@@ -1502,6 +1518,46 @@ public class PatientController {
         }
     }
 
+    @GetMapping("/procedures/search")
+    @ResponseBody
+    public ResponseEntity<?> searchProcedures(
+            @RequestParam(value = "q", required = false) String query,
+            @RequestParam(value = "limit", defaultValue = "15") int limit) {
+        try {
+            List<ProcedurePrice> procedures;
+            if (query != null && !query.trim().isEmpty()) {
+                procedures = procedurePriceRepository.findByProcedureNameContainingIgnoreCase(query.trim());
+            } else {
+                procedures = procedurePriceRepository.findAll();
+            }
+
+            if (limit > 0 && procedures.size() > limit) {
+                procedures = procedures.subList(0, limit);
+            }
+
+            List<Map<String, Object>> results = procedures.stream()
+                    .map(p -> {
+                        Map<String, Object> m = new HashMap<>();
+                        m.put("id", p.getId());
+                        m.put("name", p.getProcedureName());
+                        m.put("price", p.getPrice());
+                        return m;
+                    })
+                    .collect(Collectors.toList());
+
+            return ResponseEntity.ok(Map.of(
+                    "success", true,
+                    "results", results
+            ));
+        } catch (Exception e) {
+            log.error("Error searching procedures: {}", e.getMessage(), e);
+            return ResponseEntity.badRequest().body(Map.of(
+                    "success", false,
+                    "message", e.getMessage()
+            ));
+        }
+    }
+
     @GetMapping("/examination/{id}/payment-review")
     public String showPaymentReview(@PathVariable Long id, Model model) {
         try {
@@ -1535,6 +1591,83 @@ public class PatientController {
         } catch (Exception e) {
             log.error("Error showing payment review: {}", e.getMessage(), e);
             return "redirect:/welcome?error=Error loading payment review: " + e.getMessage();
+        }
+    }
+
+    @PostMapping("/examination/assign-procedure-bulk")
+    @ResponseBody
+    @Transactional
+    public ResponseEntity<?> assignProcedureBulk(@RequestBody Map<String, Object> request) {
+        try {
+            @SuppressWarnings("unchecked")
+            List<Object> examIdObjs = (List<Object>) request.get("examinationIds");
+            Object procedureIdObj = request.get("procedureId");
+
+            if (examIdObjs == null || examIdObjs.isEmpty() || procedureIdObj == null) {
+                Map<String, Object> err = new HashMap<>();
+                err.put("success", false);
+                err.put("message", "Missing examinationIds or procedureId");
+                return ResponseEntity.badRequest().body(err);
+            }
+
+            List<Long> examinationIds = examIdObjs.stream()
+                    .map(Object::toString)
+                    .map(Long::valueOf)
+                    .collect(Collectors.toList());
+            Long procedureId = Long.valueOf(procedureIdObj.toString());
+
+            Optional<ProcedurePrice> procedureOpt = procedurePriceRepository.findById(procedureId);
+            if (!procedureOpt.isPresent()) {
+                Map<String, Object> err = new HashMap<>();
+                err.put("success", false);
+                err.put("message", "Procedure not found");
+                return ResponseEntity.badRequest().body(err);
+            }
+
+            List<Long> assignedExamIds = new ArrayList<>();
+            List<Long> duplicateExamIds = new ArrayList<>();
+            List<Map<String, Object>> errorExamEntries = new ArrayList<>();
+
+            for (Long examId : examinationIds) {
+                try {
+                    boolean already = toothClinicalExaminationService.isProcedureAlreadyAssociated(examId, procedureId);
+                    if (already) {
+                        duplicateExamIds.add(examId);
+                        continue;
+                    }
+                    toothClinicalExaminationService.associateProceduresWithExamination(examId, Collections.singletonList(procedureId));
+                    assignedExamIds.add(examId);
+                } catch (Exception ex) {
+                    Map<String, Object> entry = new HashMap<>();
+                    entry.put("examinationId", examId);
+                    entry.put("error", ex.getMessage());
+                    errorExamEntries.add(entry);
+                }
+            }
+
+            Map<String, Object> response = new HashMap<>();
+            response.put("success", true);
+            response.put("assignedCount", assignedExamIds.size());
+            response.put("skippedCount", duplicateExamIds.size());
+            response.put("errorCount", errorExamEntries.size());
+            response.put("assignedExamIds", assignedExamIds);
+            response.put("duplicateExamIds", duplicateExamIds);
+            response.put("errorExamEntries", errorExamEntries);
+            {
+                Map<String, Object> pInfo = new HashMap<>();
+                pInfo.put("id", procedureOpt.get().getId());
+                pInfo.put("name", procedureOpt.get().getProcedureName());
+                pInfo.put("price", procedureOpt.get().getPrice());
+                response.put("procedure", pInfo);
+            }
+
+            return ResponseEntity.ok(response);
+        } catch (Exception e) {
+            log.error("Error in bulk assigning procedure: {}", e.getMessage(), e);
+            Map<String, Object> err = new HashMap<>();
+            err.put("success", false);
+            err.put("message", e.getMessage());
+            return ResponseEntity.badRequest().body(err);
         }
     }
 
@@ -3066,7 +3199,8 @@ public class PatientController {
     @Transactional
     public ResponseEntity<?> uploadBulkMedia(
             @RequestParam("examinationId") Long examinationId,
-            @RequestParam("files") MultipartFile[] files) {
+            @RequestParam("files") MultipartFile[] files,
+            @RequestParam(value = "treatmentPhase", defaultValue = "PRE") String treatmentPhaseStr) {
         try {
             if (examinationId == null) {
                 return ResponseEntity.badRequest().body(Map.of(
@@ -3084,6 +3218,24 @@ public class PatientController {
 
             ToothClinicalExamination examination = toothClinicalExaminationRepository.findById(examinationId)
                 .orElseThrow(() -> new RuntimeException("Examination not found"));
+
+            // Parse and validate treatment phase
+            TreatmentPhase treatmentPhase;
+            try {
+                String normalizedPhase = treatmentPhaseStr.toLowerCase();
+                if ("pre".equals(normalizedPhase)) {
+                    treatmentPhase = TreatmentPhase.PRE;
+                } else if ("post".equals(normalizedPhase)) {
+                    treatmentPhase = TreatmentPhase.POST;
+                } else {
+                    treatmentPhase = TreatmentPhase.fromValue(treatmentPhaseStr);
+                }
+            } catch (IllegalArgumentException e) {
+                return ResponseEntity.badRequest().body(Map.of(
+                    "success", false,
+                    "message", "Treatment phase must be 'pre' or 'post'"
+                ));
+            }
 
             int uploadedCount = 0;
             List<Map<String, Object>> saved = new ArrayList<>();
@@ -3120,7 +3272,7 @@ public class PatientController {
                     mediaFile.setExamination(examination);
                     mediaFile.setFilePath(filePath);
                     mediaFile.setFileType("other_document");
-                    mediaFile.setTreatmentPhase(TreatmentPhase.PRE);
+                    mediaFile.setTreatmentPhase(treatmentPhase);
                     mediaFile.setUploadedAt(LocalDateTime.now());
                     mediaFileRepository.save(mediaFile);
 
@@ -3128,6 +3280,7 @@ public class PatientController {
                     item.put("id", mediaFile.getId());
                     item.put("filePath", mediaFile.getFilePath());
                     item.put("fileType", mediaFile.getFileType());
+                    item.put("treatmentPhase", mediaFile.getTreatmentPhase() != null ? mediaFile.getTreatmentPhase().getValue() : "pre");
                     item.put("isPdf", !isImage);
                     item.put("originalFilename", file.getOriginalFilename());
                     saved.add(item);

@@ -538,9 +538,6 @@ function updateTableInfo() {
 
 // Notes Modal Functions
 function showNotesPopup(notes, examId) {
-    // Prevent default behavior and event bubbling
-    event.preventDefault();
-    event.stopPropagation();
     
     const modal = document.getElementById('notesModal');
     const notesContent = document.getElementById('notesContent');
@@ -577,6 +574,33 @@ function closeNotesModal() {
     document.body.style.overflow = 'auto';
 }
 
+// Navigate to examination details page when a table row is clicked
+function openExaminationDetails(examId) {
+    if (!examId) {
+        console.error('openExaminationDetails: Missing examination ID');
+        return;
+    }
+    try {
+        var target = '/patients/examination/' + encodeURIComponent(examId);
+        // Prefer global joinUrl if available to safely combine with contextPath
+        if (typeof joinUrl === 'function') {
+            window.location.href = joinUrl(typeof contextPath !== 'undefined' ? contextPath : '', target);
+        } else {
+            var base = (typeof contextPath !== 'undefined' && contextPath) ? contextPath : '';
+            // Normalize potential double slashes
+            if (base.endsWith('/') && target.startsWith('/')) {
+                window.location.href = base.replace(/\/+$/, '') + target;
+            } else if (!base.endsWith('/') && !target.startsWith('/')) {
+                window.location.href = base + '/' + target;
+            } else {
+                window.location.href = base + target;
+            }
+        }
+    } catch (e) {
+        console.error('Failed to navigate to examination details:', e);
+    }
+}
+
 // Close notes modal when clicking outside
 document.addEventListener('DOMContentLoaded', function() {
     const notesModal = document.getElementById('notesModal');
@@ -598,6 +622,33 @@ document.addEventListener('DOMContentLoaded', function() {
             }
         }
     });
+});
+
+// Delegated click handler for notes links (avoids inline JS and escaping issues)
+document.addEventListener('click', function (e) {
+    const link = e.target && e.target.closest && e.target.closest('a.view-notes-link');
+    if (link) {
+        e.preventDefault();
+        const notes = link.dataset && link.dataset.notes ? link.dataset.notes : '';
+        const examId = link.dataset && link.dataset.examId ? link.dataset.examId : '';
+        showNotesPopup(notes, examId);
+        return false;
+    }
+});
+
+// Delegated click handler for examination rows (excluding action buttons and checkboxes)
+document.addEventListener('click', function (e) {
+    const row = e.target && e.target.closest && e.target.closest('tr.examination-row');
+    if (row) {
+        // Ignore clicks inside action buttons or controls that should not trigger navigation
+        if (e.target.closest('.action-buttons') || e.target.closest('input.examination-checkbox')) {
+            return;
+        }
+        const examId = row.dataset && row.dataset.examId ? row.dataset.examId : '';
+        if (examId) {
+            openExaminationDetails(examId);
+        }
+    }
 });
 
  

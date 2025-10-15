@@ -362,20 +362,24 @@
             const bulkUploadBtn = document.getElementById('bulkUploadSelectedBtn');
             const bulkAssignBtn = document.getElementById('bulkAssignDoctorBtn');
             const bulkSendForPaymentBtn = document.getElementById('bulkSendForPaymentBtn');
+            const bulkAddNotesBtn = document.getElementById('bulkAddNotesBtn');
             const selectedCountSpan = document.getElementById('selectedExaminationCount');
 
             selectedCountSpan.textContent = selectedCount;
 
             if (selectedCount > 0) {
-                selectedCountDisplay.style.display = 'inline';
-                if (bulkUploadBtn) bulkUploadBtn.style.display = 'inline-block';
-                if (bulkAssignBtn) bulkAssignBtn.style.display = 'inline-block';
-                if (bulkSendForPaymentBtn) bulkSendForPaymentBtn.style.display = 'inline-block';
+                selectedCountDisplay.style.visibility = 'visible';
+                if (bulkUploadBtn) bulkUploadBtn.disabled = false;
+                if (bulkAssignBtn) bulkAssignBtn.disabled = false;
+                if (bulkSendForPaymentBtn) bulkSendForPaymentBtn.disabled = false;
+                if (bulkAssignProcedureBtn) bulkAssignProcedureBtn.disabled = false;
+                if (bulkAddNotesBtn) bulkAddNotesBtn.disabled = false;
             } else {
-                selectedCountDisplay.style.display = 'none';
-                if (bulkUploadBtn) bulkUploadBtn.style.display = 'none';
-                if (bulkAssignBtn) bulkAssignBtn.style.display = 'none';
-                if (bulkSendForPaymentBtn) bulkSendForPaymentBtn.style.display = 'none';
+                if (bulkUploadBtn) bulkUploadBtn.disabled = true;
+                if (bulkAssignBtn) bulkAssignBtn.disabled = true;
+                if (bulkSendForPaymentBtn) bulkSendForPaymentBtn.disabled = true;
+                if (bulkAssignProcedureBtn) bulkAssignProcedureBtn.disabled = true;
+                if (bulkAddNotesBtn) bulkAddNotesBtn.disabled = true;
             }
         }
 
@@ -3004,12 +3008,28 @@
             border-top: 1px solid #e9ecef;
             display: flex;
             justify-content: flex-end;
+            align-items: center;
+            min-height: 48px; /* keep bar height static to prevent page shift */
         }
 
         .clinical-file-actions {
             display: flex;
             align-items: center;
             gap: 15px;
+            flex-wrap: nowrap;        /* prevent wrapping to a second row */
+            overflow-x: auto;         /* allow horizontal scroll if needed */
+            -webkit-overflow-scrolling: touch;
+        }
+        /* Ensure consistent sizing for all action buttons in row */
+        .clinical-file-actions .btn {
+            width: 230px;
+            flex: 0 0 auto;           /* prevent buttons from shrinking */
+        }
+
+        /* Keep space reserved for selected count to reduce jitter */
+        .selected-count {
+            min-width: 180px;
+            visibility: hidden;       /* default hidden; toggled via JS */
         }
 
         .table-header-actions {
@@ -3395,7 +3415,7 @@
             border-color: #3498db;
         }
 
-        /* Layout optimization: arrange info sections side-by-side while responsive */
+     /* Layout optimization: arrange info sections side-by-side while responsive */
         .patient-details-container .patient-info {
             display: grid;
             grid-template-columns: repeat(2, minmax(0, 1fr));
@@ -3434,7 +3454,6 @@
         .patient-details-container .info-value {
             color: #343a40;
         }
-
 
 
     </style>
@@ -4226,19 +4245,25 @@
                         <sec:authorize access="hasAnyRole('DOCTOR','OPD_DOCTOR','ADMIN','CLINIC_OWNER','RECEPTIONIST')">
                             <div class="clinical-file-actions-row">
                                 <div class="clinical-file-actions">
-                                    <span id="selectedCountDisplay" class="selected-count" style="display: none;">
+                                    <span id="selectedCountDisplay" class="selected-count" style="visibility: hidden;">
                                         <span id="selectedExaminationCount">0</span> examinations selected
                                     </span>
                                     
                                     <button type="button" id="bulkUploadSelectedBtn" class="btn btn-secondary btn-sm" 
-                                            onclick="openBulkUploadSelectedModal()" style="display: none;">
-                                        <i class="fas fa-upload"></i> Bulk Upload to Selected
+                                            onclick="openBulkUploadSelectedModal()" title="Bulk upload to selected examinations" disabled>
+                                        <i class="fas fa-upload"></i> Upload Files
                                     </button>
-                                    <button type="button" id="bulkAssignDoctorBtn" class="btn btn-secondary btn-sm" onclick="openBulkAssignDoctorModal()" style="display: none;">
-                                        <i class="fas fa-user-md"></i> Assign Doctor to Selected
+                                    <button type="button" id="bulkAssignDoctorBtn" class="btn btn-secondary btn-sm" onclick="openBulkAssignDoctorModal()" title="Assign doctor to selected examinations" disabled>
+                                        <i class="fas fa-user-md"></i> Assign Doctor
                                     </button>
-                                    <button type="button" id="bulkSendForPaymentBtn" class="btn btn-secondary btn-sm" onclick="openBulkSendForPaymentModal()" style="display: none;">
-                                        <i class="fas fa-file-invoice-dollar"></i> Send Selected for Payment
+                                    <button type="button" id="bulkSendForPaymentBtn" class="btn btn-secondary btn-sm" onclick="openBulkSendForPaymentModal()" title="Send selected examinations for payment" disabled>
+                                        <i class="fas fa-file-invoice-dollar"></i> Send for Payment
+                                    </button>
+                                    <button type="button" id="bulkAssignProcedureBtn" class="btn btn-secondary btn-sm" onclick="openBulkAssignProcedureModal()" title="Assign procedure to selected examinations" disabled>
+                                        <i class="fas fa-tooth"></i> Assign Procedure
+                                    </button>
+                                    <button type="button" id="bulkAddNotesBtn" class="btn btn-secondary btn-sm" onclick="openBulkAddNotesModal()" title="Add notes to selected examinations" disabled>
+                                        <i class="fas fa-sticky-note"></i> Add Notes
                                     </button>
                                     <input type="file" id="bulkSelectedInput" multiple accept="image/*,application/pdf" style="display: none;" />
                                 </div>
@@ -4303,7 +4328,7 @@
                             </thead>
                             <tbody>
                         <c:forEach items="${examinationHistory}" var="exam" varStatus="status">
-                            <tr class="examination-row" onclick="openExaminationDetails('${exam.id}')">
+                            <tr class="examination-row" data-exam-id="${exam.id}">
                                 <td>
                                     <sec:authorize access="hasAnyRole('DOCTOR','OPD_DOCTOR','ADMIN')">
                                         <input type="checkbox" class="examination-checkbox" value="${exam.id}" onclick="event.stopPropagation();">
@@ -4384,7 +4409,7 @@
                                 <td>
                                     <c:choose>
                                         <c:when test="${not empty exam.examinationNotes}">
-                                            <a href="#" class="view-notes-link" onclick="showNotesPopup('${fn:escapeXml(exam.examinationNotes)}', '${exam.id}'); return false;">
+                                            <a href="#" class="view-notes-link" data-notes="${fn:escapeXml(exam.examinationNotes)}" data-exam-id="${exam.id}">
                                                 VIEW
                                             </a>
                                         </c:when>
@@ -4406,11 +4431,7 @@
                                 <td data-doctor="${exam.assignedDoctorId != null ? exam.assignedDoctorId : ''}">
                                     <c:choose>
                                         <c:when test="${exam.assignedDoctorId != null}">
-                                        <c:forEach items="${doctorDetails}" var="doctor">
-                                                <c:if test="${doctor.id == exam.assignedDoctorId}">
-                                                ${doctor.firstName} ${doctor.lastName}
-                                                </c:if>
-                                        </c:forEach>
+                                            ${exam.assignedDoctorName}
                                         </c:when>
                                         <c:otherwise>
                                             Not Assigned
@@ -5094,6 +5115,16 @@
                         </button>
                         <span class="help-text">You can upload images (JPG/PNG) or PDFs. Images will be compressed automatically.</span>
                     </div>
+                    <div class="form-group" style="margin-top: 12px;">
+                        <label for="bulkSelectedTreatmentPhase">Treatment Phase</label>
+                        <select id="bulkSelectedTreatmentPhase" class="form-control" required>
+                            <option value="pre">Pre-Treatment</option>
+                            <option value="post">Post-Treatment</option>
+                        </select>
+                        <small class="form-text text-muted">
+                            Select whether these files are before or after treatment
+                        </small>
+                    </div>
                     <div id="bulkSelectedFileList" class="file-list"></div>
                 </div>
             </div>
@@ -5150,6 +5181,66 @@
                     <i class="fas fa-paper-plane"></i> Send for Payment
                 </button>
                 <button type="button" class="btn btn-secondary btn-sm" onclick="closeBulkSendForPaymentModal()">Cancel</button>
+            </div>
+        </div>
+    </div>
+
+    <!-- Bulk Add Notes Modal -->
+    <div id="bulkAddNotesModal" class="modal">
+        <div class="modal-content">
+            <div class="modal-header">
+                <h2>Bulk Add Notes to Selected</h2>
+                <span class="close" onclick="closeBulkAddNotesModal()">&times;</span>
+            </div>
+            <div class="modal-body">
+                <p class="text-muted">
+                    Selected examinations: <strong><span id="bulkNotesSelectedCount">0</span></strong>
+                </p>
+                <div class="form-group">
+                    <label for="bulkNotesInput">Notes</label>
+                    <textarea id="bulkNotesInput" class="form-control" placeholder="Type notes to add to each selected examination" style="min-height: 120px;"></textarea>
+                    <small class="form-text text-muted">Notes are appended with timestamp, doctor, and clinic information.</small>
+                </div>
+            </div>
+            <div class="modal-footer">
+                <button type="button" class="btn btn-primary" id="confirmBulkAddNotesBtn" onclick="confirmBulkAddNotes()">
+                    <i class="fas fa-notes-medical"></i> Add Notes to Selected
+                </button>
+                <button type="button" class="btn btn-secondary" onclick="closeBulkAddNotesModal()">Cancel</button>
+            </div>
+        </div>
+    </div>
+
+    <!-- Bulk Assign Procedure Modal -->
+    <div id="bulkAssignProcedureModal" class="modal">
+        <div class="modal-content">
+            <div class="modal-header">
+                <h2>Assign Procedure to Selected Examinations</h2>
+                <span class="close" onclick="closeBulkAssignProcedureModal()">&times;</span>
+            </div>
+            <div class="modal-body">
+                <p class="text-muted">
+                    Selected examinations: <strong><span id="bulkAssignProcedureSelectedCount">0</span></strong>
+                </p>
+                <div class="form-group">
+                    <label for="bulkProcedureSearchInput">Search Procedure</label>
+                    <div class="autocomplete-container">
+                        <input type="text" id="bulkProcedureSearchInput" class="form-control" placeholder="Type to search procedure by name..." autocomplete="off">
+                        <div id="bulkProcedureAutocomplete" class="autocomplete-dropdown" style="display:none;"></div>
+                    </div>
+                </div>
+                <div id="selectedProcedureSummary" style="display:none; margin-top: 10px;">
+                    <strong>Selected:</strong> <span id="selectedProcedureName"></span>
+                    <span id="selectedProcedurePrice" style="margin-left:8px; color:#2c3e50;"></span>
+                </div>
+            </div>
+            <div class="modal-footer">
+                <button type="button" class="btn btn-primary" id="confirmBulkAssignProcedureBtn" onclick="confirmBulkAssignProcedure()" disabled>
+                    <i class="fas fa-tooth"></i>
+                    <span class="btn-text">Assign Procedure</span>
+                    <span class="btn-loader" style="display:none;"><i class="fas fa-spinner fa-spin"></i> Assigning...</span>
+                </button>
+                <button type="button" class="btn btn-secondary" onclick="closeBulkAssignProcedureModal()">Cancel</button>
             </div>
         </div>
     </div>
@@ -5373,7 +5464,7 @@
                     if (failed > 0) parts.push(failed + ' failed');
                     if (skipped > 0) parts.push(skipped + ' skipped (already assigned)');
                     const msg = 'Assignment completed: ' + parts.join(', ') + '.';
-                    showAlertModal(msg, failed === 0 ? 'success' : 'warning');
+                    showAlertModal(msg, failed === 0 ? 'success' : 'warning', () => { window.location.reload(); });
                     closeBulkAssignDoctorModal();
                 } else {
                     showAlertModal('Failed to assign doctor: ' + (json && json.message ? json.message : 'Unknown error'), 'error');
@@ -5964,6 +6055,9 @@
                 return;
             }
 
+            const phaseSelect = document.getElementById('bulkSelectedTreatmentPhase');
+            const treatmentPhase = (phaseSelect && phaseSelect.value) ? phaseSelect.value : 'pre';
+
             const token = document.querySelector('meta[name="_csrf"]').content;
             let successCount = 0;
             let failCount = 0;
@@ -5972,6 +6066,7 @@
                 const fd = new FormData();
                 fd.append('examinationId', examId);
                 bulkSelectedFiles.forEach(f => fd.append('files', f));
+                fd.append('treatmentPhase', treatmentPhase);
 
                 try {
                     const resp = await fetch(joinUrl(contextPath, '/patients/examination/upload-bulk-media'), {
@@ -5992,7 +6087,7 @@
             }
 
             if (failCount === 0) {
-                showAlertModal('Uploaded to ' + successCount + ' examinations successfully.', 'success');
+                showAlertModal('Uploaded to ' + successCount + ' examinations successfully.', 'success', () => { window.location.reload(); });
                 closeBulkUploadSelectedModal();
             } else {
                 showAlertModal('Upload completed: ' + successCount + ' successful, ' + failCount + ' failed.', 'warning');
@@ -6219,6 +6314,254 @@
                 window._sendingBulkPayment = false;
             } finally {
                 // Do not re-enable the button here; handled per outcome above
+            }
+        }
+
+        // Bulk Add Notes to Selected
+        function openBulkAddNotesModal() {
+            const selectedIds = getSelectedExaminationIds();
+            if (selectedIds.length === 0) {
+                showAlertModal('Please select at least one examination to add notes.', 'warning');
+                return;
+            }
+            const countEl = document.getElementById('bulkNotesSelectedCount');
+            if (countEl) countEl.textContent = selectedIds.length;
+            const notesEl = document.getElementById('bulkNotesInput');
+            if (notesEl) notesEl.value = '';
+            document.getElementById('bulkAddNotesModal').style.display = 'block';
+        }
+
+        function closeBulkAddNotesModal() {
+            document.getElementById('bulkAddNotesModal').style.display = 'none';
+            const notesEl = document.getElementById('bulkNotesInput');
+            if (notesEl) notesEl.value = '';
+        }
+
+        async function confirmBulkAddNotes() {
+            const selectedIds = getSelectedExaminationIds();
+            if (selectedIds.length === 0) {
+                showAlertModal('Please select at least one examination to add notes.', 'warning');
+                return;
+            }
+            const notesEl = document.getElementById('bulkNotesInput');
+            const notes = notesEl ? notesEl.value.trim() : '';
+            if (!notes) {
+                showAlertModal('Please enter notes to add.', 'warning');
+                return;
+            }
+
+            const token = document.querySelector('meta[name="_csrf"]').content;
+            const btn = document.getElementById('confirmBulkAddNotesBtn');
+            if (btn) { btn.disabled = true; }
+
+            let successCount = 0;
+            let failCount = 0;
+            const errorDetails = [];
+
+            for (const examId of selectedIds) {
+                try {
+                    const resp = await fetch(joinUrl(contextPath, '/patients/examination/' + examId + '/save-notes'), {
+                        method: 'POST',
+                        headers: {
+                            'Content-Type': 'application/json',
+                            'X-CSRF-TOKEN': token
+                        },
+                        body: JSON.stringify({ notes: notes })
+                    });
+                    let json = {};
+                    try { json = await resp.json(); } catch (e) {}
+                    if (resp.ok && (json.success === undefined || json.success)) {
+                        successCount++;
+                    } else {
+                        failCount++;
+                        errorDetails.push({ id: examId, message: (json && json.message) ? json.message : 'Unknown error' });
+                    }
+                } catch (e) {
+                    failCount++;
+                    errorDetails.push({ id: examId, message: e.message || 'Network error' });
+                }
+            }
+
+            if (failCount === 0) {
+                showAlertModal('Notes added to ' + successCount + ' examinations successfully.', 'success', () => { window.location.reload(); });
+                closeBulkAddNotesModal();
+            } else {
+                const sampleErrors = errorDetails.slice(0, 5).map(err => 'Exam ' + err.id + ': ' + err.message).join('\n');
+                const message = 'Bulk notes update completed: ' + successCount + ' succeeded, ' + failCount + ' failed.' + (sampleErrors ? ('\n\nExamples:\n' + sampleErrors) : '');
+                showAlertModal(message, 'warning');
+                if (btn) { btn.disabled = false; }
+            }
+        }
+
+        // Bulk Assign Procedure
+        let _bulkSelectedProcedure = null;
+
+        function openBulkAssignProcedureModal() {
+            const selectedIds = getSelectedExaminationIds();
+            if (selectedIds.length === 0) {
+                showAlertModal('Please select at least one examination to assign a procedure.', 'warning');
+                return;
+            }
+            const countEl = document.getElementById('bulkAssignProcedureSelectedCount');
+            if (countEl) countEl.textContent = selectedIds.length;
+
+            _bulkSelectedProcedure = null;
+            const input = document.getElementById('bulkProcedureSearchInput');
+            const dropdown = document.getElementById('bulkProcedureAutocomplete');
+            const summary = document.getElementById('selectedProcedureSummary');
+            const nameEl = document.getElementById('selectedProcedureName');
+            const priceEl = document.getElementById('selectedProcedurePrice');
+            const confirmBtn = document.getElementById('confirmBulkAssignProcedureBtn');
+
+            if (input) input.value = '';
+            if (dropdown) { dropdown.style.display = 'none'; dropdown.innerHTML = ''; }
+            if (summary) summary.style.display = 'none';
+            if (nameEl) nameEl.textContent = '';
+            if (priceEl) priceEl.textContent = '';
+            if (confirmBtn) confirmBtn.disabled = true;
+
+            document.getElementById('bulkAssignProcedureModal').style.display = 'block';
+        }
+
+        function closeBulkAssignProcedureModal() {
+            document.getElementById('bulkAssignProcedureModal').style.display = 'none';
+            _bulkSelectedProcedure = null;
+        }
+
+        (function initBulkProcedureSearch(){
+            const input = document.getElementById('bulkProcedureSearchInput');
+            const dropdown = document.getElementById('bulkProcedureAutocomplete');
+            if (!input || !dropdown) return;
+
+            let debounceTimer = null;
+            input.addEventListener('input', function(e){
+                const q = e.target.value.trim();
+                if (debounceTimer) clearTimeout(debounceTimer);
+                debounceTimer = setTimeout(async () => {
+                    if (!q) { dropdown.style.display = 'none'; dropdown.innerHTML = ''; return; }
+                    try {
+                        const url = joinUrl(contextPath, '/patients/procedures/search?q=' + encodeURIComponent(q));
+                        const resp = await fetch(url);
+                        const json = await resp.json();
+                        if (resp.ok && json.success && Array.isArray(json.results)) {
+                            renderProcedureSuggestions(json.results);
+                        } else {
+                            dropdown.style.display = 'none';
+                            dropdown.innerHTML = '';
+                        }
+                    } catch (err) {
+                        dropdown.style.display = 'none';
+                        dropdown.innerHTML = '';
+                    }
+                }, 250);
+            });
+
+            function renderProcedureSuggestions(results) {
+                dropdown.innerHTML = '';
+                if (!results || results.length === 0) { dropdown.style.display = 'none'; return; }
+                results.forEach(item => {
+                    const div = document.createElement('div');
+                    div.className = 'autocomplete-item';
+                    div.innerHTML = '<span>' + (item.name || 'Unnamed Procedure') + '</span>' +
+                        '<span style="float:right; color:#2c3e50;">' + (item.price != null ? ('₹' + item.price) : '') + '</span>';
+                    div.addEventListener('click', function(){ selectBulkProcedureItem(item); });
+                    dropdown.appendChild(div);
+                });
+                dropdown.style.display = 'block';
+            }
+
+            window.selectBulkProcedureItem = function(item) {
+                _bulkSelectedProcedure = { id: item.id, name: item.name, price: item.price };
+                dropdown.style.display = 'none';
+                const summary = document.getElementById('selectedProcedureSummary');
+                const nameEl = document.getElementById('selectedProcedureName');
+                const priceEl = document.getElementById('selectedProcedurePrice');
+                const confirmBtn = document.getElementById('confirmBulkAssignProcedureBtn');
+                if (summary) summary.style.display = 'block';
+                if (nameEl) nameEl.textContent = item.name || 'Unnamed Procedure';
+                if (priceEl) priceEl.textContent = (item.price != null ? ('₹' + item.price) : '');
+                if (confirmBtn) confirmBtn.disabled = false;
+                input.value = item.name || '';
+            }
+        })();
+
+        async function confirmBulkAssignProcedure() {
+            const selectedIds = getSelectedExaminationIds();
+            if (selectedIds.length === 0) {
+                showAlertModal('Please select at least one examination.', 'warning');
+                return;
+            }
+            if (!_bulkSelectedProcedure || !_bulkSelectedProcedure.id) {
+                showAlertModal('Please choose a procedure to assign.', 'warning');
+                return;
+            }
+
+            const token = document.querySelector('meta[name="_csrf"]').content;
+            const payload = { examinationIds: selectedIds, procedureId: _bulkSelectedProcedure.id };
+            const btn = document.getElementById('confirmBulkAssignProcedureBtn');
+            const loader = btn ? btn.querySelector('.btn-loader') : null;
+            const text = btn ? btn.querySelector('.btn-text') : null;
+            if (btn && loader && text) { btn.disabled = true; loader.style.display = 'inline'; text.style.display = 'none'; }
+            try {
+                const resp = await fetch(joinUrl(contextPath, '/patients/examination/assign-procedure-bulk'), {
+                    method: 'POST',
+                    headers: {
+                        'Content-Type': 'application/json',
+                        'X-CSRF-TOKEN': token
+                    },
+                    body: JSON.stringify(payload)
+                });
+                const json = await resp.json();
+                if (resp.ok && json.success) {
+                    const assignedIds = Array.isArray(json.assignedExamIds) ? json.assignedExamIds : [];
+                    const skippedIds = Array.isArray(json.duplicateExamIds) ? json.duplicateExamIds : [];
+                    const errorEntries = Array.isArray(json.errorExamEntries) ? json.errorExamEntries : [];
+                    // Update table rows for assigned exams
+                    assignedIds.forEach(id => updateRowProcedure(id, _bulkSelectedProcedure.name));
+                    const parts = [];
+                    parts.push('Assigned ' + assignedIds.length);
+                    if (skippedIds.length > 0) parts.push('Skipped ' + skippedIds.length + ' (already had this procedure)');
+                    if (errorEntries.length > 0) parts.push('Errors ' + errorEntries.length);
+                    let msg = parts.join(', ') + '.';
+                    if (errorEntries.length > 0) {
+                        const details = errorEntries.slice(0, 5).map(e => {
+                            const id = (e && e.examinationId != null) ? e.examinationId : '?';
+                            const err = (e && e.error) ? e.error : 'Unknown error';
+                            return '#' + id + ': ' + err;
+                        }).join('\n');
+                        msg += '\n' + details + (errorEntries.length > 5 ? '\n…and ' + (errorEntries.length - 5) + ' more.' : '');
+                        showAlertModal(msg, 'warning', () => { window.location.reload(); });
+                    } else {
+                        showAlertModal(msg, 'success', () => { window.location.reload(); });
+                    }
+                    closeBulkAssignProcedureModal();
+                } else {
+                    showAlertModal('Error: ' + (json.message || 'Failed to assign procedure'), 'error');
+                }
+            } catch (e) {
+                showAlertModal('An error occurred while assigning the procedure.', 'error');
+            } finally {
+                if (btn && loader && text) { btn.disabled = false; loader.style.display = 'none'; text.style.display = 'inline'; }
+            }
+        }
+
+        function updateRowProcedure(examinationId, procedureName) {
+            const rows = document.querySelectorAll('#examinationHistoryTable tbody tr');
+            for (const row of rows) {
+                const idCell = row.querySelector('.exam-id-col');
+                if (idCell && idCell.textContent.trim() === String(examinationId)) {
+                    // Procedure cell is the 7th column (including selection checkbox column)
+                    const procCell = row.querySelector('td:nth-child(7)');
+                    if (procCell) {
+                        const nameSpan = procCell.querySelector('.procedure-name');
+                        if (nameSpan) {
+                            nameSpan.textContent = procedureName;
+                        } else {
+                            procCell.innerHTML = '<span class="procedure-name">' + procedureName + '</span>';
+                        }
+                    }
+                    break;
+                }
             }
         }
     </script>

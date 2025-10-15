@@ -41,6 +41,7 @@ public class ToothClinicalExaminationDTO {
     private String examinationDateFormatted;
     
     private Long assignedDoctorId;
+    private String assignedDoctorName;
     private Long opdDoctorId;
     
     @JsonIgnoreProperties({"examinations", "clinicalFiles"})
