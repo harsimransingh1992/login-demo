@@ -362,6 +362,7 @@
             const bulkUploadBtn = document.getElementById('bulkUploadSelectedBtn');
             const bulkAssignBtn = document.getElementById('bulkAssignDoctorBtn');
             const bulkSendForPaymentBtn = document.getElementById('bulkSendForPaymentBtn');
+            const bulkAssignProcedureBtn = document.getElementById('bulkAssignProcedureBtn');
             const bulkAddNotesBtn = document.getElementById('bulkAddNotesBtn');
             const selectedCountSpan = document.getElementById('selectedExaminationCount');
 
@@ -375,6 +376,7 @@
                 if (bulkAssignProcedureBtn) bulkAssignProcedureBtn.disabled = false;
                 if (bulkAddNotesBtn) bulkAddNotesBtn.disabled = false;
             } else {
+                selectedCountDisplay.style.visibility = 'hidden';
                 if (bulkUploadBtn) bulkUploadBtn.disabled = true;
                 if (bulkAssignBtn) bulkAssignBtn.disabled = true;
                 if (bulkSendForPaymentBtn) bulkSendForPaymentBtn.disabled = true;
