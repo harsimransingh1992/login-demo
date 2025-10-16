@@ -128,6 +128,8 @@ public class ConsultationChargesServiceImpl implements ConsultationChargesServic
             examination.setExaminationClinic(clinic);
             examination.setToothNumber(ToothNumber.GENERAL_CONSULTATION);
             examination.setProcedure(procedurePrice);
+            // Snapshot base price for the consultation at association
+            examination.setBasePriceAtAssociation(consultationFee);
             examination.setTotalProcedureAmount(consultationFee);
             examination.setProcedureStatus(ProcedureStatus.PAYMENT_COMPLETED);
             examination.setExaminationDate(LocalDateTime.now());

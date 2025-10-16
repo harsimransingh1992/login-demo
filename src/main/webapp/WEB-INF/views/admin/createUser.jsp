@@ -153,10 +153,14 @@
                                                 <form:checkbox path="isActive" class="custom-control-input" id="activeStatusSwitch" checked="checked" />
                                                 <label class="custom-control-label" for="activeStatusSwitch">Active</label>
                                             </div>
-                                            <div class="custom-control custom-switch mt-2">
-                                                <form:checkbox path="canRefund" class="custom-control-input" id="canRefundSwitch" />
-                                                <label class="custom-control-label" for="canRefundSwitch">Can Process Refunds</label>
-                                            </div>
+                                                <div class="custom-control custom-switch mt-2">
+                                                    <form:checkbox path="canRefund" class="custom-control-input" id="canRefundSwitch" />
+                                                    <label class="custom-control-label" for="canRefundSwitch">Can Process Refunds</label>
+                                                </div>
+                                                <div class="custom-control custom-switch mt-2">
+                                                    <form:checkbox path="canApplyDiscount" class="custom-control-input" id="canApplyDiscountSwitch" />
+                                                    <label class="custom-control-label" for="canApplyDiscountSwitch">Can Apply Discounts</label>
+                                                </div>
                                         </div>
                                     </div>
                                 </div>

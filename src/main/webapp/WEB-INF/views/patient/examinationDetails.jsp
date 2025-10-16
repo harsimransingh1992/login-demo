@@ -1866,7 +1866,7 @@
                         </style>
                     </head>
 
-                    <body>
+                    <body data-context-path="${pageContext.request.contextPath}">
                         <div class="welcome-container">
                             <jsp:include page="/WEB-INF/views/common/menu.jsp" />
                             <div class="main-content">
@@ -1977,6 +1977,49 @@
                                                                 </button>
                                                                 <span class="tooltip-text">Process refund for this
                                                                     examination</span>
+                                                            </c:otherwise>
+                                                        </c:choose>
+                                                    </div>
+                                                </sec:authorize>
+
+                                                <!-- Discount Button -->
+                                                <sec:authorize
+                                                    access="hasRole('ADMIN') or hasRole('CLINIC_OWNER') or hasRole('DOCTOR') or hasRole('OPD_DOCTOR')">
+                                                    <div class="tooltip-container" style="margin-left: 10px;">
+                                                        <c:choose>
+                                                            <c:when test="${currentUser.canApplyDiscount == null || !currentUser.canApplyDiscount}">
+                                                                <button class="btn btn-secondary disabled" disabled id="discountBtn">
+                                                                    <i class="fas fa-percent"></i> Discount
+                                                                </button>
+                                                                <span class="tooltip-text">You don't have permission to apply discounts</span>
+                                                            </c:when>
+                                                            <c:when test="${examination.totalPaidAmount != null and examination.totalPaidAmount > 0}">
+                                                                <button class="btn btn-secondary disabled" disabled id="discountBtn">
+                                                                    <i class="fas fa-percent"></i> Discount
+                                                                </button>
+                                                                <span class="tooltip-text">Cannot change discount after payments are recorded</span>
+                                                            </c:when>
+                                                            <c:when test="${empty examination.procedure}">
+                                                                <button class="btn btn-secondary disabled" disabled id="discountBtn">
+                                                                    <i class="fas fa-percent"></i> Discount
+                                                                </button>
+                                                                <span class="tooltip-text">Assign a procedure first; no base price attached</span>
+                                                            </c:when>
+                                                            <c:otherwise>
+                                                                <c:choose>
+                                                                    <c:when test="${(examination.discountPercentage != null and examination.discountPercentage > 0) or examination.discountReasonEnum != null}">
+                                                                        <button class="btn btn-warning" id="removeDiscountBtn" onclick="removeDiscount()">
+                                                                            <i class="fas fa-ban"></i> Remove Discount
+                                                                        </button>
+                                                                        <span class="tooltip-text">Remove applied discount for this examination</span>
+                                                                    </c:when>
+                                                                    <c:otherwise>
+                                                                        <button class="btn btn-warning" id="discountBtn" onclick="openDiscountModal()">
+                                                                            <i class="fas fa-percent"></i> Discount
+                                                                        </button>
+                                                                        <span class="tooltip-text">Apply discount to this examination</span>
+                                                                    </c:otherwise>
+                                                                </c:choose>
                                                             </c:otherwise>
                                                         </c:choose>
                                                     </div>
@@ -2481,6 +2524,10 @@
                         </div>
 
                         <script>
+                            // Resolve application context path for AJAX calls
+                            const CONTEXT_PATH = document.body.getAttribute('data-context-path') || '';
+                            const CSRF_TOKEN = document.querySelector('meta[name="_csrf"]')?.getAttribute('content');
+                            const CSRF_HEADER = document.querySelector('meta[name="_csrf_header"]')?.getAttribute('content');
                             // Add context path variable
                             const contextPath = '${pageContext.request.contextPath}';
 
@@ -4267,6 +4314,58 @@
                             </div>
                         </div>
 
+                        <!-- Discount Modal -->
+                        <div id="discountModal" class="modal">
+                            <div class="modal-content" style="max-width: 600px;">
+                                <div class="modal-header">
+                                    <h2><i class="fas fa-percent"></i> Apply Discount</h2>
+                                    <span class="close" onclick="closeDiscountModal()">&times;</span>
+                                </div>
+
+                                <form id="discountForm">
+                                    <div class="form-sections-container">
+                                        <div class="form-section">
+                                            <h3>Discount Details</h3>
+
+                                            <!-- Reason -->
+                                            <div class="form-group">
+                                                <label for="discountReasonSelect">Reason</label>
+                                                <select id="discountReasonSelect" name="reason" class="form-control">
+                                                    <option value="">Select reason</option>
+                                                    <c:forEach var="reason" items="${discountReasons}">
+                                                        <option value="${reason}">${reason.label}</option>
+                                                    </c:forEach>
+                                                </select>
+                                                <small style="color: #6c757d; font-size: 0.85rem;">Choose a standardized reason or Other to specify percentage</small>
+                                            </div>
+
+                                            <!-- Percentage -->
+                                            <div class="form-group">
+                                                <label for="discountPercentage">Percentage</label>
+                                                <input type="number" id="discountPercentage" name="percentage" class="form-control" placeholder="e.g., 10" min="0" max="100" step="0.1" />
+                                                <small style="color: #6c757d; font-size: 0.85rem;">Required when reason is Other or no reason selected</small>
+                                            </div>
+
+                                            <!-- Note -->
+                                            <div class="form-group">
+                                                <label for="discountNote">Reason Note</label>
+                                                <textarea id="discountNote" name="note" class="form-control" rows="3" placeholder="Optional note describing the discount"></textarea>
+                                            </div>
+                                        </div>
+                                    </div>
+
+                                    <div class="form-actions">
+                                        <button type="button" class="btn btn-secondary" onclick="closeDiscountModal()">
+                                            <i class="fas fa-times"></i> Cancel
+                                        </button>
+                                        <button type="button" class="btn btn-warning" onclick="submitDiscount()">
+                                            <i class="fas fa-check"></i> Apply Discount
+                                        </button>
+                                    </div>
+                                </form>
+                            </div>
+                        </div>
+
 
                         <!-- Payment History Modal -->
                         <div id="paymentHistoryModal" class="modal">
@@ -4297,6 +4396,14 @@
                                             <div class="summary-card">
                                                 <div class="summary-label"><i class="fas fa-hourglass-half"></i> Remaining Amount</div>
                                                 <div class="summary-value" id="remainingAmount">₹0.00</div>
+                                            </div>
+                                            <div class="summary-card">
+                                                <div class="summary-label"><i class="fas fa-tags"></i> Discount Applied</div>
+                                                <div class="summary-value" id="discountApplied">None</div>
+                                            </div>
+                                            <div class="summary-card">
+                                                <div class="summary-label"><i class="fas fa-coins"></i> Base Amount</div>
+                                                <div class="summary-value" id="baseAmount">₹0.00</div>
                                             </div>
                                         </div>
                                     </div>
@@ -4640,7 +4747,7 @@
                                     '<tr><td colspan="7" style="text-align: center; padding: 40px;"><i class="fas fa-spinner fa-spin"></i> Loading payment history...</td></tr>';
                                 
                                 // Load payment history data
-                                fetch('/patients/examination/' + examinationId + '/payment-history')
+                                fetch(CONTEXT_PATH + '/patients/examination/' + examinationId + '/payment-history')
                                     .then(response => response.json())
                                     .then(data => {
                                         if (data.success) {
@@ -4656,6 +4763,171 @@
                                         closePaymentHistoryModal();
                                     });
                             }
+
+                            // Discount functions
+                            function openDiscountModal() {
+                                const modal = document.getElementById('discountModal');
+                                if (modal) {
+                                    modal.style.display = 'block';
+                                    initDiscountModal();
+                                }
+                            }
+
+                            // Cache for discount reasons and their configured percentages
+                            let discountReasonsCache = null;
+
+                            function loadDiscountReasonConfig() {
+                                if (discountReasonsCache) return Promise.resolve(discountReasonsCache);
+                                return fetch(CONTEXT_PATH + '/discounts/reasons')
+                                    .then(response => response.json())
+                                    .then(data => {
+                                        if (data && data.success && Array.isArray(data.reasons)) {
+                                            discountReasonsCache = {};
+                                            data.reasons.forEach(r => {
+                                                discountReasonsCache[r.name] = r.percentage;
+                                            });
+                                        } else {
+                                            discountReasonsCache = {};
+                                        }
+                                        return discountReasonsCache;
+                                    })
+                                    .catch(() => {
+                                        discountReasonsCache = {};
+                                        return discountReasonsCache;
+                                    });
+                            }
+
+                            function onDiscountReasonChange() {
+                                const select = document.getElementById('discountReasonSelect');
+                                const percentageInput = document.getElementById('discountPercentage');
+                                const noteInput = document.getElementById('discountNote');
+                                const reason = select ? select.value : '';
+
+                                if (reason && reason !== 'OTHER') {
+                                    const pct = discountReasonsCache ? discountReasonsCache[reason] : null;
+                                    if (pct !== undefined && pct !== null) {
+                                        percentageInput.value = pct;
+                                    } else {
+                                        percentageInput.value = '';
+                                    }
+                                    // Lock percentage for standardized reasons
+                                    percentageInput.readOnly = true;
+                                    percentageInput.disabled = true;
+                                    // Keep note free text; backend auto-fills label if note blank
+                                    if (noteInput && !noteInput.value) {
+                                        noteInput.placeholder = 'Optional note (auto label if blank)';
+                                    }
+                                } else {
+                                    // Enable free percentage entry for OTHER or blank
+                                    percentageInput.readOnly = false;
+                                    percentageInput.disabled = false;
+                                    if (!percentageInput.value) {
+                                        percentageInput.placeholder = 'e.g., 10';
+                                    }
+                                }
+                            }
+
+                            function initDiscountModal() {
+                                const form = document.getElementById('discountForm');
+                                if (form) form.reset();
+
+                                const select = document.getElementById('discountReasonSelect');
+                                const percentageInput = document.getElementById('discountPercentage');
+                                if (percentageInput) {
+                                    percentageInput.readOnly = false;
+                                    percentageInput.disabled = false;
+                                    percentageInput.value = '';
+                                }
+
+                                loadDiscountReasonConfig().then(() => {
+                                    if (select) {
+                                        select.removeEventListener('change', onDiscountReasonChange);
+                                        select.addEventListener('change', onDiscountReasonChange);
+                                    }
+                                });
+                            }
+
+                            function closeDiscountModal() {
+                                const modal = document.getElementById('discountModal');
+                                if (modal) {
+                                    modal.style.display = 'none';
+                                }
+                            }
+
+                            function removeDiscount() {
+                                const examinationId = '${examination.id}';
+                                const removeHeaders = {};
+                                if (CSRF_TOKEN && CSRF_HEADER) removeHeaders[CSRF_HEADER] = CSRF_TOKEN;
+                                fetch(CONTEXT_PATH + '/discounts/remove/' + examinationId, {
+                                    method: 'POST',
+                                    headers: removeHeaders
+                                })
+                                    .then(response => response.json())
+                                    .then(result => {
+                                        if (result.success) {
+                                            showNotification('Discount removed successfully', 'success');
+                                            setTimeout(() => window.location.reload(), 1500);
+                                        } else {
+                                            showNotification(result.message || 'Error removing discount', 'error');
+                                        }
+                                    })
+                                    .catch(error => {
+                                        console.error('Error removing discount:', error);
+                                        showNotification('Error removing discount', 'error');
+                                    });
+                            }
+
+                            function submitDiscount() {
+                                const form = document.getElementById('discountForm');
+                                const formData = new FormData(form);
+                                const reason = formData.get('reason');
+                                const percentageVal = formData.get('percentage');
+                                const note = formData.get('note');
+
+                                let percentage = percentageVal ? parseFloat(percentageVal) : null;
+                                if (!reason || reason === 'OTHER') {
+                                    if (!percentage || percentage <= 0) {
+                                        showNotification('Please provide a valid percentage for Other or no reason', 'error');
+                                        return;
+                                    }
+                                }
+
+                                const examinationId = '${examination.id}';
+                                const params = new URLSearchParams();
+                                if (reason) params.append('reason', reason);
+                                if (percentage !== null) params.append('percentage', percentage);
+                                if (note) params.append('note', note);
+
+                                const applyHeaders = { 'Content-Type': 'application/x-www-form-urlencoded' };
+                                if (CSRF_TOKEN && CSRF_HEADER) applyHeaders[CSRF_HEADER] = CSRF_TOKEN;
+                                fetch(CONTEXT_PATH + '/discounts/apply/' + examinationId, {
+                                    method: 'POST',
+                                    headers: applyHeaders,
+                                    body: params
+                                })
+                                    .then(response => response.json())
+                                    .then(result => {
+                                        if (result.success) {
+                                            showNotification('Discount applied successfully', 'success');
+                                            closeDiscountModal();
+                                            setTimeout(() => window.location.reload(), 1500);
+                                        } else {
+                                            showNotification(result.message || 'Error applying discount', 'error');
+                                        }
+                                    })
+                                    .catch(error => {
+                                        console.error('Error applying discount:', error);
+                                        showNotification('Error applying discount', 'error');
+                                    });
+                            }
+
+                            // Close discount modal when clicking outside
+                            window.addEventListener('click', function (event) {
+                                const discountModal = document.getElementById('discountModal');
+                                if (event.target === discountModal) {
+                                    closeDiscountModal();
+                                }
+                            });
                             
                             function displayPaymentHistory(data) {
                                 const summary = data.summary;
@@ -4667,7 +4939,8 @@
                                     { id: 'totalPaidAmount', value: summary.totalPaid || 0 },
                                     { id: 'totalRefundedAmount', value: summary.totalRefunded || 0 },
                                     { id: 'netPaidAmount', value: summary.netAmount || 0 },
-                                    { id: 'remainingAmount', value: summary.remaining || 0 }
+                                    { id: 'remainingAmount', value: summary.remaining || 0 },
+                                    { id: 'baseAmount', value: summary.baseAmount || 0 }
                                 ];
                                 
                                 summaryCards.forEach((card, index) => {
@@ -4688,6 +4961,32 @@
                                     remainingElement.classList.add('negative');
                                 } else if (summary.remaining < 0) {
                                     remainingElement.classList.add('positive');
+                                }
+
+                                // Show discount applied (percentage and reason)
+                                const discountElement = document.getElementById('discountApplied');
+                                if (discountElement) {
+                                    const aggPct = (summary.aggregatedDiscountPercentage !== undefined && summary.aggregatedDiscountPercentage !== null)
+                                        ? summary.aggregatedDiscountPercentage : null;
+                                    const pct = aggPct !== null ? aggPct : (summary.discountPercentage || 0);
+                                    let discountText = 'None';
+                                    if (pct && pct > 0) {
+                                        const pctText = (Math.round(pct * 100) / 100).toFixed(pct % 1 === 0 ? 0 : 2) + '%';
+                                        const reasonEnum = summary.discountReasonEnum;
+                                        const reasonNote = summary.discountReason;
+                                        if (reasonEnum) {
+                                            discountText = pctText + ' (' + reasonEnum + ')';
+                                        } else if (reasonNote) {
+                                            discountText = pctText + ' - ' + reasonNote;
+                                        } else {
+                                            discountText = pctText;
+                                        }
+                                    }
+                                    discountElement.style.opacity = '0';
+                                    setTimeout(() => {
+                                        discountElement.textContent = discountText;
+                                        discountElement.style.opacity = '1';
+                                    }, 100);
                                 }
                                 
                                 // Update transaction table

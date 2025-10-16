@@ -29,6 +29,7 @@ public class UserDTO {
     private String bio;
     private Boolean isActive;
     private Boolean canRefund;
+    private Boolean canApplyDiscount;
     private Boolean canDeleteExamination;
     
     private UserRole role;

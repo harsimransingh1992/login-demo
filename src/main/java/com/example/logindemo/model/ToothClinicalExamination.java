@@ -270,12 +270,48 @@ public class ToothClinicalExamination {
      */
     @Column(name = "total_procedure_amount")
     private Double totalProcedureAmount;
+
+    /**
+     * Snapshot of the base price at the time the procedure was associated
+     * This remains constant for discount calculations and inspection.
+     */
+    @Column(name = "base_price_at_association")
+    private Double basePriceAtAssociation;
+
+    /**
+     * Optional percentage discount applied to this examination's total amount.
+     * Represented as a value between 0 and 100.
+     * If null or 0, no discount is applied.
+     */
+    @Column(name = "discount_percentage")
+    private Double discountPercentage;
+
+    /**
+     * Optional reason for the applied discount, used for audit trail.
+     */
+    @Column(name = "discount_reason", length = 500)
+    private String discountReason;
+
+    /**
+     * Standardized discount reason as enum for audit and consistency.
+     * Keeps backward compatibility by coexisting with the string reason field.
+     */
+    @Enumerated(EnumType.STRING)
+    @Column(name = "discount_reason_enum")
+    private DiscountReason discountReasonEnum;
     
     /**
      * The list of payment entries (partial or full payments) for this examination.
      */
     @OneToMany(mappedBy = "examination", cascade = CascadeType.ALL, orphanRemoval = true, fetch = FetchType.LAZY)
     private List<PaymentEntry> paymentEntries;
+
+    /**
+     * Relational discount entries applied to this examination.
+     */
+    @OneToMany(mappedBy = "examination", cascade = CascadeType.ALL, orphanRemoval = false, fetch = FetchType.LAZY)
+    @OrderBy("appliedAt ASC")
+    private List<DiscountEntry> discountEntries = new ArrayList<>();
 
     /**
      * The list of follow-up records for this examination.
@@ -306,7 +342,110 @@ public class ToothClinicalExamination {
      * @return the remaining amount
      */
     public Double getRemainingAmount() {
-        return totalProcedureAmount - getTotalPaidAmount();
+        return getEffectiveTotalProcedureAmount() - getTotalPaidAmount();
+    }
+
+    /**
+     * Computes the effective total amount after applying discount.
+     * If no discount is set, returns the original totalProcedureAmount.
+     * Ensures non-negative and supports full waiver when discountPercentage is 100.
+     *
+     * @return effective total amount after discount
+     */
+    public Double getEffectiveTotalProcedureAmount() {
+        // If there are active relational discounts, prefer the stored net total if present
+        // to avoid double-discounting. If not present, compute from available base.
+        if (discountEntries != null && !getActiveDiscountEntries().isEmpty()) {
+            if (totalProcedureAmount != null) {
+                return Math.max(totalProcedureAmount, 0.0);
+            }
+            double base = 0.0;
+            if (procedure != null && procedure.getPrice() != null) {
+                base = procedure.getPrice();
+            }
+            double dp = getAggregatedDiscountPercentage();
+            double effective = base * (1 - (dp / 100.0));
+            return effective < 0 ? 0.0 : effective;
+        }
+        // No active relational discounts: fall back to legacy fields or return total as-is
+        double base = totalProcedureAmount != null ? totalProcedureAmount : 0.0;
+        double dp = 0.0;
+        if (discountPercentage != null) {
+            dp = discountPercentage;
+        } else if (discountReasonEnum != null) {
+            dp = discountReasonEnum == DiscountReason.OTHER ? 0.0 : discountReasonEnum.resolvePercentage();
+        }
+        double effective = base * (1 - (dp / 100.0));
+        return effective < 0 ? 0.0 : effective;
+    }
+
+    /**
+     * Indicates whether the treatment is fully waived (effective amount is zero).
+     * @return true when fully waived
+     */
+    public boolean isFullyWaived() {
+        return getEffectiveTotalProcedureAmount() <= 0.0;
+    }
+
+    /**
+     * Validates if a proposed payment amount can be accepted against the remaining
+     * amount after discount.
+     *
+     * @param amount the proposed payment amount
+     * @return true if amount does not exceed the discounted remaining amount
+     */
+    public boolean canAcceptPaymentAmount(Double amount) {
+        if (amount == null || amount < 0) return false;
+        return amount <= (getRemainingAmount() + 1e-6);
+    }
+
+    /**
+     * Get active discount entries only.
+     */
+    public List<DiscountEntry> getActiveDiscountEntries() {
+        if (discountEntries == null) return java.util.Collections.emptyList();
+        return discountEntries.stream()
+                .filter(e -> Boolean.TRUE.equals(e.getActive()))
+                .collect(Collectors.toList());
+    }
+
+    /**
+     * Sum active discount percentages and clamp to [0, 100].
+     */
+    public double getAggregatedDiscountPercentage() {
+        List<DiscountEntry> active = getActiveDiscountEntries();
+        if (active.isEmpty()) return 0.0;
+        double sum = active.stream()
+                .mapToDouble(e -> e.getEffectivePercentage())
+                .sum();
+        if (sum < 0.0) return 0.0;
+        return Math.min(sum, 100.0);
+    }
+
+    /**
+     * Update legacy discount fields from active relational entries to keep UI compatibility.
+     */
+    public void updateLegacyDiscountFieldsFromEntries() {
+        List<DiscountEntry> active = getActiveDiscountEntries();
+        if (active.isEmpty()) {
+            this.setDiscountPercentage(null);
+            this.setDiscountReasonEnum(null);
+            this.setDiscountReason(null);
+            return;
+        }
+        if (active.size() == 1) {
+            DiscountEntry e = active.get(0);
+            this.setDiscountPercentage(e.getEffectivePercentage());
+            this.setDiscountReasonEnum(e.getReasonEnum());
+            String label = (e.getNote() != null && !e.getNote().trim().isEmpty())
+                    ? e.getNote().trim()
+                    : (e.getReasonEnum() != null ? e.getReasonEnum().getLabel() : null);
+            this.setDiscountReason(label);
+        } else {
+            this.setDiscountPercentage(getAggregatedDiscountPercentage());
+            this.setDiscountReasonEnum(null);
+            this.setDiscountReason("Multiple discounts");
+        }
     }
 
     /**

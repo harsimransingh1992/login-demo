@@ -129,6 +129,33 @@ public class PaymentEntry {
     private LocalDateTime refundApprovalDate;
 
     /**
+     * Percentage discount applied for this payment (if any).
+     * Stored for audit; typically null if no discount.
+     */
+    @Column(name = "applied_discount_percentage")
+    private Double appliedDiscountPercentage;
+
+    /**
+     * Reason for applying the discount (audit trail).
+     */
+    @Column(name = "discount_reason", length = 500)
+    private String discountReason;
+
+    /**
+     * Standardized applied discount reason for audit and consistency.
+     */
+    @Enumerated(EnumType.STRING)
+    @Column(name = "applied_discount_reason")
+    private DiscountReason appliedDiscountReason;
+
+    /**
+     * User who approved/applied the discount (audit trail).
+     */
+    @ManyToOne(fetch = FetchType.LAZY)
+    @JoinColumn(name = "discount_applied_by")
+    private User discountAppliedBy;
+
+    /**
      * Helper method to check if this entry is a refund
      */
     public boolean isRefund() {
@@ -197,6 +224,91 @@ public class PaymentEntry {
     }
 
     /**
+     * Calculates the discounted amount given a base amount and a discount percentage.
+     * Ensures the result is non-negative and supports full waiver when discountPercentage is 100.
+     */
+    public static Double calculateDiscountedAmount(Double baseAmount, Double discountPercentage) {
+        double base = baseAmount != null ? baseAmount : 0.0;
+        double dp = discountPercentage != null ? discountPercentage : 0.0;
+        double effective = base * (1 - (dp / 100.0));
+        return effective < 0 ? 0.0 : effective;
+    }
+
+    /**
+     * Creates a new capture (payment) entry by applying a discount percentage to the base amount
+     * before processing the payment, and records audit information about the discount.
+     */
+    public static PaymentEntry createCaptureEntry(
+            Double baseAmount,
+            PaymentMode paymentMode,
+            ToothClinicalExamination examination,
+            User recordedBy,
+            String remarks,
+            String transactionReference,
+            Double appliedDiscountPercentage,
+            String discountReason,
+            User discountAppliedBy) {
+        
+        Double amount = calculateDiscountedAmount(baseAmount, appliedDiscountPercentage);
+        PaymentEntry entry = createPaymentEntry(amount, paymentMode, PaymentNotes.FULL_PAYMENT,
+                TransactionType.CAPTURE, examination, recordedBy, remarks, transactionReference);
+        entry.setAppliedDiscountPercentage(appliedDiscountPercentage);
+        entry.setDiscountReason(discountReason);
+        entry.setDiscountAppliedBy(discountAppliedBy);
+        if (appliedDiscountPercentage != null && appliedDiscountPercentage > 0.0) {
+            entry.setAppliedDiscountReason(DiscountReason.OTHER);
+        }
+        return entry;
+    }
+
+    /**
+     * Creates a new capture (payment) entry using a standardized discount reason.
+     * If the reason is OTHER, an optional custom percentage can be supplied; otherwise
+     * percentages are resolved from configuration defaults.
+     */
+    public static PaymentEntry createCaptureEntry(
+            Double baseAmount,
+            PaymentMode paymentMode,
+            ToothClinicalExamination examination,
+            User recordedBy,
+            String remarks,
+            String transactionReference,
+            DiscountReason appliedReason,
+            Double customDiscountPercentage,
+            String reasonNote,
+            User discountAppliedBy) {
+
+        Double percentToApply;
+        if (appliedReason == null) {
+            percentToApply = customDiscountPercentage != null ? customDiscountPercentage : 0.0;
+        } else if (appliedReason == DiscountReason.OTHER) {
+            percentToApply = customDiscountPercentage != null ? customDiscountPercentage : 0.0;
+        } else {
+            percentToApply = appliedReason.resolvePercentage();
+        }
+
+        Double amount = calculateDiscountedAmount(baseAmount, percentToApply);
+        PaymentEntry entry = createPaymentEntry(amount, paymentMode, PaymentNotes.FULL_PAYMENT,
+                TransactionType.CAPTURE, examination, recordedBy, remarks, transactionReference);
+        entry.setAppliedDiscountReason(appliedReason);
+        entry.setAppliedDiscountPercentage(percentToApply);
+        entry.setDiscountAppliedBy(discountAppliedBy);
+        entry.setDiscountReason(
+                (reasonNote != null && !reasonNote.trim().isEmpty())
+                        ? reasonNote.trim()
+                        : (appliedReason != null ? appliedReason.getLabel() : null)
+        );
+        return entry;
+    }
+
+    /**
+     * Indicates whether a discount was applied on this payment entry.
+     */
+    public boolean hasDiscountApplied() {
+        return appliedDiscountPercentage != null && appliedDiscountPercentage > 0.0;
+    }
+
+    /**
      * Creates a new refund entry
      */
     public static PaymentEntry createRefundEntry(
@@ -218,4 +330,4 @@ public class PaymentEntry {
         entry.setRefundApprovalDate(LocalDateTime.now());
         return entry;
     }
-} 
+}

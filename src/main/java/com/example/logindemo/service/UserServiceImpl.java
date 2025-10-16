@@ -85,6 +85,7 @@ public class UserServiceImpl implements UserService {
                     user.setBio(userDTO.getBio());
                     user.setIsActive(userDTO.getIsActive());
                     user.setCanRefund(userDTO.getCanRefund());
+                    user.setCanApplyDiscount(userDTO.getCanApplyDiscount());
                     user.setCanDeleteExamination(userDTO.getCanDeleteExamination());
                     
                     // Update clinic if provided

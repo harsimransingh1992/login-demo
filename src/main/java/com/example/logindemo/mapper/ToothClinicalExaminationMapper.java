@@ -12,6 +12,7 @@ public interface ToothClinicalExaminationMapper {
     @Mapping(target = "paymentAmount", source = "procedure.price")
     @Mapping(target = "paymentMode", source = "paymentMode")
     @Mapping(target = "paymentNotes", source = "paymentNotes")
+    @Mapping(target = "aggregatedDiscountPercentage", expression = "java(examination.getAggregatedDiscountPercentage())")
     ToothClinicalExaminationDTO toDTO(ToothClinicalExamination examination);
 
     @Mapping(target = "paymentCollectionDate", source = "paymentCollectionDate")
@@ -19,4 +20,4 @@ public interface ToothClinicalExaminationMapper {
     @Mapping(target = "paymentMode", source = "paymentMode")
     @Mapping(target = "paymentNotes", source = "paymentNotes")
     ToothClinicalExamination toEntity(ToothClinicalExaminationDTO dto);
-} 
+}

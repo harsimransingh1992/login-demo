@@ -3060,6 +3060,16 @@
                                     </div>
                                 </c:if>
                             </c:forEach>
+                            <!-- Special allowance: show Payment Completed when effective total is zero (full waiver) -->
+                            <c:if test="${examination.procedureStatus == 'PAYMENT_PENDING' && examination.effectiveTotalProcedureAmount <= 0}">
+                                <div class="status-option" data-status="PAYMENT_COMPLETED">
+                                    <span class="status-dot payment-completed"></span>
+                                    <div>
+                                        <div class="status-text">Payment Completed</div>
+                                        <div class="status-description">No charge applies; proceed without payment</div>
+                                    </div>
+                                </div>
+                            </c:if>
                         </div>
                         <c:if test="${scheduledCount > 0 && examination.procedureStatus != 'CLOSED'}">
                             <div class="status-blocked-message" style="margin-top: 8px; color: #e74c3c; font-size: 0.95rem; font-weight: 600; display: flex; align-items: center; gap: 8px;">
@@ -3387,10 +3397,47 @@
                                             <span class="info-value">Dr. ${opdDoctor.firstName} ${opdDoctor.lastName}</span>
                                         </div>
                                     </c:if>
-                                    <div class="procedure-info-item">
-                                        <span class="info-label">Price</span>
-                                        <span class="info-value">₹${procedure.price}</span>
-                                    </div>
+                                    <!-- Pricing: show discounted final price if any discount is applied -->
+                                    <c:set var="basePrice" value="${not empty examination.basePriceAtAssociation ? examination.basePriceAtAssociation : procedure.price}" />
+                                    <c:set var="effectivePrice" value="${not empty examination.effectiveTotalProcedureAmount ? examination.effectiveTotalProcedureAmount : basePrice}" />
+                                    <c:set var="hasDiscount" value="${(examination.aggregatedDiscountPercentage gt 0) or (not empty examination.discountPercentage and examination.discountPercentage gt 0)}" />
+                                    <c:choose>
+                                        <c:when test="${hasDiscount}">
+                                            <div class="procedure-info-item">
+                                                <span class="info-label">Final Price</span>
+                                                <span class="info-value">₹${effectivePrice}</span>
+                                            </div>
+                                            <div class="procedure-info-item">
+                                                <span class="info-label">Base Price</span>
+                                                <span class="info-value">₹${basePrice}</span>
+                                            </div>
+                                            <div class="procedure-info-item">
+                                                <span class="info-label">Discount</span>
+                                                <span class="info-value">
+                                                    <c:choose>
+                                                        <c:when test="${not empty examination.aggregatedDiscountPercentage and examination.aggregatedDiscountPercentage gt 0}">
+                                                            ${examination.aggregatedDiscountPercentage}%
+                                                        </c:when>
+                                                        <c:when test="${not empty examination.discountPercentage and examination.discountPercentage gt 0}">
+                                                            ${examination.discountPercentage}%
+                                                        </c:when>
+                                                        <c:otherwise>
+                                                            Applied
+                                                        </c:otherwise>
+                                                    </c:choose>
+                                                    <c:if test="${not empty examination.discountReason}">
+                                                        - ${examination.discountReason}
+                                                    </c:if>
+                                                </span>
+                                            </div>
+                                        </c:when>
+                                        <c:otherwise>
+                                            <div class="procedure-info-item">
+                                                <span class="info-label">Price</span>
+                                                <span class="info-value">₹${basePrice}</span>
+                                            </div>
+                                        </c:otherwise>
+                                    </c:choose>
                                     <div class="procedure-info-item">
                                         <span class="info-label">Payment Status</span>
                                         <span class="info-value payment-status">${paymentStatus}</span>
