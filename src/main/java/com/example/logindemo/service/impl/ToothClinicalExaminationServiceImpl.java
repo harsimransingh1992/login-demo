@@ -41,6 +41,8 @@ import com.example.logindemo.model.PaymentEntry;
 import com.example.logindemo.utils.PeriDeskUtils;
 import com.example.logindemo.repository.PaymentEntryRepository;
 import com.example.logindemo.model.ClinicModel;
+import com.example.logindemo.repository.ProcedurePriceHistoryRepository;
+import com.example.logindemo.model.ProcedurePriceHistory;
 
 @Service
 @Primary
@@ -61,6 +63,9 @@ public class ToothClinicalExaminationServiceImpl implements ToothClinicalExamina
 
     @Autowired
     private PaymentEntryRepository paymentEntryRepository;
+
+    @Autowired
+    private ProcedurePriceHistoryRepository priceHistoryRepository;
 
     @Override
     public ToothClinicalExaminationDTO updateExamination(ToothClinicalExaminationDTO examinationDTO) {
@@ -138,14 +143,24 @@ public class ToothClinicalExaminationServiceImpl implements ToothClinicalExamina
 
     @Override
     public Double getHistoricalPrice(Long procedureId, LocalDateTime date) {
-        // Since we don't have a direct method in the repository, we'll need to get the price from the procedure
-        ToothClinicalExamination examination = toothClinicalExaminationRepository.findFirstByProcedureIdOrderByCreatedAtDesc(procedureId)
-            .orElse(null);
-            
-        if (examination != null && examination.getProcedure() != null) {
-            return examination.getProcedure().getPrice();
+        Optional<ProcedurePrice> procedureOpt = procedurePriceRepository.findById(procedureId);
+        if (!procedureOpt.isPresent()) {
+            throw new RuntimeException("Procedure not found");
         }
-        return null;
+
+        ProcedurePrice procedure = procedureOpt.get();
+
+        // If no date is provided, return current price
+        if (date == null) {
+            return procedure.getPrice();
+        }
+
+        Optional<ProcedurePriceHistory> history = priceHistoryRepository
+            .findFirstByProcedureAndEffectiveFromLessThanEqualOrderByEffectiveFromDesc(
+                procedure, date);
+
+        return history.map(ProcedurePriceHistory::getPrice)
+            .orElse(procedure.getPrice());
     }
 
     @Override
@@ -265,8 +280,15 @@ public class ToothClinicalExaminationServiceImpl implements ToothClinicalExamina
         ProcedurePrice procedure = procedurePriceRepository.findById(procedureId)
             .orElseThrow(() -> new RuntimeException("Procedure not found"));
             
+        // Snapshot the price effective at association time and store as base total
+        Double basePrice = getHistoricalPrice(procedure.getId(), LocalDateTime.now());
+        if (basePrice == null) {
+            basePrice = procedure.getPrice();
+        }
+
         examination.setProcedure(procedure);
-        examination.setPaymentAmount(procedure.getPrice());
+        examination.setBasePriceAtAssociation(basePrice);
+        examination.setPaymentAmount(basePrice); // updates totalProcedureAmount internally
         toothClinicalExaminationRepository.save(examination);
     }
 

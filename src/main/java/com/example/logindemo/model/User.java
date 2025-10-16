@@ -73,6 +73,9 @@ public class User {
     private Boolean canRefund = false;
     
     @Column
+    private Boolean canApplyDiscount = false;
+
+    @Column
     private Boolean canDeleteExamination = false;
     
     @ManyToOne

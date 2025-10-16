@@ -167,6 +167,10 @@
                                                 <label class="custom-control-label" for="canRefundSwitch">Can Process Refunds</label>
                                             </div>
                                             <div class="custom-control custom-switch mt-2">
+                                                <form:checkbox path="canApplyDiscount" class="custom-control-input" id="canApplyDiscountSwitch" />
+                                                <label class="custom-control-label" for="canApplyDiscountSwitch">Can Apply Discounts</label>
+                                            </div>
+                                            <div class="custom-control custom-switch mt-2">
                                                 <form:checkbox path="canDeleteExamination" class="custom-control-input" id="canDeleteExaminationSwitch" />
                                                 <label class="custom-control-label" for="canDeleteExaminationSwitch">Can Delete Examinations</label>
                                             </div>

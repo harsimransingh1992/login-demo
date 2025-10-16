@@ -33,6 +33,8 @@
     <script>
         // Add context path variable
         const contextPath = '${pageContext.request.contextPath}';
+        // Permission flag for discount actions
+        const CURRENT_USER_CAN_APPLY_DISCOUNT = ('${currentUser.canApplyDiscount}' === 'true');
     </script>
     <script src="${pageContext.request.contextPath}/js/patient-details.js"></script>
     <script>
@@ -359,11 +361,13 @@
             const selectedCheckboxes = document.querySelectorAll('.examination-checkbox:checked');
             const selectedCount = selectedCheckboxes.length;
             const selectedCountDisplay = document.getElementById('selectedCountDisplay');
+            // Inline warning removed; show validation inside modal instead
             const bulkUploadBtn = document.getElementById('bulkUploadSelectedBtn');
             const bulkAssignBtn = document.getElementById('bulkAssignDoctorBtn');
             const bulkSendForPaymentBtn = document.getElementById('bulkSendForPaymentBtn');
             const bulkAssignProcedureBtn = document.getElementById('bulkAssignProcedureBtn');
             const bulkAddNotesBtn = document.getElementById('bulkAddNotesBtn');
+            const bulkApplyDiscountBtn = document.getElementById('bulkApplyDiscountBtn');
             const selectedCountSpan = document.getElementById('selectedExaminationCount');
 
             selectedCountSpan.textContent = selectedCount;
@@ -372,9 +376,17 @@
                 selectedCountDisplay.style.visibility = 'visible';
                 if (bulkUploadBtn) bulkUploadBtn.disabled = false;
                 if (bulkAssignBtn) bulkAssignBtn.disabled = false;
-                if (bulkSendForPaymentBtn) bulkSendForPaymentBtn.disabled = false;
+                // Keep bulk send enabled; issues will be shown inside the modal
+                if (bulkSendForPaymentBtn) {
+                    bulkSendForPaymentBtn.disabled = false;
+                    bulkSendForPaymentBtn.title = 'Send selected examinations for payment';
+                }
                 if (bulkAssignProcedureBtn) bulkAssignProcedureBtn.disabled = false;
                 if (bulkAddNotesBtn) bulkAddNotesBtn.disabled = false;
+                if (bulkApplyDiscountBtn) {
+                    bulkApplyDiscountBtn.disabled = !CURRENT_USER_CAN_APPLY_DISCOUNT;
+                    bulkApplyDiscountBtn.title = CURRENT_USER_CAN_APPLY_DISCOUNT ? 'Apply or remove discount for selected examinations' : 'You do not have permission to apply discounts';
+                }
             } else {
                 selectedCountDisplay.style.visibility = 'hidden';
                 if (bulkUploadBtn) bulkUploadBtn.disabled = true;
@@ -382,6 +394,7 @@
                 if (bulkSendForPaymentBtn) bulkSendForPaymentBtn.disabled = true;
                 if (bulkAssignProcedureBtn) bulkAssignProcedureBtn.disabled = true;
                 if (bulkAddNotesBtn) bulkAddNotesBtn.disabled = true;
+                if (bulkApplyDiscountBtn) bulkApplyDiscountBtn.disabled = true;
             }
         }
 
@@ -3017,15 +3030,56 @@
         .clinical-file-actions {
             display: flex;
             align-items: center;
-            gap: 15px;
-            flex-wrap: nowrap;        /* prevent wrapping to a second row */
-            overflow-x: auto;         /* allow horizontal scroll if needed */
-            -webkit-overflow-scrolling: touch;
+            gap: 8px;
+            flex-wrap: wrap;           /* allow wrapping to fit container */
+            overflow-x: hidden;        /* no horizontal scroll */
+            width: 100%;               /* span full container width */
+            justify-content: flex-end; /* keep actions aligned to the right */
         }
-        /* Ensure consistent sizing for all action buttons in row */
+        /* Keep selected count on the left, actions on the right */
+        .clinical-file-actions .selected-count {
+            margin-right: auto;
+        }
+        /* (Removed) Inline issue message next to Send for Payment button */
+        /* Compact button sizing for fixed container */
         .clinical-file-actions .btn {
-            width: 230px;
-            flex: 0 0 auto;           /* prevent buttons from shrinking */
+            flex: 0 1 150px;           /* allow shrinking to fit */
+            min-width: 140px;
+            padding: 6px 10px;
+            font-size: 0.85rem;
+        }
+
+        /* Widen long-label buttons to avoid wrapping on larger screens */
+        @media (min-width: 577px) {
+            .clinical-file-actions #bulkSendForPaymentBtn,
+            .clinical-file-actions #bulkAssignProcedureBtn {
+                flex: 0 1 190px;
+                min-width: 190px;
+            }
+        }
+
+        /* Responsive adjustments */
+        @media (max-width: 992px) {
+            .clinical-file-actions .btn {
+                flex: 1 1 160px;
+                min-width: 150px;
+            }
+        }
+        @media (max-width: 576px) {
+            .clinical-file-actions {
+                gap: 6px;
+            }
+            .clinical-file-actions .btn {
+                flex: 1 1 100%;
+                min-width: 100%;
+                padding: 8px 10px; /* maintain touch target size */
+                font-size: 0.9rem;
+            }
+            .clinical-file-actions .selected-count {
+                order: -1;             /* stack count above actions on mobile */
+                width: 100%;
+                margin-bottom: 6px;
+            }
         }
 
         /* Keep space reserved for selected count to reduce jitter */
@@ -4248,8 +4302,8 @@
                             <div class="clinical-file-actions-row">
                                 <div class="clinical-file-actions">
                                     <span id="selectedCountDisplay" class="selected-count" style="visibility: hidden;">
-                                        <span id="selectedExaminationCount">0</span> examinations selected
-                                    </span>
+                                         <span id="selectedExaminationCount">0</span> examinations selected
+                                     </span>
                                     
                                     <button type="button" id="bulkUploadSelectedBtn" class="btn btn-secondary btn-sm" 
                                             onclick="openBulkUploadSelectedModal()" title="Bulk upload to selected examinations" disabled>
@@ -4266,6 +4320,9 @@
                                     </button>
                                     <button type="button" id="bulkAddNotesBtn" class="btn btn-secondary btn-sm" onclick="openBulkAddNotesModal()" title="Add notes to selected examinations" disabled>
                                         <i class="fas fa-sticky-note"></i> Add Notes
+                                    </button>
+                                    <button type="button" id="bulkApplyDiscountBtn" class="btn btn-secondary btn-sm" onclick="openBulkDiscountModal()" title="Apply or remove discount for selected examinations" disabled>
+                                        <i class="fas fa-percent"></i> Discount
                                     </button>
                                     <input type="file" id="bulkSelectedInput" multiple accept="image/*,application/pdf" style="display: none;" />
                                 </div>
@@ -4330,7 +4387,7 @@
                             </thead>
                             <tbody>
                         <c:forEach items="${examinationHistory}" var="exam" varStatus="status">
-                            <tr class="examination-row" data-exam-id="${exam.id}">
+                            <tr class="examination-row" data-exam-id="${exam.id}" data-total-paid="${exam.totalPaidAmount != null ? exam.totalPaidAmount : 0}">
                                 <td>
                                     <sec:authorize access="hasAnyRole('DOCTOR','OPD_DOCTOR','ADMIN')">
                                         <input type="checkbox" class="examination-checkbox" value="${exam.id}" onclick="event.stopPropagation();">
@@ -5157,7 +5214,7 @@
                     </div>
                     <ul id="bulkPaymentValidationList" style="margin:0 0 6px 18px; padding:0;">
                     </ul>
-                    <small style="color:#856404;">Only procedures with status <strong>OPEN</strong> can be sent for payment.</small>
+                    <small style="color:#856404;">Only examinations with an attached procedure and status <strong>OPEN</strong> can be sent for payment.</small>
                 </div>
                 <div class="progress-section" id="bulkPaymentProgress" style="display:none;">
                     <div style="margin-bottom:8px; color:#2c3e50;">
@@ -5243,6 +5300,65 @@
                     <span class="btn-loader" style="display:none;"><i class="fas fa-spinner fa-spin"></i> Assigning...</span>
                 </button>
                 <button type="button" class="btn btn-secondary" onclick="closeBulkAssignProcedureModal()">Cancel</button>
+            </div>
+        </div>
+    </div>
+
+    <!-- Bulk Apply/Remove Discount Modal -->
+    <div id="bulkDiscountModal" class="modal">
+        <div class="modal-content">
+            <div class="modal-header">
+                <h2>Apply Discount to Selected Examinations</h2>
+                <span class="close" onclick="closeBulkDiscountModal()">&times;</span>
+            </div>
+            <div class="modal-body">
+                <p class="text-muted">
+                    Selected examinations: <strong><span id="bulkDiscountSelectedCount">0</span></strong>
+                </p>
+                <div class="form-group">
+                    <label for="bulkDiscountReasonSelect">Reason</label>
+                    <select id="bulkDiscountReasonSelect" class="form-control" onchange="onBulkDiscountReasonChange()">
+                        <option value="">Select reason</option>
+                        <!-- Options populated dynamically from /discounts/reasons; 'Other' appended -->
+                    </select>
+                    <small style="color: #6c757d; font-size: 0.85rem;">Choose a standardized reason or Other to specify percentage</small>
+                </div>
+                <div class="form-group">
+                    <label for="bulkDiscountPercentage">Percentage</label>
+                    <input type="number" id="bulkDiscountPercentage" class="form-control" min="0" max="100" step="0.01" placeholder="e.g., 10">
+                    <small style="color: #6c757d; font-size: 0.85rem;">Required when reason is Other or no reason selected</small>
+                </div>
+                <div class="form-group">
+                    <label for="bulkDiscountNote">Reason Note</label>
+                    <textarea id="bulkDiscountNote" class="form-control" placeholder="Optional note (auto label if blank)" rows="2"></textarea>
+                </div>
+                <div class="progress-section" id="bulkDiscountProgress" style="display:none; margin-top:8px;">
+                    <div style="margin-bottom:8px; color:#2c3e50;">
+                        <i class="fas fa-spinner fa-spin"></i> Applying discount to selected...
+                    </div>
+                    <div style="background:#ecf0f1; border-radius:4px; height:10px; overflow:hidden;">
+                        <div id="bulkDiscountProgressBar" style="background:#3498db; width:0%; height:10px; transition: width 0.3s ease;"></div>
+                    </div>
+                </div>
+                <div class="result-section" id="bulkDiscountResult" style="display:none; margin-top:12px;">
+                    <div id="bulkDiscountResultSummary" style="margin-bottom:8px; color:#2c3e50;"></div>
+                    <div id="bulkDiscountErrorContainer" style="display:none; background:#fdecea; border:1px solid #f5c6cb; border-radius:6px; padding:10px;">
+                        <div style="display:flex; align-items:center; gap:8px; margin-bottom:6px; color:#721c24;">
+                            <i class="fas fa-times-circle"></i>
+                            <strong>Errors</strong>
+                        </div>
+                        <ul id="bulkDiscountErrorList" style="margin:0 0 6px 18px; padding:0; color:#721c24;"></ul>
+                    </div>
+                </div>
+            </div>
+            <div class="modal-footer">
+                <button type="button" class="btn btn-primary" id="confirmBulkApplyDiscountBtn" onclick="applyDiscountToSelected()">
+                    <i class="fas fa-percent"></i> Apply Discount
+                </button>
+                <button type="button" class="btn btn-warning" id="confirmBulkRemoveDiscountBtn" onclick="removeDiscountFromSelected()">
+                    <i class="fas fa-ban"></i> Remove Discount
+                </button>
+                <button type="button" class="btn btn-secondary" onclick="closeBulkDiscountModal()">Cancel</button>
             </div>
         </div>
     </div>
@@ -6111,7 +6227,7 @@
             const countEl = document.getElementById('bulkSendSelectedCount');
             if (countEl) countEl.textContent = selectedIds.length;
 
-            // Client-side validation: show non-open records
+            // Client-side validation: show non-open records and missing procedures
             const validationList = document.getElementById('bulkPaymentValidationList');
             const validationBox = document.getElementById('bulkPaymentValidation');
             if (validationList && validationBox) {
@@ -6129,9 +6245,33 @@
                             li.textContent = 'Examination ' + id + ' is ' + (statusText || 'UNKNOWN') + ' and cannot be sent';
                             validationList.appendChild(li);
                         }
+                        const procedureCell = row ? row.querySelector('td:nth-child(7)') : null;
+                        const hasProcedure = !!(procedureCell && procedureCell.querySelector('.procedure-name'));
+                        if (!hasProcedure) {
+                            invalidCount++;
+                            const li = document.createElement('li');
+                            li.textContent = 'Examination ' + id + ' has no procedure attached and cannot be sent';
+                            validationList.appendChild(li);
+                        }
                     }
                 });
                 validationBox.style.display = invalidCount > 0 ? 'block' : 'none';
+
+                // Disable confirm if any invalid items are present
+                const confirmBtn = document.getElementById('confirmBulkSendForPaymentBtn');
+                if (confirmBtn) {
+                    if (invalidCount > 0) {
+                        confirmBtn.disabled = true;
+                        confirmBtn.classList.remove('btn-primary','btn-success');
+                        confirmBtn.classList.add('btn-warning');
+                        confirmBtn.innerHTML = '<i class="fas fa-exclamation-circle"></i> Review Issues';
+                    } else {
+                        confirmBtn.disabled = false;
+                        confirmBtn.classList.remove('btn-warning','btn-success');
+                        confirmBtn.classList.add('btn-primary');
+                        confirmBtn.innerHTML = '<i class="fas fa-paper-plane"></i> Send for Payment';
+                    }
+                }
             }
 
             // Reset progress/result sections
@@ -6564,6 +6704,303 @@
                     }
                     break;
                 }
+            }
+        }
+    </script>
+
+    <script>
+        // Bulk Discount Handlers
+        let _bulkDiscountReasons = null;
+
+        function openBulkDiscountModal() {
+            const selectedIds = getSelectedExaminationIds();
+            if (selectedIds.length === 0) {
+                showAlertModal('Please select at least one examination to apply discounts.', 'warning');
+                return;
+            }
+            if (!CURRENT_USER_CAN_APPLY_DISCOUNT) {
+                showAlertModal('You do not have permission to apply discounts.', 'error');
+                return;
+            }
+
+            // Update count
+            const countEl = document.getElementById('bulkDiscountSelectedCount');
+            if (countEl) countEl.textContent = selectedIds.length;
+
+            // Reset UI state
+            const progressBox = document.getElementById('bulkDiscountProgress');
+            const progressBar = document.getElementById('bulkDiscountProgressBar');
+            const resultBox = document.getElementById('bulkDiscountResult');
+            const errorContainer = document.getElementById('bulkDiscountErrorContainer');
+            const errorList = document.getElementById('bulkDiscountErrorList');
+            const resultSummary = document.getElementById('bulkDiscountResultSummary');
+            if (progressBox) progressBox.style.display = 'none';
+            if (progressBar) progressBar.style.width = '0%';
+            if (resultBox) resultBox.style.display = 'none';
+            if (errorContainer) errorContainer.style.display = 'none';
+            if (errorList) errorList.innerHTML = '';
+            if (resultSummary) resultSummary.textContent = '';
+
+            // Reset fields
+            const reasonSel = document.getElementById('bulkDiscountReasonSelect');
+            const pctEl = document.getElementById('bulkDiscountPercentage');
+            const noteEl = document.getElementById('bulkDiscountNote');
+            if (reasonSel) reasonSel.value = '';
+            if (pctEl) pctEl.value = '';
+            if (noteEl) noteEl.value = '';
+
+            // Load reasons and show modal
+            loadBulkDiscountReasons().then(() => {
+                document.getElementById('bulkDiscountModal').style.display = 'block';
+            });
+        }
+
+        function closeBulkDiscountModal() {
+            document.getElementById('bulkDiscountModal').style.display = 'none';
+        }
+
+        async function loadBulkDiscountReasons() {
+            const reasonSel = document.getElementById('bulkDiscountReasonSelect');
+            if (!reasonSel) return;
+            try {
+                if (!_bulkDiscountReasons) {
+                    const resp = await fetch(joinUrl(contextPath, '/discounts/reasons'));
+                    const json = await resp.json();
+                    // Normalize to [{ name, label, percentage }]
+                    if (resp.ok && json && Array.isArray(json)) {
+                        _bulkDiscountReasons = json.map(r => ({
+                            name: r.name || (typeof r === 'string' ? r : String(r.name || r)),
+                            label: r.label || (typeof r === 'string' ? r : (r.label || r.name)),
+                            percentage: typeof r.percentage === 'number' ? r.percentage : null
+                        }));
+                    } else if (resp.ok && json && json.reasons && Array.isArray(json.reasons)) {
+                        _bulkDiscountReasons = json.reasons.map(r => ({
+                            name: r.name,
+                            label: r.label || r.name,
+                            percentage: typeof r.percentage === 'number' ? r.percentage : null
+                        }));
+                    } else {
+                        _bulkDiscountReasons = [];
+                    }
+                }
+                reasonSel.innerHTML = '<option value="">Select reason</option>' +
+                    (_bulkDiscountReasons || []).map(r => '<option value="' + r.name + '">' + (r.label || r.name) + '</option>').join('') +
+                    '<option value="OTHER">Other</option>';
+            } catch (e) {
+                reasonSel.innerHTML = '<option value="">Select reason</option><option value="OTHER">Other</option>';
+            }
+        }
+
+        function onBulkDiscountReasonChange() {
+            const reasonSel = document.getElementById('bulkDiscountReasonSelect');
+            const pctEl = document.getElementById('bulkDiscountPercentage');
+            if (!reasonSel || !pctEl) return;
+            const val = reasonSel.value;
+            if (val === 'OTHER' || val === '') {
+                pctEl.disabled = false;
+                pctEl.value = '';
+            } else {
+                const match = (_bulkDiscountReasons || []).find(r => r.name === val);
+                if (match && typeof match.percentage === 'number') {
+                    pctEl.value = match.percentage;
+                    pctEl.disabled = true;
+                } else {
+                    pctEl.disabled = false;
+                }
+            }
+        }
+
+        async function applyDiscountToSelected() {
+            const selectedIds = getSelectedExaminationIds();
+            if (selectedIds.length === 0) {
+                showAlertModal('Please select at least one examination to apply discounts.', 'warning');
+                return;
+            }
+            const reasonSel = document.getElementById('bulkDiscountReasonSelect');
+            const pctEl = document.getElementById('bulkDiscountPercentage');
+            const noteEl = document.getElementById('bulkDiscountNote');
+            const reason = reasonSel ? reasonSel.value : '';
+            const percentageVal = pctEl && pctEl.value ? parseFloat(pctEl.value) : null;
+            const note = noteEl ? noteEl.value.trim() : '';
+
+            // Validate percentage when reason is Other or empty
+            if ((reason === 'OTHER' || reason === '') && (percentageVal == null || isNaN(percentageVal))) {
+                showAlertModal('Please enter a valid discount percentage for "Other" or when no reason is selected.', 'warning');
+                return;
+            }
+            if (percentageVal != null && (percentageVal < 0 || percentageVal > 100)) {
+                showAlertModal('Discount percentage must be between 0 and 100.', 'warning');
+                return;
+            }
+
+            const token = document.querySelector('meta[name="_csrf"]').content;
+
+            const progressBox = document.getElementById('bulkDiscountProgress');
+            const progressBar = document.getElementById('bulkDiscountProgressBar');
+            const resultBox = document.getElementById('bulkDiscountResult');
+            const errorContainer = document.getElementById('bulkDiscountErrorContainer');
+            const errorList = document.getElementById('bulkDiscountErrorList');
+            const resultSummary = document.getElementById('bulkDiscountResultSummary');
+            const applyBtn = document.getElementById('confirmBulkApplyDiscountBtn');
+
+            if (progressBox) progressBox.style.display = 'block';
+            if (progressBar) progressBar.style.width = '15%';
+            if (applyBtn) { applyBtn.disabled = true; applyBtn.innerHTML = '<i class="fas fa-spinner fa-spin"></i> Applying...'; }
+
+            let successCount = 0;
+            const errors = [];
+
+            for (const examId of selectedIds) {
+                // Build x-www-form-urlencoded payload to match controller @RequestParam
+                const params = new URLSearchParams();
+                if (reason && reason !== '') params.append('reason', reason);
+                // Only send percentage when reason is OTHER or empty; standardized reasons use configured percentages
+                if ((reason === 'OTHER' || reason === '') && percentageVal != null) params.append('percentage', percentageVal);
+                if (note) params.append('note', note);
+                try {
+                    const resp = await fetch(joinUrl(contextPath, '/discounts/apply/' + examId), {
+                        method: 'POST',
+                        headers: {
+                            'Content-Type': 'application/x-www-form-urlencoded',
+                            'X-CSRF-TOKEN': token
+                        },
+                        body: params.toString()
+                    });
+                    let json = {};
+                    try { json = await resp.json(); } catch (e) {}
+                    if (resp.ok && (json.success === undefined || json.success)) {
+                        successCount++;
+                    } else {
+                        errors.push({ examinationId: examId, message: (json && json.message) ? json.message : 'Failed to apply' });
+                    }
+                } catch (e) {
+                    errors.push({ examinationId: examId, message: e.message || 'Network error' });
+                }
+            }
+
+            if (progressBar) progressBar.style.width = '100%';
+            if (resultBox) resultBox.style.display = 'block';
+            if (resultSummary) resultSummary.textContent = 'Applied discount to ' + successCount + ' of ' + selectedIds.length + ' examinations.';
+            if (errors.length > 0 && errorContainer && errorList) {
+                errorContainer.style.display = 'block';
+                errorList.innerHTML = '';
+                errors.forEach(err => {
+                    const li = document.createElement('li');
+                    li.textContent = 'Examination ' + (err.examinationId || '-') + ': ' + (err.message || 'Unknown error');
+                    errorList.appendChild(li);
+                });
+            }
+
+            // Reset selection for successful ones and update UI
+            if (successCount > 0) {
+                selectedIds.forEach(id => {
+                    const checkbox = document.querySelector('.examination-checkbox[value="' + id + '"]');
+                    if (checkbox) { checkbox.checked = false; }
+                });
+                if (typeof updateTableSelectionCount === 'function') {
+                    updateTableSelectionCount();
+                }
+                showAlertModal('Bulk discount applied.', 'success', () => { window.location.reload(); });
+                setTimeout(() => { closeBulkDiscountModal(); }, 1000);
+            } else {
+                if (applyBtn) { applyBtn.disabled = false; applyBtn.innerHTML = '<i class="fas fa-percent"></i> Apply Discount'; }
+            }
+        }
+
+        async function removeDiscountFromSelected() {
+            const selectedIds = getSelectedExaminationIds();
+            if (selectedIds.length === 0) {
+                showAlertModal('Please select at least one examination to remove discounts.', 'warning');
+                return;
+            }
+            const reasonSel = document.getElementById('bulkDiscountReasonSelect');
+            const noteEl = document.getElementById('bulkDiscountNote');
+            const reason = reasonSel ? reasonSel.value : '';
+            const note = noteEl ? noteEl.value.trim() : '';
+
+            const token = document.querySelector('meta[name="_csrf"]').content;
+            const removeBtn = document.getElementById('confirmBulkRemoveDiscountBtn');
+
+            // Client-side guard: skip examinations with any amount received
+            const blockedIds = [];
+            const allowedIds = [];
+            for (const id of selectedIds) {
+                const row = document.querySelector('.examination-row[data-exam-id="' + id + '"]');
+                const paid = row && row.dataset && row.dataset.totalPaid ? parseFloat(row.dataset.totalPaid) : 0;
+                if (!isNaN(paid) && paid > 0) {
+                    blockedIds.push(id);
+                } else {
+                    allowedIds.push(id);
+                }
+            }
+            if (blockedIds.length > 0) {
+                const list = blockedIds.slice(0, 5).map(i => '#' + i).join(', ');
+                const more = blockedIds.length > 5 ? ' …and ' + (blockedIds.length - 5) + ' more' : '';
+                showAlertModal('Cannot remove discount for examinations with payment received: ' + list + more + '.', 'warning');
+            }
+            if (allowedIds.length === 0) {
+                return; // nothing to process
+            }
+
+            // Show progress
+            const progressBox = document.getElementById('bulkDiscountProgress');
+            const progressBar = document.getElementById('bulkDiscountProgressBar');
+            const resultBox = document.getElementById('bulkDiscountResult');
+            const errorContainer = document.getElementById('bulkDiscountErrorContainer');
+            const errorList = document.getElementById('bulkDiscountErrorList');
+            const resultSummary = document.getElementById('bulkDiscountResultSummary');
+            if (progressBox) progressBox.style.display = 'block';
+            if (progressBar) progressBar.style.width = '15%';
+            if (removeBtn) { removeBtn.disabled = true; removeBtn.innerHTML = '<i class="fas fa-spinner fa-spin"></i> Removing...'; }
+
+            let successCount = 0;
+            const errors = [];
+
+            for (const examId of allowedIds) {
+                try {
+                    const resp = await fetch(joinUrl(contextPath, '/discounts/remove/' + examId), {
+                        method: 'POST',
+                        headers: {
+                            'X-CSRF-TOKEN': token
+                        }
+                    });
+                    let json = {};
+                    try { json = await resp.json(); } catch (e) {}
+                    if (resp.ok && (json.success === undefined || json.success)) {
+                        successCount++;
+                    } else {
+                        errors.push({ examinationId: examId, message: (json && json.message) ? json.message : 'Failed to remove' });
+                    }
+                } catch (e) {
+                    errors.push({ examinationId: examId, message: e.message || 'Network error' });
+                }
+            }
+
+            if (progressBar) progressBar.style.width = '100%';
+            if (resultBox) resultBox.style.display = 'block';
+            if (resultSummary) resultSummary.textContent = 'Removed discount for ' + successCount + ' of ' + allowedIds.length + ' examinations.';
+            if (errors.length > 0 && errorContainer && errorList) {
+                errorContainer.style.display = 'block';
+                errorList.innerHTML = '';
+                errors.forEach(err => {
+                    const li = document.createElement('li');
+                    li.textContent = 'Examination ' + (err.examinationId || '-') + ': ' + (err.message || 'Unknown error');
+                    errorList.appendChild(li);
+                });
+            }
+
+            if (successCount > 0) {
+                allowedIds.forEach(id => {
+                    const checkbox = document.querySelector('.examination-checkbox[value="' + id + '"]');
+                    if (checkbox) { checkbox.checked = false; }
+                });
+                if (typeof updateTableSelectionCount === 'function') {
+                    updateTableSelectionCount();
+                }
+                showAlertModal('Bulk discount removal completed.', 'success', () => { window.location.reload(); });
+                setTimeout(() => { closeBulkDiscountModal(); }, 1000);
+            } else {
+                if (removeBtn) { removeBtn.disabled = false; removeBtn.innerHTML = '<i class="fas fa-ban"></i> Remove Discount'; }
             }
         }
     </script>

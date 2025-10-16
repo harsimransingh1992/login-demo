@@ -62,6 +62,14 @@ public class ToothClinicalExaminationDTO {
     private Double paymentAmount;
     private String treatmentStartDate;
 
+    // Discount fields for UI and mapping
+    private Double discountPercentage;
+    private String discountReason;
+    private DiscountReason discountReasonEnum;
+
+    // Aggregated discount percentage from active relational discount entries
+    private Double aggregatedDiscountPercentage;
+
     /**
      * Custom setter for toothNumber that handles both enum and string values
      */

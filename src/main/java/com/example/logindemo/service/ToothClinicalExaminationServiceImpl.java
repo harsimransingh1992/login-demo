@@ -257,9 +257,16 @@ public class ToothClinicalExaminationServiceImpl implements ToothClinicalExamina
         }
         
         // Associate the procedure with the examination
-        examination.setProcedure(procedureOptional.get());
-        examination.setPaymentAmount(procedureOptional.get().getPrice());
-        examination.setTotalProcedureAmount(procedureOptional.get().getPrice());
+        ProcedurePrice procedure = procedureOptional.get();
+        // Snapshot the price effective at association time
+        Double basePrice = getHistoricalPrice(procedure.getId(), java.time.LocalDateTime.now());
+        if (basePrice == null) {
+            basePrice = procedure.getPrice();
+        }
+        examination.setProcedure(procedure);
+        examination.setBasePriceAtAssociation(basePrice);
+        examination.setPaymentAmount(basePrice);
+        examination.setTotalProcedureAmount(basePrice);
         toothClinicalExaminationRepository.save(examination);
         
         log.info("Associated procedure {} with examination {}", procedureId, examinationId);

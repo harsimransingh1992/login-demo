@@ -20,6 +20,7 @@ import org.springframework.stereotype.Controller;
 import org.springframework.ui.Model;
 import org.springframework.web.bind.WebDataBinder;
 import org.springframework.web.bind.annotation.*;
+import com.example.logindemo.model.DiscountReason;
 import org.springframework.web.multipart.MultipartFile;
 import org.springframework.web.servlet.mvc.support.RedirectAttributes;
 import org.springframework.transaction.annotation.Transactional;
@@ -972,6 +973,8 @@ public class PatientController {
             model.addAttribute("doctors", allDoctors);
             model.addAttribute("currentUserRole", currentUser.getRole());
             model.addAttribute("currentUser", currentUser);
+            // Provide discount reasons from enum for JSP selection
+            model.addAttribute("discountReasons", DiscountReason.values());
             
             return "patient/examinationDetails";
         } catch (Exception e) {
@@ -2396,7 +2399,14 @@ public class PatientController {
                     ));
             }
 
-            if (!currentStatus.getAllowedTransitions().contains(newStatus)) {
+            // Special-case: allow PAYMENT_PENDING -> PAYMENT_COMPLETED when effective total is zero (full waiver)
+            boolean allowZeroChargeCompletion =
+                (currentStatus == ProcedureStatus.PAYMENT_PENDING &&
+                 newStatus == ProcedureStatus.PAYMENT_COMPLETED &&
+                 examination.getEffectiveTotalProcedureAmount() != null &&
+                 examination.getEffectiveTotalProcedureAmount() <= 0.0);
+
+            if (!allowZeroChargeCompletion && !currentStatus.getAllowedTransitions().contains(newStatus)) {
                 log.warn("BLOCKED: Invalid status transition from {} to {}", currentStatus, newStatus);
                 return ResponseEntity.badRequest()
                     .contentType(org.springframework.http.MediaType.APPLICATION_JSON)
@@ -2406,7 +2416,11 @@ public class PatientController {
                     ));
             }
 
-            log.info("PROCEEDING: Status transition validation passed");
+            if (allowZeroChargeCompletion) {
+                log.info("PROCEEDING: Allowing PAYMENT_PENDING -> PAYMENT_COMPLETED due to zero effective total (full waiver)");
+            } else {
+                log.info("PROCEEDING: Status transition validation passed");
+            }
 
             // Update the status
             examination.setProcedureStatus(newStatus);
@@ -2536,6 +2550,15 @@ public class PatientController {
 
                     ProcedureStatus currentStatus = exam.getProcedureStatus();
                     ProcedureStatus targetStatus = ProcedureStatus.PAYMENT_PENDING;
+
+                    // Block sending for payment if no procedure is attached
+                    if (exam.getProcedure() == null) {
+                        errors.add(Map.of(
+                            "examinationId", examId,
+                            "message", "No procedure attached"
+                        ));
+                        continue;
+                    }
 
                     if (currentStatus == null) {
                         errors.add(Map.of(
@@ -3955,14 +3978,24 @@ public class PatientController {
             // Previous clinic-based permission check removed per updated requirements.
             // Access to examination payment history is now allowed without clinic validation.
             
-            // Create examination data
+            // Create examination data (ensure total reflects discount)
             Map<String, Object> examinationData = new HashMap<>();
             examinationData.put("id", examination.getId());
             examinationData.put("toothNumber", examination.getToothNumber() != null ? examination.getToothNumber().toString() : "");
             examinationData.put("examinationDate", examination.getExaminationDate());
-            examinationData.put("totalProcedureAmount", examination.getTotalProcedureAmount());
-            
-            // Add procedure info if available
+            // Use effective total that reflects any applied discount(s)
+            double effectiveTotal = examination.getEffectiveTotalProcedureAmount() != null
+                    ? examination.getEffectiveTotalProcedureAmount()
+                    : (examination.getTotalProcedureAmount() != null ? examination.getTotalProcedureAmount() : 0.0);
+            examinationData.put("totalProcedureAmount", effectiveTotal);
+
+            // Include discount meta for UI visibility
+            examinationData.put("discountPercentage", examination.getDiscountPercentage());
+            examinationData.put("aggregatedDiscountPercentage", examination.getAggregatedDiscountPercentage());
+            examinationData.put("discountReason", examination.getDiscountReason());
+            examinationData.put("discountReasonEnum", examination.getDiscountReasonEnum() != null ? examination.getDiscountReasonEnum().name() : null);
+
+            // Add procedure info if available (price shown as informational only)
             if (examination.getProcedure() != null) {
                 Map<String, Object> procedureData = new HashMap<>();
                 procedureData.put("id", examination.getProcedure().getId());
@@ -3970,6 +4003,9 @@ public class PatientController {
                 procedureData.put("price", examination.getProcedure().getPrice());
                 examinationData.put("procedure", procedureData);
             }
+
+            // Always use stored totalProcedureAmount as the base for summary
+            examinationData.put("baseAmount", examination.getTotalProcedureAmount() != null ? examination.getTotalProcedureAmount() : 0.0);
             
             // Get payment entries
             List<Map<String, Object>> paymentData = new ArrayList<>();
@@ -4011,13 +4047,17 @@ public class PatientController {
                 return dateA.compareTo(dateB);
             });
             
-            // Create summary
+            // Create summary (ensure totals reflect discount)
             Map<String, Object> summary = new HashMap<>();
-            summary.put("totalProcedureAmount", examination.getTotalProcedureAmount() != null ? examination.getTotalProcedureAmount() : 0);
+            summary.put("totalProcedureAmount", effectiveTotal);
             summary.put("totalPaid", totalPaid);
             summary.put("totalRefunded", totalRefunded);
             summary.put("netAmount", totalPaid - totalRefunded);
-            summary.put("remaining", (examination.getTotalProcedureAmount() != null ? examination.getTotalProcedureAmount() : 0) - (totalPaid - totalRefunded));
+            summary.put("remaining", effectiveTotal - (totalPaid - totalRefunded));
+            summary.put("aggregatedDiscountPercentage", examination.getAggregatedDiscountPercentage());
+            summary.put("discountReason", examination.getDiscountReason());
+            summary.put("discountReasonEnum", examination.getDiscountReasonEnum() != null ? examination.getDiscountReasonEnum().name() : null);
+            summary.put("baseAmount", examinationData.get("baseAmount"));
             
             response.put("success", true);
             response.put("examination", examinationData);
