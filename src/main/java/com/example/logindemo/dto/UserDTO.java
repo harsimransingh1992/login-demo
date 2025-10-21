@@ -6,6 +6,7 @@ import lombok.Setter;
 import com.fasterxml.jackson.annotation.JsonProperty;
 import java.time.LocalDate;
 import com.fasterxml.jackson.annotation.JsonManagedReference;
+import java.util.List;
 
 @Getter
 @Setter
@@ -32,6 +33,11 @@ public class UserDTO {
     private Boolean canApplyDiscount;
     private Boolean canDeleteExamination;
     
+    // Cross-clinic scheduling access
+    private Boolean hasCrossClinicApptAccess;
+    // Form-binding list of accessible clinic IDs
+    private List<Long> accessibleClinicIds;
+
     private UserRole role;
     @JsonManagedReference
     private ClinicDTO clinic;

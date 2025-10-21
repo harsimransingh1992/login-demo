@@ -62,6 +62,17 @@
         </a>
     </sec:authorize>
 
+    <!-- Cross-Clinic Scheduling (visible for Doctor/Receptionist with cross-clinic access flag) -->
+    <sec:authorize access="hasAnyRole('DOCTOR','RECEPTIONIST')">
+        <c:set var="isActive" value="${pageContext.request.requestURI == pageContext.request.contextPath.concat('/schedules/select-clinic')}" />
+        <a href="${pageContext.request.contextPath}/schedules/select-clinic" class="action-card${isActive ? ' active' : ''}">
+            <i class="fas fa-hospital-user"></i>
+            <div class="card-text">
+                <h3>Cross-Clinic Scheduling</h3>
+            </div>
+        </a>
+    </sec:authorize>
+
     <sec:authorize access="hasRole('RECEPTIONIST')">
         <c:set var="isActive" value="${pageContext.request.requestURI == pageContext.request.contextPath.concat('/receptionist/appointments/tracking')}" />
         <a href="${pageContext.request.contextPath}/receptionist/appointments/tracking" class="action-card${isActive ? ' active' : ''}">

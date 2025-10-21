@@ -207,11 +207,7 @@ public class AppointmentManagementController {
             
             String appointmentsJson = mapper.writeValueAsString(calendarEvents);
             model.addAttribute("appointmentsJson", appointmentsJson);
-            
-            // Debug: Log a sample of the generated JSON
-            logger.info("Sample calendar events: {}", calendarEvents.stream().limit(2).collect(Collectors.toList()));
-            logger.info("Generated JSON string: {}", appointmentsJson.substring(0, Math.min(500, appointmentsJson.length())));
-            logger.debug("Generated calendar events JSON for {} appointments", appointmentsPage.getContent().size());
+
         } catch (Exception e) {
             logger.error("Error generating calendar events JSON", e);
             model.addAttribute("appointmentsJson", "[]");

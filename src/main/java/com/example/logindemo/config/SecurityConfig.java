@@ -96,6 +96,9 @@ public class SecurityConfig {
                 // Payments - accessible to receptionists and moderators (read-only for moderators)
                 .antMatchers("/payments/**").hasAnyRole("RECEPTIONIST", "ADMIN", "MODERATOR","OPD_DOCTOR","DOCTOR")
                 
+                // Cross-clinic schedules - accessible to admins and moderators
+                .antMatchers("/schedules/**").hasAnyRole("RECEPTIONIST", "ADMIN", "MODERATOR","OPD_DOCTOR","DOCTOR")
+                
                 // Welcome page and basic features - accessible to all authenticated users
                 .antMatchers("/welcome", "/profile/**").authenticated()
                 
