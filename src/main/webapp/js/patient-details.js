@@ -536,43 +536,9 @@ function updateTableInfo() {
     }
 }
 
-// Notes Modal Functions
-function showNotesPopup(notes, examId) {
-    
-    const modal = document.getElementById('notesModal');
-    const notesContent = document.getElementById('notesContent');
-    
-    if (!modal || !notesContent) {
-        console.error('Notes modal elements not found');
-        return false;
-    }
-    
-    // Set the notes content
-    notesContent.textContent = notes;
-    
-    // Show the modal
-    modal.style.display = 'block';
-    
-    // Prevent body scroll when modal is open
-    document.body.style.overflow = 'hidden';
-    
-    return false;
-}
 
-function closeNotesModal() {
-    const modal = document.getElementById('notesModal');
-    
-    if (!modal) {
-        console.error('Notes modal not found');
-        return;
-    }
-    
-    // Hide the modal
-    modal.style.display = 'none';
-    
-    // Restore body scroll
-    document.body.style.overflow = 'auto';
-}
+
+
 
 // Navigate to examination details page when a table row is clicked
 function openExaminationDetails(examId) {
@@ -601,47 +567,154 @@ function openExaminationDetails(examId) {
     }
 }
 
-// Close notes modal when clicking outside
-document.addEventListener('DOMContentLoaded', function() {
-    const notesModal = document.getElementById('notesModal');
-    
-    if (notesModal) {
-        window.addEventListener('click', function(event) {
-            if (event.target === notesModal) {
-                closeNotesModal();
-            }
-        });
-    }
-    
-    // Close notes modal with Escape key
-    document.addEventListener('keydown', function(event) {
-        if (event.key === 'Escape') {
-            const modal = document.getElementById('notesModal');
-            if (modal && modal.style.display === 'block') {
-                closeNotesModal();
-            }
-        }
-    });
-});
 
-// Delegated click handler for notes links (avoids inline JS and escaping issues)
-document.addEventListener('click', function (e) {
-    const link = e.target && e.target.closest && e.target.closest('a.view-notes-link');
-    if (link) {
-        e.preventDefault();
-        const notes = link.dataset && link.dataset.notes ? link.dataset.notes : '';
-        const examId = link.dataset && link.dataset.examId ? link.dataset.examId : '';
-        showNotesPopup(notes, examId);
-        return false;
-    }
-});
+
+
+
+
+
+
+
+
 
 // Delegated click handler for examination rows (excluding action buttons and checkboxes)
+
+// Notes Modal: open/close and event bindings
+function openNotesModal(examId) {
+    try {
+        var refs = ensureNotesModal();
+        var modal = refs.modal;
+        var content = refs.content;
+        if (!modal || !content) { return; }
+
+        // Retrieve notes from hidden textarea to preserve multiline content safely
+        var store = document.querySelector('textarea.exam-notes-data[data-exam-id="' + examId + '"]');
+        var notes = store ? (store.value || store.textContent || '') : '';
+        content.textContent = notes || '';
+
+        modal.style.display = 'block';
+        document.body.style.overflow = 'hidden';
+
+        // Focus the close button for accessibility
+        var closeBtn = modal.querySelector('.close');
+        if (closeBtn) { closeBtn.focus({ preventScroll: true }); }
+    } catch (e) { console.warn('Failed to open notes modal:', e); }
+}
+
+function closeNotesModal() {
+    try {
+        var modal = document.getElementById('notesModal');
+        if (!modal) { return; }
+        modal.style.display = 'none';
+        document.body.style.overflow = 'auto';
+    } catch (e) { console.warn('Failed to close notes modal:', e); }
+}
+
+function ensureNotesModal() {
+    var modal = document.getElementById('notesModal');
+    var content = document.getElementById('notesContent');
+    if (!modal) {
+        modal = document.createElement('div');
+        modal.id = 'notesModal';
+        modal.className = 'modal';
+        modal.style.cssText = 'display:none; position:fixed; z-index:1000; left:0; top:0; width:100%; height:100%; background-color: rgba(0,0,0,0.5);';
+
+        var inner = document.createElement('div');
+        inner.className = 'modal-content';
+        inner.style.cssText = 'background:#ffffff; margin:10% auto; padding:20px; border:1px solid #888; width:70%; max-width:720px; border-radius:8px; position:relative;';
+
+        var closeBtn = document.createElement('span');
+        closeBtn.className = 'close';
+        closeBtn.textContent = '\u00d7';
+        closeBtn.setAttribute('aria-label', 'Close');
+        closeBtn.style.cssText = 'position:absolute; right:16px; top:12px; font-size:28px; font-weight:bold; cursor:pointer; color:#2c3e50;';
+        closeBtn.addEventListener('click', closeNotesModal);
+
+        var title = document.createElement('h3');
+        title.id = 'notesModalTitle';
+        title.textContent = 'Clinical Notes';
+        title.style.marginTop = '0';
+
+        content = document.createElement('div');
+        content.id = 'notesContent';
+        content.style.cssText = 'white-space: pre-wrap; line-height: 1.5; color: #2c3e50;';
+
+        var actions = document.createElement('div');
+        actions.className = 'modal-actions';
+        actions.style.cssText = 'margin-top:16px; text-align:right;';
+        var closeButton = document.createElement('button');
+        closeButton.type = 'button';
+        closeButton.className = 'btn btn-secondary';
+        closeButton.textContent = 'Close';
+        closeButton.addEventListener('click', closeNotesModal);
+        actions.appendChild(closeButton);
+
+        inner.appendChild(closeBtn);
+        inner.appendChild(title);
+        inner.appendChild(content);
+        inner.appendChild(actions);
+        modal.appendChild(inner);
+        document.body.appendChild(modal);
+
+        window.addEventListener('click', function (e) {
+            try { if (e.target === modal) { closeNotesModal(); } } catch (err) { /* noop */ }
+        });
+    }
+    return { modal: modal, content: content };
+}
+
+function openNotesModalWithText(text) {
+    try {
+        var refs = ensureNotesModal();
+        var modal = refs.modal;
+        var content = refs.content;
+        if (!modal || !content) { return; }
+        content.textContent = text || '';
+        modal.style.display = 'block';
+        document.body.style.overflow = 'hidden';
+        var closeBtn = modal.querySelector('.close');
+        if (closeBtn) { closeBtn.focus({ preventScroll: true }); }
+    } catch (e) { console.warn('Failed to open notes modal (direct text):', e); }
+}
+
+// Expose modal helpers globally for inline onclick usage
+window.openNotesModal = openNotesModal;
+window.openNotesModalWithText = openNotesModalWithText;
+window.closeNotesModal = closeNotesModal;
+
+// Bind VIEW notes links and modal close interactions
+// Add capture-phase delegated handler to catch dynamically added links and preempt row navigation
+document.addEventListener('click', function (e) {
+    var link = e.target && e.target.closest ? e.target.closest('.view-notes-link') : null;
+    if (link) {
+        try {
+            e.preventDefault();
+            e.stopPropagation();
+            if (typeof e.stopImmediatePropagation === 'function') { e.stopImmediatePropagation(); }
+            var examId = (link.dataset && link.dataset.examId) ? link.dataset.examId : '';
+            if (!examId) {
+                var row = link.closest && link.closest('tr.examination-row');
+                if (row && row.dataset && row.dataset.examId) {
+                    examId = row.dataset.examId;
+                }
+            }
+            if (examId) {
+                openNotesModal(examId);
+            } else {
+                var container = link.closest && (link.closest('tr.examination-row') || link.closest('td') || link.parentElement);
+                var store = container ? container.querySelector('textarea.exam-notes-data') : null;
+                var text = store ? (store.value || store.textContent || '') : '';
+                openNotesModalWithText(text);
+            }
+        } catch (err) { console.warn('Failed to handle delegated notes click:', err); }
+    }
+}, true);
+
 document.addEventListener('click', function (e) {
     const row = e.target && e.target.closest && e.target.closest('tr.examination-row');
     if (row) {
         // Ignore clicks inside action buttons or controls that should not trigger navigation
-        if (e.target.closest('.action-buttons') || e.target.closest('input.examination-checkbox')) {
+        if (e.target.closest('.action-buttons') || e.target.closest('input.examination-checkbox') || e.target.closest('a.view-notes-link')) {
             return;
         }
         const examId = row.dataset && row.dataset.examId ? row.dataset.examId : '';
@@ -649,6 +722,24 @@ document.addEventListener('click', function (e) {
             openExaminationDetails(examId);
         }
     }
+});
+
+ 
+// Close on outside click for notes modal overlay
+(function(){
+    var modal = document.getElementById('notesModal');
+    if (modal) {
+        window.addEventListener('click', function (e) {
+            try { if (e.target === modal) { closeNotesModal(); } } catch (err) { /* noop */ }
+        });
+    }
+})();
+
+// Close notes modal on ESC key
+document.addEventListener('keydown', function (e) {
+    try {
+        if (e.key === 'Escape') { closeNotesModal(); }
+    } catch (err) { /* noop */ }
 });
 
  

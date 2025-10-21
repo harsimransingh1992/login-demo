@@ -42,6 +42,25 @@ public class AppointmentController {
     @Autowired
     private ModelMapper modelMapper;
 
+    // Appointment details page
+    @GetMapping("/{id}")
+    public String showAppointmentDetails(@PathVariable Long id, Model model) {
+        Appointment appointment = appointmentService.getAppointmentById(id);
+
+        // Prepare display-friendly fields
+        java.time.format.DateTimeFormatter dateFormatter = java.time.format.DateTimeFormatter.ofPattern("yyyy-MM-dd");
+        java.time.format.DateTimeFormatter timeFormatter = java.time.format.DateTimeFormatter.ofPattern("hh:mm a");
+        String dateStr = appointment.getAppointmentDateTime() != null ? appointment.getAppointmentDateTime().format(dateFormatter) : "";
+        String timeStr = appointment.getAppointmentDateTime() != null ? appointment.getAppointmentDateTime().format(timeFormatter) : "";
+
+        model.addAttribute("appointment", appointment);
+        model.addAttribute("appointmentDate", dateStr);
+        model.addAttribute("appointmentTime", timeStr);
+        model.addAttribute("statusDisplay", appointment.getStatus() != null ? appointment.getStatus().getDisplayName() : "");
+
+        return "appointments/details";
+    }
+
     @GetMapping("/create")
     public String showCreateForm(Model model) {
         model.addAttribute("appointment", new Appointment());
@@ -159,4 +178,4 @@ public class AppointmentController {
         }
     }
 
-} 
+}

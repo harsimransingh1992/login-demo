@@ -20,9 +20,12 @@
     
     <!-- Current User Info -->
     <div class="user-info">
-        <h4 class="user-name">
-            Hi, <sec:authentication property="name" />
-        </h4>
+        <div class="user-details" style="display: flex; flex-direction: column;">
+            <h4 class="user-name">Hi, <sec:authentication property="name" /></h4>
+            <c:if test="${not empty currentUserClinicName}">
+                <div class="user-clinic">${currentUserClinicName}</div>
+            </c:if>
+        </div>
     </div>
 
     <sec:authorize access="!hasRole('MODERATOR')">
@@ -107,16 +110,6 @@
                 <h3>Reconciliation</h3>
             </div>
         </a>
-    </sec:authorize>
-    <sec:authorize access="hasRole('ADMIN') or hasRole('CLINIC_OWNER') or hasRole('DOCTOR') or hasRole('OPD_DOCTOR') or hasRole('STAFF')">
-        <c:set var="isActive" value="${pageContext.request.requestURI == pageContext.request.contextPath.concat('/payment-management')}" />
-        <div class="action-card disabled-menu-item" style="cursor: not-allowed; opacity: 0.6; pointer-events: none;">
-            <i class="fas fa-credit-card"></i>
-            <div class="card-text">
-                <h3>Payment Management</h3>
-                <small style="color: #f39c12; font-weight: 500;">(Under Construction)</small>
-            </div>
-        </div>
     </sec:authorize>
     <div class="menu-divider"></div>
 

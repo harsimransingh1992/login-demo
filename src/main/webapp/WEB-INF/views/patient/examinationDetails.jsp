@@ -2072,11 +2072,13 @@
                                             <span class="meta-label">Assigned Doctor</span>
                                             <span class="meta-value">
                                                 <c:choose>
+                                                    <c:when test="${not empty examination.assignedDoctorName}">
+                                                         <span class="read-only-doctor">${examination.assignedDoctorName}</span>
+                                                     </c:when>
                                                     <c:when test="${examination.assignedDoctorId != null}">
                                                         <c:forEach items="${doctors}" var="doctor">
                                                             <c:if test="${doctor.id == examination.assignedDoctorId}">
-                                                                <span class="read-only-doctor">${doctor.firstName}
-                                                                    ${doctor.lastName}</span>
+                                                                <span class="read-only-doctor">${doctor.firstName} ${doctor.lastName}</span>
                                                             </c:if>
                                                         </c:forEach>
                                                     </c:when>
@@ -4765,6 +4767,29 @@
                             }
 
                             // Discount functions
+                            function friendlyDiscountMessage(msg) {
+                                if (!msg) return 'You don\'t have permission to apply discounts.';
+                                const m = String(msg).toLowerCase();
+                                if (m.includes('not assigned to this examination')) {
+                                    return 'You are not the assigned doctor for this examination. Only the assigned doctor or clinic owner can apply or remove discounts.';
+                                }
+                                if (m.includes('cannot apply discount after payments')) {
+                                    return 'Discounts can\'t be changed after payments are recorded.';
+                                }
+                                if (m.includes('cannot remove discount after payments')) {
+                                    return 'Discounts can\'t be changed after payments are recorded.';
+                                }
+                                if (m.includes('no procedure assigned')) {
+                                    return 'Assign a procedure before applying a discount.';
+                                }
+                                if (m.includes('already been applied')) {
+                                    return 'A discount is already applied. Remove it before applying a new one.';
+                                }
+                                if (m.includes('role') && m.includes('not permitted')) {
+                                    return 'You don\'t have permission to apply discounts.';
+                                }
+                                return msg;
+                            }
                             function openDiscountModal() {
                                 const modal = document.getElementById('discountModal');
                                 if (modal) {
@@ -4868,12 +4893,12 @@
                                             showNotification('Discount removed successfully', 'success');
                                             setTimeout(() => window.location.reload(), 1500);
                                         } else {
-                                            showNotification(result.message || 'Error removing discount', 'error');
+                                            showNotification(friendlyDiscountMessage(result.message) || 'Error removing discount', 'error');
                                         }
                                     })
                                     .catch(error => {
                                         console.error('Error removing discount:', error);
-                                        showNotification('Error removing discount', 'error');
+                                        showNotification(friendlyDiscountMessage(error && error.message) || 'Error removing discount', 'error');
                                     });
                             }
 
@@ -4912,12 +4937,12 @@
                                             closeDiscountModal();
                                             setTimeout(() => window.location.reload(), 1500);
                                         } else {
-                                            showNotification(result.message || 'Error applying discount', 'error');
+                                            showNotification(friendlyDiscountMessage(result.message) || 'Error applying discount', 'error');
                                         }
                                     })
                                     .catch(error => {
                                         console.error('Error applying discount:', error);
-                                        showNotification('Error applying discount', 'error');
+                                        showNotification(friendlyDiscountMessage(error && error.message) || 'Error applying discount', 'error');
                                     });
                             }
 

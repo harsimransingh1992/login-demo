@@ -36,7 +36,70 @@
         // Permission flag for discount actions
         const CURRENT_USER_CAN_APPLY_DISCOUNT = ('${currentUser.canApplyDiscount}' === 'true');
     </script>
-    <script src="${pageContext.request.contextPath}/js/patient-details.js"></script>
+    <script src="${pageContext.request.contextPath}/js/patient-details.js?v=notesModalFix2"></script>
+<script>
+// Fallback: define openNotesModal globally if not provided by patient-details.js
+window.openNotesModal = window.openNotesModal || function(examId) {
+    try {
+        var modal = document.getElementById('notesModal');
+        var content = document.getElementById('notesContent');
+        if (!modal) {
+            modal = document.createElement('div');
+            modal.id = 'notesModal';
+            modal.className = 'modal';
+            modal.style.cssText = 'display:none; position:fixed; z-index:1000; left:0; top:0; width:100%; height:100%; background-color: rgba(0,0,0,0.5);';
+
+            var inner = document.createElement('div');
+            inner.className = 'modal-content';
+            inner.style.cssText = 'background:#ffffff; margin:10% auto; padding:20px; border:1px solid #888; width:70%; max-width:720px; border-radius:8px; position:relative;';
+
+            var closeBtn = document.createElement('span');
+            closeBtn.className = 'close';
+            closeBtn.textContent = '\u00d7';
+            closeBtn.setAttribute('aria-label', 'Close');
+            closeBtn.style.cssText = 'position:absolute; right:16px; top:12px; font-size:28px; font-weight:bold; cursor:pointer; color:#2c3e50;';
+            closeBtn.onclick = function() { try { modal.style.display = 'none'; document.body.style.overflow = 'auto'; } catch (err) {} };
+
+            var title = document.createElement('h3');
+            title.textContent = 'Clinical Notes';
+            title.style.marginTop = '0';
+
+            content = document.createElement('div');
+            content.id = 'notesContent';
+            content.style.cssText = 'white-space: pre-wrap; line-height: 1.5; color: #2c3e50;';
+
+            var actions = document.createElement('div');
+            actions.className = 'modal-actions';
+            actions.style.cssText = 'margin-top:16px; text-align:right;';
+            var closeButton = document.createElement('button');
+            closeButton.type = 'button';
+            closeButton.className = 'btn btn-secondary';
+            closeButton.textContent = 'Close';
+            closeButton.onclick = function() { try { modal.style.display = 'none'; document.body.style.overflow = 'auto'; } catch (err) {} };
+            actions.appendChild(closeButton);
+
+            inner.appendChild(closeBtn);
+            inner.appendChild(title);
+            inner.appendChild(content);
+            inner.appendChild(actions);
+            modal.appendChild(inner);
+            document.body.appendChild(modal);
+
+            window.addEventListener('click', function (e) {
+                try { if (e.target === modal) { modal.style.display = 'none'; document.body.style.overflow = 'auto'; } } catch (err) {}
+            });
+        }
+
+        var store = document.querySelector('textarea.exam-notes-data[data-exam-id="' + examId + '"]');
+        var notes = store ? (store.value || store.textContent || '') : '';
+        content.textContent = notes || '';
+        modal.style.display = 'block';
+        document.body.style.overflow = 'hidden';
+        var closeBtnEl = modal.querySelector('.close');
+        if (closeBtnEl && closeBtnEl.focus) { try { closeBtnEl.focus({ preventScroll: true }); } catch (err) {} }
+    } catch (e) { console.warn('Fallback openNotesModal failed:', e); }
+};
+</script>
     <script>
         function joinUrl(base, path) {
             if (!base || base === '/') return path;
@@ -365,6 +428,9 @@
             const bulkUploadBtn = document.getElementById('bulkUploadSelectedBtn');
             const bulkAssignBtn = document.getElementById('bulkAssignDoctorBtn');
             const bulkSendForPaymentBtn = document.getElementById('bulkSendForPaymentBtn');
+            const bulkMarkPaymentCompletedBtn = document.getElementById('bulkMarkPaymentCompletedBtn');
+            const bulkMarkCompletedBtn = document.getElementById('bulkMarkCompletedBtn');
+            const bulkMarkClosedBtn = document.getElementById('bulkMarkClosedBtn');
             const bulkAssignProcedureBtn = document.getElementById('bulkAssignProcedureBtn');
             const bulkAddNotesBtn = document.getElementById('bulkAddNotesBtn');
             const bulkApplyDiscountBtn = document.getElementById('bulkApplyDiscountBtn');
@@ -381,6 +447,18 @@
                     bulkSendForPaymentBtn.disabled = false;
                     bulkSendForPaymentBtn.title = 'Send selected examinations for payment';
                 }
+                if (bulkMarkPaymentCompletedBtn) {
+                    bulkMarkPaymentCompletedBtn.disabled = false;
+                    bulkMarkPaymentCompletedBtn.title = 'Mark payment completed for selected examinations';
+                }
+                if (bulkMarkCompletedBtn) {
+                    bulkMarkCompletedBtn.disabled = false;
+                    bulkMarkCompletedBtn.title = 'Mark selected examinations as completed';
+                }
+                if (bulkMarkClosedBtn) {
+                    bulkMarkClosedBtn.disabled = false;
+                    bulkMarkClosedBtn.title = 'Close selected examinations';
+                }
                 if (bulkAssignProcedureBtn) bulkAssignProcedureBtn.disabled = false;
                 if (bulkAddNotesBtn) bulkAddNotesBtn.disabled = false;
                 if (bulkApplyDiscountBtn) {
@@ -392,6 +470,9 @@
                 if (bulkUploadBtn) bulkUploadBtn.disabled = true;
                 if (bulkAssignBtn) bulkAssignBtn.disabled = true;
                 if (bulkSendForPaymentBtn) bulkSendForPaymentBtn.disabled = true;
+                if (bulkMarkPaymentCompletedBtn) bulkMarkPaymentCompletedBtn.disabled = true;
+                if (bulkMarkCompletedBtn) bulkMarkCompletedBtn.disabled = true;
+                if (bulkMarkClosedBtn) bulkMarkClosedBtn.disabled = true;
                 if (bulkAssignProcedureBtn) bulkAssignProcedureBtn.disabled = true;
                 if (bulkAddNotesBtn) bulkAddNotesBtn.disabled = true;
                 if (bulkApplyDiscountBtn) bulkApplyDiscountBtn.disabled = true;
@@ -1490,15 +1571,18 @@
             transform: translateX(-50%);
             background: #2c3e50;
             color: #fff;
-            padding: 6px 8px;
+            padding: 8px 10px;
             border-radius: 4px;
             font-size: 12px;
-            white-space: nowrap;
+            white-space: pre-wrap;
             opacity: 0;
             pointer-events: none;
             transition: opacity 0.05s ease;
             margin-bottom: 6px;
             z-index: 10;
+            max-width: 520px;
+            text-align: left;
+            box-shadow: 0 6px 16px rgba(0,0,0,0.2);
         }
         .has-tooltip::before {
             content: '';
@@ -2416,124 +2500,7 @@
         }
         
         /* View Notes Link Styles */
-        .view-notes-link {
-            color: #3498db;
-            text-decoration: none;
-            font-weight: 500;
-            padding: 4px 8px;
-            border-radius: 4px;
-            background: rgba(52, 152, 219, 0.1);
-            transition: all 0.2s ease;
-            font-size: 0.85rem;
-        }
-        
-        .view-notes-link:hover {
-            background: rgba(52, 152, 219, 0.2);
-            color: #2980b9;
-            text-decoration: none;
-        }
-        
-        /* Notes Popup Modal Styles */
-        .notes-modal {
-            display: none;
-            position: fixed;
-            z-index: 1000;
-            left: 0;
-            top: 0;
-            width: 100%;
-            height: 100%;
-            background-color: rgba(0, 0, 0, 0.5);
-            backdrop-filter: blur(2px);
-        }
-        
-        .notes-modal-content {
-            background-color: white;
-            margin: 5% auto;
-            padding: 0;
-            border-radius: 12px;
-            width: 90%;
-            max-width: 600px;
-            box-shadow: 0 10px 30px rgba(0, 0, 0, 0.3);
-            animation: modalSlideIn 0.3s ease-out;
-        }
-        
-        @keyframes modalSlideIn {
-            from {
-                opacity: 0;
-                transform: translateY(-50px);
-            }
-            to {
-                opacity: 1;
-                transform: translateY(0);
-            }
-        }
-        
-        .notes-modal-header {
-            background: linear-gradient(135deg, #3498db, #2980b9);
-            color: white;
-            padding: 20px;
-            border-radius: 12px 12px 0 0;
-            display: flex;
-            justify-content: space-between;
-            align-items: center;
-        }
-        
-        .notes-modal-title {
-            margin: 0;
-            font-size: 1.2rem;
-            font-weight: 600;
-        }
-        
-        .notes-modal-close {
-            color: white;
-            font-size: 28px;
-            font-weight: bold;
-            cursor: pointer;
-            line-height: 1;
-            transition: opacity 0.2s ease;
-        }
-        
-        .notes-modal-close:hover {
-            opacity: 0.7;
-        }
-        
-        .notes-modal-body {
-            padding: 25px;
-            max-height: 400px;
-            overflow-y: auto;
-        }
-        
-        .notes-content {
-            font-size: 1rem;
-            line-height: 1.6;
-            color: #2c3e50;
-            white-space: pre-wrap;
-            word-wrap: break-word;
-        }
-        
-        .notes-modal-footer {
-            padding: 15px 25px;
-            border-top: 1px solid #e9ecef;
-            text-align: right;
-        }
-        
-        .btn-close-modal {
-            background: #6c757d;
-            color: white;
-            border: none;
-            padding: 8px 16px;
-            border-radius: 6px;
-            cursor: pointer;
-            font-size: 0.9rem;
-            transition: background-color 0.2s ease;
-        }
-        
-        .btn-close-modal:hover {
-            background: #5a6268;
-        }
-        
 
-        
         /* Color Code Strip Styles */
         .color-code-strip {
             width: 100%;
@@ -3021,64 +2988,60 @@
             margin-top: 10px;
             padding: 8px 0;
             border-top: 1px solid #e9ecef;
-            display: flex;
-            justify-content: flex-end;
-            align-items: center;
             min-height: 48px; /* keep bar height static to prevent page shift */
         }
 
+        /* Two-row, evenly distributed buttons using CSS Grid */
         .clinical-file-actions {
-            display: flex;
-            align-items: center;
-            gap: 8px;
-            flex-wrap: wrap;           /* allow wrapping to fit container */
-            overflow-x: hidden;        /* no horizontal scroll */
-            width: 100%;               /* span full container width */
-            justify-content: flex-end; /* keep actions aligned to the right */
+            display: grid;
+            grid-auto-flow: column; /* fill columns top-to-bottom for even row distribution */
+            grid-template-rows: auto repeat(2, auto); /* selected count + two button rows */
+            grid-auto-columns: minmax(160px, 1fr);
+            gap: 10px 12px;
+            width: 100%;
+            align-items: stretch;
+            justify-items: stretch;
         }
-        /* Keep selected count on the left, actions on the right */
+        /* Selected count spans full width above the buttons */
         .clinical-file-actions .selected-count {
-            margin-right: auto;
+            grid-column: 1 / -1;
+            margin: 0 0 4px 0;
         }
-        /* (Removed) Inline issue message next to Send for Payment button */
-        /* Compact button sizing for fixed container */
+        /* Uniform button sizing for visual balance */
         .clinical-file-actions .btn {
-            flex: 0 1 150px;           /* allow shrinking to fit */
-            min-width: 140px;
-            padding: 6px 10px;
-            font-size: 0.85rem;
+            width: 100%;
+            padding: 8px 10px;
+            font-size: 0.9rem;
         }
 
-        /* Widen long-label buttons to avoid wrapping on larger screens */
+        /* Remove special widths to keep uniform distribution */
         @media (min-width: 577px) {
-            .clinical-file-actions #bulkSendForPaymentBtn,
-            .clinical-file-actions #bulkAssignProcedureBtn {
-                flex: 0 1 190px;
-                min-width: 190px;
+            .clinical-file-actions .btn {
+                font-size: 0.9rem;
             }
         }
 
         /* Responsive adjustments */
-        @media (max-width: 992px) {
-            .clinical-file-actions .btn {
-                flex: 1 1 160px;
-                min-width: 150px;
+        @media (max-width: 768px) {
+            .clinical-file-actions {
+                grid-auto-columns: minmax(140px, 1fr);
+                gap: 8px 10px;
             }
         }
         @media (max-width: 576px) {
             .clinical-file-actions {
+                grid-auto-flow: row;           /* stack naturally on narrow screens */
+                grid-template-rows: auto;      /* no fixed row count on mobile */
+                grid-auto-columns: 1fr;
                 gap: 6px;
             }
-            .clinical-file-actions .btn {
-                flex: 1 1 100%;
-                min-width: 100%;
-                padding: 8px 10px; /* maintain touch target size */
-                font-size: 0.9rem;
-            }
             .clinical-file-actions .selected-count {
-                order: -1;             /* stack count above actions on mobile */
-                width: 100%;
                 margin-bottom: 6px;
+            }
+            .clinical-file-actions .btn {
+                width: 100%;
+                padding: 10px 12px; /* maintain touch target size */
+                font-size: 0.95rem;
             }
         }
 
@@ -3523,6 +3486,9 @@
             <div>
                 <a href="${pageContext.request.contextPath}/patients/edit/${patient.id}" class="btn btn-secondary">
                     <i class="fas fa-edit"></i> Edit
+                </a>
+                <a href="${pageContext.request.contextPath}/patients/details/${patient.id}/appointments" class="btn btn-primary">
+                    <i class="fas fa-calendar-alt"></i> View Appointments
                 </a>
                 <a href="${pageContext.request.contextPath}/patients/list" class="btn btn-primary">
                     <i class="fas fa-arrow-left"></i> Back to Patients
@@ -4315,6 +4281,15 @@
                                     <button type="button" id="bulkSendForPaymentBtn" class="btn btn-secondary btn-sm" onclick="openBulkSendForPaymentModal()" title="Send selected examinations for payment" disabled>
                                         <i class="fas fa-file-invoice-dollar"></i> Send for Payment
                                     </button>
+                                    <button type="button" id="bulkMarkPaymentCompletedBtn" class="btn btn-secondary btn-sm" onclick="openBulkMarkPaymentCompletedModal()" title="Mark selected examinations as in progress" disabled>
+                                        <i class="fas fa-play-circle"></i> Mark In Progress
+                                    </button>
+                                    <button type="button" id="bulkMarkCompletedBtn" class="btn btn-secondary btn-sm" onclick="openBulkMarkCompletedModal()" title="Mark selected examinations as completed" disabled>
+                                        <i class="fas fa-check-circle"></i> Mark Completed
+                                    </button>
+                                    <button type="button" id="bulkMarkClosedBtn" class="btn btn-secondary btn-sm" onclick="openBulkMarkClosedModal()" title="Close selected examinations" disabled>
+                                        <i class="fas fa-times-circle"></i> Close
+                                    </button>
                                     <button type="button" id="bulkAssignProcedureBtn" class="btn btn-secondary btn-sm" onclick="openBulkAssignProcedureModal()" title="Assign procedure to selected examinations" disabled>
                                         <i class="fas fa-tooth"></i> Assign Procedure
                                     </button>
@@ -4468,9 +4443,8 @@
                                 <td>
                                     <c:choose>
                                         <c:when test="${not empty exam.examinationNotes}">
-                                            <a href="#" class="view-notes-link" data-notes="${fn:escapeXml(exam.examinationNotes)}" data-exam-id="${exam.id}">
-                                                VIEW
-                                            </a>
+                                            <button type="button" class="view-notes-link" data-exam-id="${exam.id}" onclick="openNotesModal('${exam.id}')">VIEW</button>
+<textarea class="exam-notes-data" data-exam-id="${exam.id}" style="display:none;">${fn:escapeXml(exam.examinationNotes)}</textarea>
                                         </c:when>
                                         <c:otherwise>
                                             <span class="no-data">No notes</span>
@@ -4848,20 +4822,17 @@
     </c:if>
 </div>
 
-<!-- Notes Popup Modal -->
-<div id="notesModal" class="notes-modal">
-    <div class="notes-modal-content">
-        <div class="notes-modal-header">
-            <h3 class="notes-modal-title">Examination Notes</h3>
-            <span class="notes-modal-close" onclick="closeNotesModal()">&times;</span>
-        </div>
-        <div class="notes-modal-body">
-            <div id="notesContent" class="notes-content"></div>
-        </div>
-        <div class="notes-modal-footer">
-            <button class="btn-close-modal" onclick="closeNotesModal()">Close</button>
-        </div>
+
+<!-- Notes Modal: reinstated for viewing examination notes -->
+<div id="notesModal" class="modal" style="display: none; position: fixed; z-index: 1000; left: 0; top: 0; width: 100%; height: 100%; background-color: rgba(0,0,0,0.5);">
+  <div class="modal-content" style="background: #ffffff; margin: 10% auto; padding: 20px; border: 1px solid #888; width: 70%; max-width: 720px; border-radius: 8px; position: relative;">
+    <span class="close" onclick="closeNotesModal()" aria-label="Close" style="position: absolute; right: 16px; top: 12px; font-size: 28px; font-weight: bold; cursor: pointer; color: #2c3e50;">&times;</span>
+    <h3 id="notesModalTitle" style="margin-top: 0;">Clinical Notes</h3>
+    <div id="notesContent" style="white-space: pre-wrap; line-height: 1.5; color: #2c3e50;"></div>
+    <div class="modal-actions" style="margin-top: 16px; text-align: right;">
+      <button type="button" class="btn btn-secondary" onclick="closeNotesModal()">Close</button>
     </div>
+  </div>
 </div>
 
 <!-- Chairside Note Component -->
@@ -5240,6 +5211,147 @@
                     <i class="fas fa-paper-plane"></i> Send for Payment
                 </button>
                 <button type="button" class="btn btn-secondary btn-sm" onclick="closeBulkSendForPaymentModal()">Cancel</button>
+            </div>
+        </div>
+    </div>
+
+    <!-- Bulk Mark Payment Completed Modal -->
+    <div id="bulkMarkPaymentCompletedModal" class="modal">
+        <div class="modal-content">
+            <div class="modal-header">
+                <h2>Mark In Progress for Selected</h2>
+                <span class="close" onclick="closeBulkMarkPaymentCompletedModal()">&times;</span>
+            </div>
+            <div class="modal-body">
+                <p class="text-muted">
+                    Selected examinations: <strong><span id="bulkMarkPaymentCompletedSelectedCount">0</span></strong>
+                </p>
+                <div class="validation-summary" id="bulkPaymentCompletedValidation" style="display: none; background: #fff3cd; border: 1px solid #ffe08a; border-radius: 6px; padding: 12px; margin-bottom: 12px;">
+                    <div style="display:flex; align-items:center; gap:8px; margin-bottom:6px;">
+                        <i class="fas fa-exclamation-triangle" style="color:#856404;"></i>
+                        <strong style="color:#856404;">Some selected records cannot be marked in progress</strong>
+                    </div>
+                    <ul id="bulkPaymentCompletedValidationList" style="margin:0 0 6px 18px; padding:0;"></ul>
+                    <small style="color:#856404;">Only examinations with status <strong>PAYMENT_COMPLETED</strong> can be marked in progress.</small>
+                </div>
+                <div class="progress-section" id="bulkPaymentCompletedProgress" style="display:none;">
+                    <div style="margin-bottom:8px; color:#2c3e50;">
+                        <i class="fas fa-spinner fa-spin"></i> Processing bulk update...
+                    </div>
+                    <div style="background:#ecf0f1; border-radius:4px; height:10px; overflow:hidden;">
+                        <div id="bulkPaymentCompletedProgressBar" style="background:#28a745; width:0%; height:10px; transition: width 0.3s ease;"></div>
+                    </div>
+                </div>
+                <div class="result-section" id="bulkPaymentCompletedResult" style="display:none; margin-top:12px;">
+                    <div id="bulkPaymentCompletedResultSummary" style="margin-bottom:8px; color:#2c3e50;"></div>
+                    <div id="bulkPaymentCompletedErrorContainer" style="display:none; background:#fdecea; border:1px solid #f5c6cb; border-radius:6px; padding:10px;">
+                        <div style="display:flex; align-items:center; gap:8px; margin-bottom:6px; color:#721c24;">
+                            <i class="fas fa-times-circle"></i>
+                            <strong>Errors</strong>
+                        </div>
+                        <ul id="bulkPaymentCompletedErrorList" style="margin:0 0 6px 18px; padding:0; color:#721c24;"></ul>
+                    </div>
+                </div>
+            </div>
+            <div class="modal-footer">
+                <button type="button" class="btn btn-primary btn-sm" id="confirmBulkMarkPaymentCompletedBtn" onclick="markSelectedPaymentCompleted()">
+                    <i class="fas fa-check"></i> Mark In Progress
+                </button>
+                <button type="button" class="btn btn-secondary btn-sm" onclick="closeBulkMarkPaymentCompletedModal()">Cancel</button>
+            </div>
+        </div>
+    </div>
+
+    <!-- Bulk Mark Completed Modal -->
+    <div id="bulkMarkCompletedModal" class="modal">
+        <div class="modal-content">
+            <div class="modal-header">
+                <h2>Mark Completed for Selected</h2>
+                <span class="close" onclick="closeBulkMarkCompletedModal()">&times;</span>
+            </div>
+            <div class="modal-body">
+                <p class="text-muted">
+                    Selected examinations: <strong><span id="bulkMarkCompletedSelectedCount">0</span></strong>
+                </p>
+                <div class="validation-summary" id="bulkCompletedValidation" style="display: none; background: #fff3cd; border: 1px solid #ffe08a; border-radius: 6px; padding: 12px; margin-bottom: 12px;">
+                    <div style="display:flex; align-items:center; gap:8px; margin-bottom:6px;">
+                        <i class="fas fa-exclamation-triangle" style="color:#856404;"></i>
+                        <strong style="color:#856404;">Some selected records cannot be marked completed</strong>
+                    </div>
+                    <ul id="bulkCompletedValidationList" style="margin:0 0 6px 18px; padding:0;"></ul>
+                    <small style="color:#856404;">Only examinations with status <strong>IN_PROGRESS</strong> can be marked completed.</small>
+                </div>
+                <div class="progress-section" id="bulkCompletedProgress" style="display:none;">
+                    <div style="margin-bottom:8px; color:#2c3e50;">
+                        <i class="fas fa-spinner fa-spin"></i> Processing bulk update...
+                    </div>
+                    <div style="background:#ecf0f1; border-radius:4px; height:10px; overflow:hidden;">
+                        <div id="bulkCompletedProgressBar" style="background:#28a745; width:0%; height:10px; transition: width 0.3s ease;"></div>
+                    </div>
+                </div>
+                <div class="result-section" id="bulkCompletedResult" style="display:none; margin-top:12px;">
+                    <div id="bulkCompletedResultSummary" style="margin-bottom:8px; color:#2c3e50;"></div>
+                    <div id="bulkCompletedErrorContainer" style="display:none; background:#fdecea; border:1px solid #f5c6cb; border-radius:6px; padding:10px;">
+                        <div style="display:flex; align-items:center; gap:8px; margin-bottom:6px; color:#721c24;">
+                            <i class="fas fa-times-circle"></i>
+                            <strong>Errors</strong>
+                        </div>
+                        <ul id="bulkCompletedErrorList" style="margin:0 0 6px 18px; padding:0; color:#721c24;"></ul>
+                    </div>
+                </div>
+            </div>
+            <div class="modal-footer">
+                <button type="button" class="btn btn-primary btn-sm" id="confirmBulkMarkCompletedBtn" onclick="markSelectedCompleted()">
+                    <i class="fas fa-check"></i> Mark Completed
+                </button>
+                <button type="button" class="btn btn-secondary btn-sm" onclick="closeBulkMarkCompletedModal()">Cancel</button>
+            </div>
+        </div>
+    </div>
+
+    <!-- Bulk Mark Closed Modal -->
+    <div id="bulkMarkClosedModal" class="modal">
+        <div class="modal-content">
+            <div class="modal-header">
+                <h2>Close Selected Examinations</h2>
+                <span class="close" onclick="closeBulkMarkClosedModal()">&times;</span>
+            </div>
+            <div class="modal-body">
+                <p class="text-muted">
+                    Selected examinations: <strong><span id="bulkMarkClosedSelectedCount">0</span></strong>
+                </p>
+                <div class="validation-summary" id="bulkClosedValidation" style="display: none; background: #fff3cd; border: 1px solid #ffe08a; border-radius: 6px; padding: 12px; margin-bottom: 12px;">
+                    <div style="display:flex; align-items:center; gap:8px; margin-bottom:6px;">
+                        <i class="fas fa-exclamation-triangle" style="color:#856404;"></i>
+                        <strong style="color:#856404;">Some selected records cannot be closed</strong>
+                    </div>
+                    <ul id="bulkClosedValidationList" style="margin:0 0 6px 18px; padding:0;"></ul>
+                    <small style="color:#856404;">Only examinations with status <strong>COMPLETED</strong> can be closed.</small>
+                </div>
+                <div class="progress-section" id="bulkClosedProgress" style="display:none;">
+                    <div style="margin-bottom:8px; color:#2c3e50;">
+                        <i class="fas fa-spinner fa-spin"></i> Processing bulk update...
+                    </div>
+                    <div style="background:#ecf0f1; border-radius:4px; height:10px; overflow:hidden;">
+                        <div id="bulkClosedProgressBar" style="background:#28a745; width:0%; height:10px; transition: width 0.3s ease;"></div>
+                    </div>
+                </div>
+                <div class="result-section" id="bulkClosedResult" style="display:none; margin-top:12px;">
+                    <div id="bulkClosedResultSummary" style="margin-bottom:8px; color:#2c3e50;"></div>
+                    <div id="bulkClosedErrorContainer" style="display:none; background:#fdecea; border:1px solid #f5c6cb; border-radius:6px; padding:10px;">
+                        <div style="display:flex; align-items:center; gap:8px; margin-bottom:6px; color:#721c24;">
+                            <i class="fas fa-times-circle"></i>
+                            <strong>Errors</strong>
+                        </div>
+                        <ul id="bulkClosedErrorList" style="margin:0 0 6px 18px; padding:0; color:#721c24;"></ul>
+                    </div>
+                </div>
+            </div>
+            <div class="modal-footer">
+                <button type="button" class="btn btn-primary btn-sm" id="confirmBulkMarkClosedBtn" onclick="markSelectedClosed()">
+                    <i class="fas fa-check"></i> Close
+                </button>
+                <button type="button" class="btn btn-secondary btn-sm" onclick="closeBulkMarkClosedModal()">Cancel</button>
             </div>
         </div>
     </div>
@@ -5895,6 +6007,8 @@
             const loadingDiv = document.getElementById('ledgerLoading');
             const contentDiv = document.getElementById('ledgerContent');
             const errorDiv = document.getElementById('ledgerError');
+            const contextPath = '${pageContext.request.contextPath}';
+            const url = contextPath + '/payment-management/patient/' + patientId + '/transactions';
             
             console.log('=== CUSTOMER LEDGER DEBUG ===');
             console.log('Loading customer ledger for patient ID:', patientId);
@@ -5904,19 +6018,38 @@
             contentDiv.style.display = 'none';
             errorDiv.style.display = 'none';
             
-            fetch('/payment-management/patient/' + patientId + '/transactions')
-                .then(response => {
+            fetch(url, { headers: { 'Accept': 'application/json' }})
+                .then(async response => {
                     console.log('API Response status:', response.status);
                     console.log('API Response headers:', response.headers);
-                    return response.json();
+                    const contentType = (response.headers && response.headers.get) ? (response.headers.get('content-type') || '') : '';
+                    let data;
+                    try {
+                        if (contentType.includes('application/json')) {
+                            data = await response.json();
+                        } else {
+                            const text = await response.text();
+                            console.log('Non-JSON response text:', text);
+                            try {
+                                data = JSON.parse(text);
+                            } catch (e) {
+                                console.warn('Failed to parse non-JSON response as JSON:', e);
+                                data = null;
+                            }
+                        }
+                    } catch (e) {
+                        console.error('Error parsing response:', e);
+                        data = null;
+                    }
+                    return data;
                 })
                 .then(data => {
                     console.log('Raw API response data:', data);
-                    console.log('Data type:', typeof data);
-                    console.log('Data length:', data ? data.length : 'null/undefined');
+                    console.log('Data is array:', Array.isArray(data));
+                    console.log('Data length:', Array.isArray(data) ? data.length : 'n/a');
                     
                     loadingDiv.style.display = 'none';
-                    if (data && data.length > 0) {
+                    if (Array.isArray(data) && data.length > 0) {
                         console.log('Processing', data.length, 'transactions');
                         displayLedgerData(data);
                         contentDiv.style.display = 'block';
@@ -5926,6 +6059,7 @@
                     }
                 })
                 .catch(error => {
+                    console.error('Fetch error:', error);
                     loadingDiv.style.display = 'none';
                     errorDiv.innerHTML = '<p>Error loading payment transactions. Please try again.</p>';
                     errorDiv.style.display = 'block';
@@ -5958,7 +6092,18 @@
                     totalPaid += absAmount; // Track absolute payment amount
                 }
                 
-                const formattedDate = new Date(transaction.paymentDate).toLocaleDateString('en-IN');
+                // Robust date parsing: handle non-ISO timestamp strings like "yyyy-MM-dd HH:mm:ss"
+                const dateStr = transaction.paymentDate;
+                let formattedDate = '-';
+                if (dateStr) {
+                    try {
+                        const safeDateStr = dateStr.replace(' ', 'T');
+                        const d = new Date(safeDateStr);
+                        formattedDate = isNaN(d.getTime()) ? dateStr : d.toLocaleDateString('en-IN');
+                    } catch (_) {
+                        formattedDate = dateStr;
+                    }
+                }
                 
                 // Display transaction type clearly
                 const displayTransactionType = isRefund ? 'REFUND' : 'CAPTURE';
@@ -5970,17 +6115,18 @@
                 console.log('Formatted date:', formattedDate);
                 console.log('Display transaction type:', displayTransactionType);
                 
-                row.innerHTML = `
-                    <td>${formattedDate}</td>
-                    <td>${transaction.procedureName || 'N/A'}</td>
-                    <td class="${isRefund ? 'text-danger' : 'text-success'}" style="font-weight: 600;">
-                        ${amountDisplay}
-                    </td>
-                    <td><span class="badge badge-${isRefund ? 'danger' : 'success'}">${displayTransactionType}</span></td>
-                    <td>${transaction.paymentMode || 'N/A'}</td>
-                    <td>${transaction.refundReason || '-'}</td>
-                    <td>${transaction.remarks || '-'}</td>
-                `;
+                const amountClass = isRefund ? 'text-danger' : 'text-success';
+                const badgeClass = isRefund ? 'danger' : 'success';
+                row.innerHTML = '' +
+                    '<td>' + formattedDate + '</td>' +
+                    '<td>' + (transaction.procedureName || 'N/A') + '</td>' +
+                    '<td class="' + amountClass + '" style="font-weight: 600;">' +
+                        amountDisplay +
+                    '</td>' +
+                    '<td><span class="badge badge-' + badgeClass + '">' + displayTransactionType + '</span></td>' +
+                    '<td>' + (transaction.paymentMode || 'N/A') + '</td>' +
+                    '<td>' + (transaction.refundReason || '-') + '</td>' +
+                    '<td>' + (transaction.remarks || '-') + '</td>';
                 
                 // Add row-level color coding
                 row.className = isRefund ? 'ledger-refund-row' : 'ledger-capture-row';
@@ -6022,11 +6168,25 @@
         function downloadLedgerCSV() {
             const patientId = parseInt('${patient.id}', 10);
             const patientName = "${fn:escapeXml(patient.firstName)} ${fn:escapeXml(patient.lastName)}";
+            const contextPath = '${pageContext.request.contextPath}';
+            const url = contextPath + '/payment-management/patient/' + patientId + '/transactions';
             
-            fetch('/payment-management/patient/' + patientId + '/transactions')
-                .then(response => response.json())
+            fetch(url, { headers: { 'Accept': 'application/json' }})
+                .then(async response => {
+                    const contentType = (response.headers && response.headers.get) ? (response.headers.get('content-type') || '') : '';
+                    if (contentType.includes('application/json')) {
+                        return response.json();
+                    }
+                    const text = await response.text();
+                    try {
+                        return JSON.parse(text);
+                    } catch (e) {
+                        console.warn('Failed to parse CSV response as JSON');
+                        return [];
+                    }
+                })
                 .then(data => {
-                    if (data && data.length > 0) {
+                    if (Array.isArray(data) && data.length > 0) {
                         generateCSV(data, patientName);
                     } else {
                         alert('No data available to download.');
@@ -6050,7 +6210,7 @@
                 const validAmount = isNaN(amount) ? 0 : amount;
                 const absAmount = Math.abs(validAmount);
                 const transactionType = isRefund ? 'REFUND' : 'CAPTURE';
-                const csvAmountDisplay = isRefund ? `-${absAmount}` : `${absAmount}`;
+                const csvAmountDisplay = isRefund ? ('-' + absAmount) : ('' + absAmount);
                 
                 const row = [
                     formattedDate,
@@ -6459,6 +6619,660 @@
             }
         }
 
+        // Bulk Mark Payment Completed to Selected
+        function openBulkMarkPaymentCompletedModal() {
+            const selectedIds = getSelectedExaminationIds();
+            if (selectedIds.length === 0) {
+                showAlertModal('Please select at least one examination to mark in progress.', 'warning');
+                return;
+            }
+            window._markingBulkPaymentCompleted = false;
+
+            const countEl = document.getElementById('bulkMarkPaymentCompletedSelectedCount');
+            if (countEl) countEl.textContent = selectedIds.length;
+
+            const validationList = document.getElementById('bulkPaymentCompletedValidationList');
+            const validationBox = document.getElementById('bulkPaymentCompletedValidation');
+            if (validationList && validationBox) {
+                validationList.innerHTML = '';
+                let invalidCount = 0;
+                selectedIds.forEach(id => {
+                    const checkbox = document.querySelector('.examination-checkbox[value="' + id + '"]');
+                    if (checkbox) {
+                        const row = checkbox.closest('tr');
+                        const statusCell = row ? row.querySelector('td:nth-child(8)') : null;
+                        const statusText = statusCell ? statusCell.textContent.trim().toUpperCase() : '';
+                        if (statusText !== 'PAYMENT_COMPLETED') {
+                            invalidCount++;
+                            const li = document.createElement('li');
+                            li.textContent = 'Examination ' + id + ' is ' + (statusText || 'UNKNOWN') + ' and cannot be marked in progress';
+                            validationList.appendChild(li);
+                        }
+                    }
+                });
+                validationBox.style.display = invalidCount > 0 ? 'block' : 'none';
+
+                const confirmBtn = document.getElementById('confirmBulkMarkPaymentCompletedBtn');
+                if (confirmBtn) {
+                    if (invalidCount > 0) {
+                        confirmBtn.disabled = true;
+                        confirmBtn.classList.remove('btn-primary','btn-success');
+                        confirmBtn.classList.add('btn-warning');
+                        confirmBtn.innerHTML = '<i class="fas fa-exclamation-circle"></i> Review Issues';
+                    } else {
+                        confirmBtn.disabled = false;
+                        confirmBtn.classList.remove('btn-warning','btn-success');
+                        confirmBtn.classList.add('btn-primary');
+                        confirmBtn.innerHTML = '<i class="fas fa-check"></i> Mark In Progress';
+                    }
+                }
+            }
+
+            const progressBox = document.getElementById('bulkPaymentCompletedProgress');
+            const progressBar = document.getElementById('bulkPaymentCompletedProgressBar');
+            const resultBox = document.getElementById('bulkPaymentCompletedResult');
+            const errorContainer = document.getElementById('bulkPaymentCompletedErrorContainer');
+            const errorList = document.getElementById('bulkPaymentCompletedErrorList');
+            const resultSummary = document.getElementById('bulkPaymentCompletedResultSummary');
+            if (progressBox) progressBox.style.display = 'none';
+            if (progressBar) progressBar.style.width = '0%';
+            if (resultBox) resultBox.style.display = 'none';
+            if (errorContainer) errorContainer.style.display = 'none';
+            if (errorList) errorList.innerHTML = '';
+            if (resultSummary) resultSummary.textContent = '';
+
+            document.getElementById('bulkMarkPaymentCompletedModal').style.display = 'block';
+        }
+
+        function closeBulkMarkPaymentCompletedModal() {
+            document.getElementById('bulkMarkPaymentCompletedModal').style.display = 'none';
+        }
+
+        async function markSelectedPaymentCompleted() {
+            if (window._markingBulkPaymentCompleted) {
+                return;
+            }
+
+            const selectedIds = getSelectedExaminationIds();
+            if (selectedIds.length === 0) {
+                showAlertModal('Please select at least one examination to mark in progress.', 'warning');
+                return;
+            }
+
+            const progressBox = document.getElementById('bulkPaymentCompletedProgress');
+            const progressBar = document.getElementById('bulkPaymentCompletedProgressBar');
+            const resultBox = document.getElementById('bulkPaymentCompletedResult');
+            const errorContainer = document.getElementById('bulkPaymentCompletedErrorContainer');
+            const errorList = document.getElementById('bulkPaymentCompletedErrorList');
+            const resultSummary = document.getElementById('bulkPaymentCompletedResultSummary');
+            const confirmBtn = document.getElementById('confirmBulkMarkPaymentCompletedBtn');
+            if (progressBox) progressBox.style.display = 'block';
+            if (progressBar) progressBar.style.width = '25%';
+            if (confirmBtn) {
+                confirmBtn.disabled = true;
+                confirmBtn.innerHTML = '<i class="fas fa-spinner fa-spin"></i> Processing...';
+            }
+
+            window._markingBulkPaymentCompleted = true;
+
+            const token = document.querySelector('meta[name="_csrf"]').content;
+            const payload = { examinationIds: selectedIds };
+
+            try {
+                const resp = await fetch(joinUrl(contextPath, '/patients/examinations/status/in-progress/bulk'), {
+                    method: 'POST',
+                    headers: {
+                        'Content-Type': 'application/json',
+                        'X-CSRF-TOKEN': token
+                    },
+                    body: JSON.stringify(payload)
+                });
+
+                let json = {};
+                try { json = await resp.json(); } catch (e) {}
+
+                if (progressBar) progressBar.style.width = '60%';
+
+                if (!resp.ok) {
+                    const errMsg = (json && json.message) ? json.message : 'Failed to mark in progress';
+                    if (resultBox) resultBox.style.display = 'block';
+                    if (resultSummary) resultSummary.textContent = errMsg;
+                    if (errorContainer) errorContainer.style.display = 'none';
+                    if (progressBox) progressBox.style.display = 'none';
+                    if (confirmBtn) {
+                        confirmBtn.disabled = false;
+                        confirmBtn.classList.remove('btn-success','btn-warning');
+                        confirmBtn.classList.add('btn-primary');
+                        confirmBtn.innerHTML = '<i class="fas fa-redo"></i> Retry';
+                    }
+                    window._markingBulkPaymentCompleted = false;
+                    return;
+                }
+
+                const updatedIds = (json && json.updatedIds) ? json.updatedIds : [];
+                const errors = (json && json.errors) ? json.errors : [];
+                const updatedCount = (json && typeof json.updatedCount === 'number') ? json.updatedCount : updatedIds.length;
+                const failedCount = (json && typeof json.failedCount === 'number') ? json.failedCount : errors.length;
+                const totalCount = (json && typeof json.totalCount === 'number') ? json.totalCount : selectedIds.length;
+
+                updatedIds.forEach(id => {
+                    const checkbox = document.querySelector('.examination-checkbox[value="' + id + '"]');
+                    if (checkbox) {
+                        const row = checkbox.closest('tr');
+                        const statusCell = row ? row.querySelector('td:nth-child(8)') : null;
+                        if (statusCell) statusCell.textContent = 'IN_PROGRESS';
+                    }
+                });
+
+                if (progressBar) progressBar.style.width = '100%';
+                if (resultBox) resultBox.style.display = 'block';
+                if (progressBox) progressBox.style.display = 'none';
+                if (resultSummary) {
+                    const baseMsg = (json && json.message) ? json.message : (json && json.success ? 'Updated successfully' : 'Partial update completed');
+                    resultSummary.textContent = baseMsg + ' (' + updatedCount + '/' + totalCount + ' updated, ' + failedCount + ' failed)';
+                }
+
+                if (errors && errors.length > 0 && errorContainer && errorList) {
+                    errorContainer.style.display = 'block';
+                    errorList.innerHTML = '';
+                    errors.forEach(err => {
+                        const li = document.createElement('li');
+                        li.textContent = 'Examination ' + (err.examinationId || '-') + ': ' + (err.message || 'Unknown error');
+                        errorList.appendChild(li);
+                    });
+                } else if (errorContainer) {
+                    errorContainer.style.display = 'none';
+                }
+
+                if (json && json.success) {
+                    if (confirmBtn) {
+                        confirmBtn.disabled = true;
+                        confirmBtn.classList.remove('btn-primary','btn-warning');
+                        confirmBtn.classList.add('btn-success');
+                        confirmBtn.innerHTML = '<i class="fas fa-check"></i> Marked';
+                    }
+
+                    updatedIds.forEach(id => {
+                        const checkbox = document.querySelector('.examination-checkbox[value="' + id + '"]');
+                        if (checkbox) { checkbox.checked = false; }
+                    });
+                    if (typeof updateTableSelectionCount === 'function') {
+                        updateTableSelectionCount();
+                    }
+
+                    showAlertModal('Successfully marked selected examinations as in progress.', 'success', () => { window.location.reload(); });
+                    setTimeout(() => { closeBulkMarkPaymentCompletedModal(); }, 1200);
+                } else {
+                    if (confirmBtn) {
+                        confirmBtn.disabled = true;
+                        confirmBtn.classList.remove('btn-primary','btn-success');
+                        confirmBtn.classList.add('btn-warning');
+                        confirmBtn.innerHTML = '<i class="fas fa-exclamation-circle"></i> Review Issues';
+                    }
+
+                    updatedIds.forEach(id => {
+                        const checkbox = document.querySelector('.examination-checkbox[value="' + id + '"]');
+                        if (checkbox) { checkbox.checked = false; }
+                    });
+                    if (typeof updateTableSelectionCount === 'function') {
+                        updateTableSelectionCount();
+                    }
+
+                    showAlertModal('Partial update completed. Some records could not be updated.', 'warning');
+                }
+            } catch (e) {
+                if (resultBox) resultBox.style.display = 'block';
+                if (resultSummary) resultSummary.textContent = 'Network error while updating statuses: ' + e.message;
+                if (errorContainer) errorContainer.style.display = 'none';
+                if (progressBox) progressBox.style.display = 'none';
+                if (confirmBtn) {
+                    confirmBtn.disabled = false;
+                    confirmBtn.classList.remove('btn-success','btn-warning');
+                    confirmBtn.classList.add('btn-primary');
+                    confirmBtn.innerHTML = '<i class="fas fa-redo"></i> Retry';
+                }
+                window._markingBulkPaymentCompleted = false;
+            } finally {
+                // handled above
+            }
+        }
+
+        // Bulk Mark Completed to Selected
+        function openBulkMarkCompletedModal() {
+            const selectedIds = getSelectedExaminationIds();
+            if (selectedIds.length === 0) {
+                showAlertModal('Please select at least one examination to mark completed.', 'warning');
+                return;
+            }
+            window._markingBulkCompleted = false;
+
+            const countEl = document.getElementById('bulkMarkCompletedSelectedCount');
+            if (countEl) countEl.textContent = selectedIds.length;
+
+            const validationList = document.getElementById('bulkCompletedValidationList');
+            const validationBox = document.getElementById('bulkCompletedValidation');
+            if (validationList && validationBox) {
+                validationList.innerHTML = '';
+                let invalidCount = 0;
+                selectedIds.forEach(id => {
+                    const checkbox = document.querySelector('.examination-checkbox[value="' + id + '"]');
+                    if (checkbox) {
+                        const row = checkbox.closest('tr');
+                        const statusCell = row ? row.querySelector('td:nth-child(8)') : null;
+                        const statusText = statusCell ? statusCell.textContent.trim().toUpperCase() : '';
+                        if (statusText !== 'IN_PROGRESS') {
+                            invalidCount++;
+                            const li = document.createElement('li');
+                            li.textContent = 'Examination ' + id + ' is ' + (statusText || 'UNKNOWN') + ' and cannot be marked completed';
+                            validationList.appendChild(li);
+                        }
+                    }
+                });
+                validationBox.style.display = invalidCount > 0 ? 'block' : 'none';
+
+                const confirmBtn = document.getElementById('confirmBulkMarkCompletedBtn');
+                if (confirmBtn) {
+                    if (invalidCount > 0) {
+                        confirmBtn.disabled = true;
+                        confirmBtn.classList.remove('btn-primary','btn-success');
+                        confirmBtn.classList.add('btn-warning');
+                        confirmBtn.innerHTML = '<i class="fas fa-exclamation-circle"></i> Review Issues';
+                    } else {
+                        confirmBtn.disabled = false;
+                        confirmBtn.classList.remove('btn-warning','btn-success');
+                        confirmBtn.classList.add('btn-primary');
+                        confirmBtn.innerHTML = '<i class="fas fa-check"></i> Mark Completed';
+                    }
+                }
+            }
+
+            const progressBox = document.getElementById('bulkCompletedProgress');
+            const progressBar = document.getElementById('bulkCompletedProgressBar');
+            const resultBox = document.getElementById('bulkCompletedResult');
+            const errorContainer = document.getElementById('bulkCompletedErrorContainer');
+            const errorList = document.getElementById('bulkCompletedErrorList');
+            const resultSummary = document.getElementById('bulkCompletedResultSummary');
+            if (progressBox) progressBox.style.display = 'none';
+            if (progressBar) progressBar.style.width = '0%';
+            if (resultBox) resultBox.style.display = 'none';
+            if (errorContainer) errorContainer.style.display = 'none';
+            if (errorList) errorList.innerHTML = '';
+            if (resultSummary) resultSummary.textContent = '';
+
+            document.getElementById('bulkMarkCompletedModal').style.display = 'block';
+        }
+
+        function closeBulkMarkCompletedModal() {
+            document.getElementById('bulkMarkCompletedModal').style.display = 'none';
+        }
+
+        async function markSelectedCompleted() {
+            if (window._markingBulkCompleted) {
+                return;
+            }
+
+            const selectedIds = getSelectedExaminationIds();
+            if (selectedIds.length === 0) {
+                showAlertModal('Please select at least one examination to mark completed.', 'warning');
+                return;
+            }
+
+            const progressBox = document.getElementById('bulkCompletedProgress');
+            const progressBar = document.getElementById('bulkCompletedProgressBar');
+            const resultBox = document.getElementById('bulkCompletedResult');
+            const errorContainer = document.getElementById('bulkCompletedErrorContainer');
+            const errorList = document.getElementById('bulkCompletedErrorList');
+            const resultSummary = document.getElementById('bulkCompletedResultSummary');
+            const confirmBtn = document.getElementById('confirmBulkMarkCompletedBtn');
+            if (progressBox) progressBox.style.display = 'block';
+            if (progressBar) progressBar.style.width = '25%';
+            if (confirmBtn) {
+                confirmBtn.disabled = true;
+                confirmBtn.innerHTML = '<i class="fas fa-spinner fa-spin"></i> Processing...';
+            }
+
+            window._markingBulkCompleted = true;
+
+            const token = document.querySelector('meta[name="_csrf"]').content;
+            const payload = { examinationIds: selectedIds };
+
+            try {
+                const resp = await fetch(joinUrl(contextPath, '/patients/examinations/status/completed/bulk'), {
+                    method: 'POST',
+                    headers: {
+                        'Content-Type': 'application/json',
+                        'X-CSRF-TOKEN': token
+                    },
+                    body: JSON.stringify(payload)
+                });
+
+                let json = {};
+                try { json = await resp.json(); } catch (e) {}
+
+                if (progressBar) progressBar.style.width = '60%';
+
+                if (!resp.ok) {
+                    const errMsg = (json && json.message) ? json.message : 'Failed to mark completed';
+                    if (resultBox) resultBox.style.display = 'block';
+                    if (resultSummary) resultSummary.textContent = errMsg;
+                    if (errorContainer) errorContainer.style.display = 'none';
+                    if (progressBox) progressBox.style.display = 'none';
+                    if (confirmBtn) {
+                        confirmBtn.disabled = false;
+                        confirmBtn.classList.remove('btn-success','btn-warning');
+                        confirmBtn.classList.add('btn-primary');
+                        confirmBtn.innerHTML = '<i class="fas fa-redo"></i> Retry';
+                    }
+                    window._markingBulkCompleted = false;
+                    return;
+                }
+
+                const updatedIds = (json && json.updatedIds) ? json.updatedIds : [];
+                const errors = (json && json.errors) ? json.errors : [];
+                const updatedCount = (json && typeof json.updatedCount === 'number') ? json.updatedCount : updatedIds.length;
+                const failedCount = (json && typeof json.failedCount === 'number') ? json.failedCount : errors.length;
+                const totalCount = (json && typeof json.totalCount === 'number') ? json.totalCount : selectedIds.length;
+
+                updatedIds.forEach(id => {
+                    const checkbox = document.querySelector('.examination-checkbox[value="' + id + '"]');
+                    if (checkbox) {
+                        const row = checkbox.closest('tr');
+                        const statusCell = row ? row.querySelector('td:nth-child(8)') : null;
+                        if (statusCell) statusCell.textContent = 'COMPLETED';
+                    }
+                });
+
+                if (progressBar) progressBar.style.width = '100%';
+                if (resultBox) resultBox.style.display = 'block';
+                if (progressBox) progressBox.style.display = 'none';
+                if (resultSummary) {
+                    const baseMsg = (json && json.message) ? json.message : (json && json.success ? 'Updated successfully' : 'Partial update completed');
+                    resultSummary.textContent = baseMsg + ' (' + updatedCount + '/' + totalCount + ' updated, ' + failedCount + ' failed)';
+                }
+
+                if (errors && errors.length > 0 && errorContainer && errorList) {
+                    errorContainer.style.display = 'block';
+                    errorList.innerHTML = '';
+                    errors.forEach(err => {
+                        const li = document.createElement('li');
+                        li.textContent = 'Examination ' + (err.examinationId || '-') + ': ' + (err.message || 'Unknown error');
+                        errorList.appendChild(li);
+                    });
+                } else if (errorContainer) {
+                    errorContainer.style.display = 'none';
+                }
+
+                if (json && json.success) {
+                    if (confirmBtn) {
+                        confirmBtn.disabled = true;
+                        confirmBtn.classList.remove('btn-primary','btn-warning');
+                        confirmBtn.classList.add('btn-success');
+                        confirmBtn.innerHTML = '<i class="fas fa-check"></i> Marked';
+                    }
+
+                    updatedIds.forEach(id => {
+                        const checkbox = document.querySelector('.examination-checkbox[value="' + id + '"]');
+                        if (checkbox) { checkbox.checked = false; }
+                    });
+                    if (typeof updateTableSelectionCount === 'function') {
+                        updateTableSelectionCount();
+                    }
+
+                    showAlertModal('Successfully marked selected examinations as completed.', 'success', () => { window.location.reload(); });
+                    setTimeout(() => { closeBulkMarkCompletedModal(); }, 1200);
+                } else {
+                    if (confirmBtn) {
+                        confirmBtn.disabled = true;
+                        confirmBtn.classList.remove('btn-primary','btn-success');
+                        confirmBtn.classList.add('btn-warning');
+                        confirmBtn.innerHTML = '<i class="fas fa-exclamation-circle"></i> Review Issues';
+                    }
+
+                    updatedIds.forEach(id => {
+                        const checkbox = document.querySelector('.examination-checkbox[value="' + id + '"]');
+                        if (checkbox) { checkbox.checked = false; }
+                    });
+                    if (typeof updateTableSelectionCount === 'function') {
+                        updateTableSelectionCount();
+                    }
+
+                    showAlertModal('Partial update completed. Some records could not be updated.', 'warning');
+                }
+            } catch (e) {
+                if (resultBox) resultBox.style.display = 'block';
+                if (resultSummary) resultSummary.textContent = 'Network error while updating statuses: ' + e.message;
+                if (errorContainer) errorContainer.style.display = 'none';
+                if (progressBox) progressBox.style.display = 'none';
+                if (confirmBtn) {
+                    confirmBtn.disabled = false;
+                    confirmBtn.classList.remove('btn-success','btn-warning');
+                    confirmBtn.classList.add('btn-primary');
+                    confirmBtn.innerHTML = '<i class="fas fa-redo"></i> Retry';
+                }
+                window._markingBulkCompleted = false;
+            } finally {
+                // handled above
+            }
+        }
+
+        // Bulk Close Selected
+        function openBulkMarkClosedModal() {
+            const selectedIds = getSelectedExaminationIds();
+            if (selectedIds.length === 0) {
+                showAlertModal('Please select at least one examination to close.', 'warning');
+                return;
+            }
+            window._markingBulkClosed = false;
+
+            const countEl = document.getElementById('bulkMarkClosedSelectedCount');
+            if (countEl) countEl.textContent = selectedIds.length;
+
+            const validationList = document.getElementById('bulkClosedValidationList');
+            const validationBox = document.getElementById('bulkClosedValidation');
+            if (validationList && validationBox) {
+                validationList.innerHTML = '';
+                let invalidCount = 0;
+                selectedIds.forEach(id => {
+                    const checkbox = document.querySelector('.examination-checkbox[value="' + id + '"]');
+                    if (checkbox) {
+                        const row = checkbox.closest('tr');
+                        const statusCell = row ? row.querySelector('td:nth-child(8)') : null;
+                        const statusText = statusCell ? statusCell.textContent.trim().toUpperCase() : '';
+                        if (statusText !== 'COMPLETED') {
+                            invalidCount++;
+                            const li = document.createElement('li');
+                            li.textContent = 'Examination ' + id + ' is ' + (statusText || 'UNKNOWN') + ' and cannot be closed';
+                            validationList.appendChild(li);
+                        }
+                    }
+                });
+                validationBox.style.display = invalidCount > 0 ? 'block' : 'none';
+
+                const confirmBtn = document.getElementById('confirmBulkMarkClosedBtn');
+                if (confirmBtn) {
+                    if (invalidCount > 0) {
+                        confirmBtn.disabled = true;
+                        confirmBtn.classList.remove('btn-primary','btn-success');
+                        confirmBtn.classList.add('btn-warning');
+                        confirmBtn.innerHTML = '<i class="fas fa-exclamation-circle"></i> Review Issues';
+                    } else {
+                        confirmBtn.disabled = false;
+                        confirmBtn.classList.remove('btn-warning','btn-success');
+                        confirmBtn.classList.add('btn-primary');
+                        confirmBtn.innerHTML = '<i class="fas fa-check"></i> Close';
+                    }
+                }
+            }
+
+            const progressBox = document.getElementById('bulkClosedProgress');
+            const progressBar = document.getElementById('bulkClosedProgressBar');
+            const resultBox = document.getElementById('bulkClosedResult');
+            const errorContainer = document.getElementById('bulkClosedErrorContainer');
+            const errorList = document.getElementById('bulkClosedErrorList');
+            const resultSummary = document.getElementById('bulkClosedResultSummary');
+            if (progressBox) progressBox.style.display = 'none';
+            if (progressBar) progressBar.style.width = '0%';
+            if (resultBox) resultBox.style.display = 'none';
+            if (errorContainer) errorContainer.style.display = 'none';
+            if (errorList) errorList.innerHTML = '';
+            if (resultSummary) resultSummary.textContent = '';
+
+            document.getElementById('bulkMarkClosedModal').style.display = 'block';
+        }
+
+        function closeBulkMarkClosedModal() {
+            document.getElementById('bulkMarkClosedModal').style.display = 'none';
+        }
+
+        async function markSelectedClosed() {
+            if (window._markingBulkClosed) {
+                return;
+            }
+
+            const selectedIds = getSelectedExaminationIds();
+            if (selectedIds.length === 0) {
+                showAlertModal('Please select at least one examination to close.', 'warning');
+                return;
+            }
+
+            const progressBox = document.getElementById('bulkClosedProgress');
+            const progressBar = document.getElementById('bulkClosedProgressBar');
+            const resultBox = document.getElementById('bulkClosedResult');
+            const errorContainer = document.getElementById('bulkClosedErrorContainer');
+            const errorList = document.getElementById('bulkClosedErrorList');
+            const resultSummary = document.getElementById('bulkClosedResultSummary');
+            const confirmBtn = document.getElementById('confirmBulkMarkClosedBtn');
+            if (progressBox) progressBox.style.display = 'block';
+            if (progressBar) progressBar.style.width = '25%';
+            if (confirmBtn) {
+                confirmBtn.disabled = true;
+                confirmBtn.innerHTML = '<i class="fas fa-spinner fa-spin"></i> Processing...';
+            }
+
+            window._markingBulkClosed = true;
+
+            const token = document.querySelector('meta[name="_csrf"]').content;
+            const payload = { examinationIds: selectedIds };
+
+            try {
+                const resp = await fetch(joinUrl(contextPath, '/patients/examinations/status/closed/bulk'), {
+                    method: 'POST',
+                    headers: {
+                        'Content-Type': 'application/json',
+                        'X-CSRF-TOKEN': token
+                    },
+                    body: JSON.stringify(payload)
+                });
+
+                let json = {};
+                try { json = await resp.json(); } catch (e) {}
+
+                if (progressBar) progressBar.style.width = '60%';
+
+                if (!resp.ok) {
+                    const errMsg = (json && json.message) ? json.message : 'Failed to close examinations';
+                    if (resultBox) resultBox.style.display = 'block';
+                    if (resultSummary) resultSummary.textContent = errMsg;
+                    if (errorContainer) errorContainer.style.display = 'none';
+                    if (progressBox) progressBox.style.display = 'none';
+                    if (confirmBtn) {
+                        confirmBtn.disabled = false;
+                        confirmBtn.classList.remove('btn-success','btn-warning');
+                        confirmBtn.classList.add('btn-primary');
+                        confirmBtn.innerHTML = '<i class="fas fa-redo"></i> Retry';
+                    }
+                    window._markingBulkClosed = false;
+                    return;
+                }
+
+                const updatedIds = (json && json.updatedIds) ? json.updatedIds : [];
+                const errors = (json && json.errors) ? json.errors : [];
+                const updatedCount = (json && typeof json.updatedCount === 'number') ? json.updatedCount : updatedIds.length;
+                const failedCount = (json && typeof json.failedCount === 'number') ? json.failedCount : errors.length;
+                const totalCount = (json && typeof json.totalCount === 'number') ? json.totalCount : selectedIds.length;
+
+                updatedIds.forEach(id => {
+                    const checkbox = document.querySelector('.examination-checkbox[value="' + id + '"]');
+                    if (checkbox) {
+                        const row = checkbox.closest('tr');
+                        const statusCell = row ? row.querySelector('td:nth-child(8)') : null;
+                        if (statusCell) statusCell.textContent = 'CLOSED';
+                    }
+                });
+
+                if (progressBar) progressBar.style.width = '100%';
+                if (resultBox) resultBox.style.display = 'block';
+                if (progressBox) progressBox.style.display = 'none';
+                if (resultSummary) {
+                    const baseMsg = (json && json.message) ? json.message : (json && json.success ? 'Updated successfully' : 'Partial update completed');
+                    resultSummary.textContent = baseMsg + ' (' + updatedCount + '/' + totalCount + ' updated, ' + failedCount + ' failed)';
+                }
+
+                if (errors && errors.length > 0 && errorContainer && errorList) {
+                    errorContainer.style.display = 'block';
+                    errorList.innerHTML = '';
+                    errors.forEach(err => {
+                        const li = document.createElement('li');
+                        li.textContent = 'Examination ' + (err.examinationId || '-') + ': ' + (err.message || 'Unknown error');
+                        errorList.appendChild(li);
+                    });
+                } else if (errorContainer) {
+                    errorContainer.style.display = 'none';
+                }
+
+                if (json && json.success) {
+                    if (confirmBtn) {
+                        confirmBtn.disabled = true;
+                        confirmBtn.classList.remove('btn-primary','btn-warning');
+                        confirmBtn.classList.add('btn-success');
+                        confirmBtn.innerHTML = '<i class="fas fa-check"></i> Closed';
+                    }
+
+                    updatedIds.forEach(id => {
+                        const checkbox = document.querySelector('.examination-checkbox[value="' + id + '"]');
+                        if (checkbox) { checkbox.checked = false; }
+                    });
+                    if (typeof updateTableSelectionCount === 'function') {
+                        updateTableSelectionCount();
+                    }
+
+                    showAlertModal('Successfully closed selected examinations.', 'success', () => { window.location.reload(); });
+                    setTimeout(() => { closeBulkMarkClosedModal(); }, 1200);
+                } else {
+                    if (confirmBtn) {
+                        confirmBtn.disabled = true;
+                        confirmBtn.classList.remove('btn-primary','btn-success');
+                        confirmBtn.classList.add('btn-warning');
+                        confirmBtn.innerHTML = '<i class="fas fa-exclamation-circle"></i> Review Issues';
+                    }
+
+                    updatedIds.forEach(id => {
+                        const checkbox = document.querySelector('.examination-checkbox[value="' + id + '"]');
+                        if (checkbox) { checkbox.checked = false; }
+                    });
+                    if (typeof updateTableSelectionCount === 'function') {
+                        updateTableSelectionCount();
+                    }
+
+                    showAlertModal('Partial update completed. Some records could not be updated.', 'warning');
+                }
+            } catch (e) {
+                if (resultBox) resultBox.style.display = 'block';
+                if (resultSummary) resultSummary.textContent = 'Network error while updating statuses: ' + e.message;
+                if (errorContainer) errorContainer.style.display = 'none';
+                if (progressBox) progressBox.style.display = 'none';
+                if (confirmBtn) {
+                    confirmBtn.disabled = false;
+                    confirmBtn.classList.remove('btn-success','btn-warning');
+                    confirmBtn.classList.add('btn-primary');
+                    confirmBtn.innerHTML = '<i class="fas fa-redo"></i> Retry';
+                }
+                window._markingBulkClosed = false;
+            } finally {
+                // handled above
+            }
+        }
+
         // Bulk Add Notes to Selected
         function openBulkAddNotesModal() {
             const selectedIds = getSelectedExaminationIds();
@@ -6710,8 +7524,30 @@
 
     <script>
         // Bulk Discount Handlers
+        function friendlyDiscountMessage(msg) {
+            if (!msg) return 'You don\'t have permission to apply discounts.';
+            const m = String(msg).toLowerCase();
+            if (m.includes('not assigned to this examination')) {
+                return 'You are not the assigned doctor for this examination. Only the assigned doctor or clinic owner can apply or remove discounts.';
+            }
+            if (m.includes('cannot apply discount after payments')) {
+                return 'Discounts can\'t be changed after payments are recorded.';
+            }
+            if (m.includes('cannot remove discount after payments')) {
+                return 'Discounts can\'t be changed after payments are recorded.';
+            }
+            if (m.includes('no procedure assigned')) {
+                return 'Assign a procedure before applying a discount.';
+            }
+            if (m.includes('already been applied')) {
+                return 'A discount is already applied. Remove it before applying a new one.';
+            }
+            if (m.includes('role') && m.includes('not permitted')) {
+                return 'You don\'t have permission to apply discounts.';
+            }
+            return msg;
+        }
         let _bulkDiscountReasons = null;
-
         function openBulkDiscountModal() {
             const selectedIds = getSelectedExaminationIds();
             if (selectedIds.length === 0) {
@@ -6871,10 +7707,12 @@
                     if (resp.ok && (json.success === undefined || json.success)) {
                         successCount++;
                     } else {
-                        errors.push({ examinationId: examId, message: (json && json.message) ? json.message : 'Failed to apply' });
+                        const msg = friendlyDiscountMessage((json && json.message) ? json.message : 'Failed to apply');
+                        errors.push({ examinationId: examId, message: msg });
                     }
                 } catch (e) {
-                    errors.push({ examinationId: examId, message: e.message || 'Network error' });
+                    const msg = friendlyDiscountMessage(e && e.message ? e.message : 'Network error');
+                    errors.push({ examinationId: examId, message: msg });
                 }
             }
 
@@ -6969,10 +7807,12 @@
                     if (resp.ok && (json.success === undefined || json.success)) {
                         successCount++;
                     } else {
-                        errors.push({ examinationId: examId, message: (json && json.message) ? json.message : 'Failed to remove' });
+                        const msg = friendlyDiscountMessage((json && json.message) ? json.message : 'Failed to remove');
+                        errors.push({ examinationId: examId, message: msg });
                     }
                 } catch (e) {
-                    errors.push({ examinationId: examId, message: e.message || 'Network error' });
+                    const msg = friendlyDiscountMessage(e && e.message ? e.message : 'Network error');
+                    errors.push({ examinationId: examId, message: msg });
                 }
             }
 
@@ -7139,5 +7979,13 @@
              letter-spacing: 0.5px;
          }
      </style>
+
+     <!-- Appointments Link -->
+     <div class="container mt-4" id="appointments-link">
+         <a href="${pageContext.request.contextPath}/patients/details/${patient.id}/appointments" class="btn btn-primary">
+             <i class="fas fa-calendar-alt"></i> View Appointments
+         </a>
+     </div>
+
 </body>
 </html>
