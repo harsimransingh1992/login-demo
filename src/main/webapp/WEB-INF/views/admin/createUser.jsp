@@ -99,6 +99,25 @@
                                 </div>
                             </div>
                             
+                            <!-- Cross-Clinic Schedule Access -->
+                            <div class="form-row">
+                                <div class="form-group col-md-6">
+                                    <div class="custom-control custom-switch">
+                                        <form:checkbox path="hasCrossClinicApptAccess" class="custom-control-input" id="crossClinicSwitch" />
+                                        <label class="custom-control-label" for="crossClinicSwitch">Allow cross-clinic schedule access</label>
+                                    </div>
+                                </div>
+                                <div class="form-group col-md-6" id="accessibleClinicsGroup" style="display:none;">
+                                    <label for="accessibleClinicsSelect">Accessible Clinics</label>
+                                    <form:select path="accessibleClinicIds" class="form-control" id="accessibleClinicsSelect" multiple="true">
+                                        <c:forEach items="${clinics}" var="clinic">
+                                            <form:option value="${clinic.id}">${clinic.clinicName}</form:option>
+                                        </c:forEach>
+                                    </form:select>
+                                    <small class="form-text text-muted">Select clinics the user can view when cross-clinic access is enabled.</small>
+                                </div>
+                            </div>
+                            
                             <div class="form-row" id="specializationRow" style="display: none;">
                                 <div class="form-group col-md-6">
                                     <label for="specialization" class="required-field">Dental Specialization</label>
@@ -293,11 +312,22 @@
                 }
             }
             
-            // Run when role changes
+            function updateAccessibleClinicsVisibility() {
+                const enabled = $('#crossClinicSwitch').is(':checked');
+                if (enabled) {
+                    $('#accessibleClinicsGroup').show();
+                } else {
+                    $('#accessibleClinicsGroup').hide();
+                }
+            }
+            
+            // Bind events
             $('#role').change(updateFormVisibility);
+            $('#crossClinicSwitch').change(updateAccessibleClinicsVisibility);
             
             // Run on page load
             updateFormVisibility();
+            updateAccessibleClinicsVisibility();
         });
     </script>
 </body>

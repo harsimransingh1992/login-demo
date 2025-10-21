@@ -88,4 +88,16 @@ public class User {
     
     @OneToMany(mappedBy = "owner")
     private List<ClinicModel> ownedClinics; // Changed from OneToOne to OneToMany
+
+    // Cross-clinic appointment access flags (now persisted)
+    @Column(name = "has_cross_clinic_appt_access")
+    private Boolean hasCrossClinicApptAccess = false;
+
+    @ManyToMany
+    @JoinTable(
+        name = "user_accessible_clinics",
+        joinColumns = @JoinColumn(name = "user_id"),
+        inverseJoinColumns = @JoinColumn(name = "clinic_id")
+    )
+    private List<ClinicModel> accessibleClinics;
 }

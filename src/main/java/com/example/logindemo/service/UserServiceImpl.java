@@ -48,9 +48,25 @@ public class UserServiceImpl implements UserService {
             password = "changeme";  // Default password
         }
         user.setPassword(passwordEncoder.encode(password));
+
+        // Map cross-clinic access flag
+        user.setHasCrossClinicApptAccess(Boolean.TRUE.equals(userDTO.getHasCrossClinicApptAccess()));
+        // Map accessible clinic IDs to entities
+        if (userDTO.getAccessibleClinicIds() != null && !userDTO.getAccessibleClinicIds().isEmpty()) {
+            List<ClinicModel> clinics = clinicRepository.findAllById(userDTO.getAccessibleClinicIds());
+            user.setAccessibleClinics(clinics);
+        }
         
         User savedUser = userRepository.save(user);
-        return modelMapper.map(savedUser, UserDTO.class);
+        UserDTO result = modelMapper.map(savedUser, UserDTO.class);
+        // Hydrate accessibleClinicIds for UI consistency
+        if (savedUser.getAccessibleClinics() != null) {
+            result.setAccessibleClinicIds(savedUser.getAccessibleClinics().stream()
+                    .map(ClinicModel::getId)
+                    .collect(Collectors.toList()));
+        }
+        result.setHasCrossClinicApptAccess(savedUser.getHasCrossClinicApptAccess());
+        return result;
     }
 
     @Override
@@ -87,6 +103,13 @@ public class UserServiceImpl implements UserService {
                     user.setCanRefund(userDTO.getCanRefund());
                     user.setCanApplyDiscount(userDTO.getCanApplyDiscount());
                     user.setCanDeleteExamination(userDTO.getCanDeleteExamination());
+
+                    // Cross-clinic access mapping
+                    user.setHasCrossClinicApptAccess(Boolean.TRUE.equals(userDTO.getHasCrossClinicApptAccess()));
+                    if (userDTO.getAccessibleClinicIds() != null) {
+                        List<ClinicModel> clinics = clinicRepository.findAllById(userDTO.getAccessibleClinicIds());
+                        user.setAccessibleClinics(clinics);
+                    }
                     
                     // Update clinic if provided
                     if (userDTO.getClinic() != null) {
@@ -94,7 +117,14 @@ public class UserServiceImpl implements UserService {
                     }
                     
                     User updatedUser = userRepository.save(user);
-                    return modelMapper.map(updatedUser, UserDTO.class);
+                    UserDTO result = modelMapper.map(updatedUser, UserDTO.class);
+                    if (updatedUser.getAccessibleClinics() != null) {
+                        result.setAccessibleClinicIds(updatedUser.getAccessibleClinics().stream()
+                                .map(ClinicModel::getId)
+                                .collect(Collectors.toList()));
+                    }
+                    result.setHasCrossClinicApptAccess(updatedUser.getHasCrossClinicApptAccess());
+                    return result;
                 })
                 .orElseThrow(() -> new RuntimeException("User not found with id: " + id));
     }
@@ -109,7 +139,16 @@ public class UserServiceImpl implements UserService {
     @Transactional(readOnly = true)
     public List<UserDTO> getAllUsers() {
         return userRepository.findAll().stream()
-                .map(user -> modelMapper.map(user, UserDTO.class))
+                .map(user -> {
+                    UserDTO dto = modelMapper.map(user, UserDTO.class);
+                    dto.setHasCrossClinicApptAccess(user.getHasCrossClinicApptAccess());
+                    if (user.getAccessibleClinics() != null) {
+                        dto.setAccessibleClinicIds(user.getAccessibleClinics().stream()
+                                .map(ClinicModel::getId)
+                                .collect(Collectors.toList()));
+                    }
+                    return dto;
+                })
                 .collect(Collectors.toList());
     }
 
@@ -117,14 +156,32 @@ public class UserServiceImpl implements UserService {
     @Transactional(readOnly = true)
     public Optional<UserDTO> getUserById(Long id) {
         return userRepository.findById(id)
-                .map(user -> modelMapper.map(user, UserDTO.class));
+                .map(user -> {
+                    UserDTO dto = modelMapper.map(user, UserDTO.class);
+                    dto.setHasCrossClinicApptAccess(user.getHasCrossClinicApptAccess());
+                    if (user.getAccessibleClinics() != null) {
+                        dto.setAccessibleClinicIds(user.getAccessibleClinics().stream()
+                                .map(ClinicModel::getId)
+                                .collect(Collectors.toList()));
+                    }
+                    return dto;
+                });
     }
 
     @Override
     @Transactional(readOnly = true)
     public Optional<UserDTO> getUserByUsername(String username) {
         return userRepository.findByUsername(username)
-                .map(user -> modelMapper.map(user, UserDTO.class));
+                .map(user -> {
+                    UserDTO dto = modelMapper.map(user, UserDTO.class);
+                    dto.setHasCrossClinicApptAccess(user.getHasCrossClinicApptAccess());
+                    if (user.getAccessibleClinics() != null) {
+                        dto.setAccessibleClinicIds(user.getAccessibleClinics().stream()
+                                .map(ClinicModel::getId)
+                                .collect(Collectors.toList()));
+                    }
+                    return dto;
+                });
     }
 
     @Override

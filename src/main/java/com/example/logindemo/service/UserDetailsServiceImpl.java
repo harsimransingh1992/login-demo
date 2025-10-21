@@ -13,11 +13,16 @@ import java.util.ArrayList;
 import java.util.Collections;
 import java.util.List;
 
+import org.slf4j.Logger;
+import org.slf4j.LoggerFactory;
+
 @Service
 public class UserDetailsServiceImpl implements UserDetailsService {
 
     @Resource(name="userRepository")
     private UserRepository userRepository;
+
+    private static final Logger log = LoggerFactory.getLogger(UserDetailsServiceImpl.class);
 
     @Override
     public UserDetails loadUserByUsername(String username) throws UsernameNotFoundException {
@@ -29,7 +34,6 @@ public class UserDetailsServiceImpl implements UserDetailsService {
         // Add role based on the user's role enum - map UserRole to Spring Security roles
         if (user.getRole() != null) {
             authorities.add(new SimpleGrantedAuthority("ROLE_" + user.getRole().name()));
-            System.out.println("Assigned ROLE_" + user.getRole().name() + " to user: " + username);
         } else {
             // Fallback to basic user role if no role is set
             authorities.add(new SimpleGrantedAuthority("ROLE_USER"));
@@ -37,15 +41,19 @@ public class UserDetailsServiceImpl implements UserDetailsService {
         
         // Special case: ensure admin usernames always get admin role
         if ("adminperidesk".equals(user.getUsername()) || "admin".equals(user.getUsername())) {
-            // Check if we already added the admin role
             boolean hasAdminRole = authorities.stream()
                 .anyMatch(auth -> auth.getAuthority().equals("ROLE_ADMIN"));
-                
-            // Add it if not already present
             if (!hasAdminRole) {
                 authorities.add(new SimpleGrantedAuthority("ROLE_ADMIN"));
-                System.out.println("Added special ROLE_ADMIN to user: " + username);
             }
+        }
+
+        // Add cross-clinic access authority if enabled for the user
+        if (Boolean.TRUE.equals(user.getHasCrossClinicApptAccess())) {
+            authorities.add(new SimpleGrantedAuthority("CROSS_CLINIC_ACCESS"));
+            log.info("Granted CROSS_CLINIC_ACCESS to user {}", username);
+        } else {
+            log.debug("User {} does not have cross-clinic access flag", username);
         }
 
         // Create and return the Spring Security User object
@@ -55,9 +63,6 @@ public class UserDetailsServiceImpl implements UserDetailsService {
                 user.getPassword(),
                 authorities
             );
-            
-        System.out.println("Loaded user: " + username + " with roles: " + authorities);
-        
         return securityUser;
     }
-} 
+}
