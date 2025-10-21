@@ -518,27 +518,8 @@ public class PatientController {
             // Save the patient with the updated check-in record
             patientService.savePatient(patient);
 
-            // Create appointment record with status COMPLETED
-            Appointment appointment = new Appointment();
-            appointment.setPatient(patient);
-            appointment.setPatientName(patient.getFirstName() + " " + patient.getLastName());
-            appointment.setPatientMobile(patient.getPhoneNumber());
-            appointment.setAppointmentDateTime(LocalDateTime.now());
-            appointment.setStatus(AppointmentStatus.COMPLETED);
-            appointment.setClinic(loggedInUser.getClinic());
-            appointment.setAppointmentBookedBy(loggedInUser);
-            appointment.setNotes("Patient checked in - appointment completed");
-            
-            // Set the assigned doctor if provided
-            if (checkInRecord.getAssignedDoctor() != null) {
-                appointment.setDoctor(checkInRecord.getAssignedDoctor());
-            }
-
-            // Save the appointment record
-            Appointment savedAppointment = appointmentRepository.save(appointment);
-            log.info("Saved appointment ID: {}, Doctor in saved appointment: {}", 
-                savedAppointment.getId(), 
-                savedAppointment.getDoctor() != null ? savedAppointment.getDoctor().getFirstName() : "NULL");
+            //Create appointment upon check-in
+            //createAppointment(patient, loggedInUser, checkInRecord);
 
             // Calculate pending payments for the patient
             double pendingPayments = patientService.calculatePendingPayments(id);
@@ -556,6 +537,30 @@ public class PatientController {
                     "message", "Error checking in patient: " + e.getMessage()
                 ));
         }
+    }
+
+    private void createAppointment(Patient patient, User loggedInUser, CheckInRecord checkInRecord) {
+        // Create appointment record with status COMPLETED
+        Appointment appointment = new Appointment();
+        appointment.setPatient(patient);
+        appointment.setPatientName(patient.getFirstName() + " " + patient.getLastName());
+        appointment.setPatientMobile(patient.getPhoneNumber());
+        appointment.setAppointmentDateTime(LocalDateTime.now());
+        appointment.setStatus(AppointmentStatus.COMPLETED);
+        appointment.setClinic(loggedInUser.getClinic());
+        appointment.setAppointmentBookedBy(loggedInUser);
+        appointment.setNotes("Patient checked in - appointment completed");
+
+        // Set the assigned doctor if provided
+        if (checkInRecord.getAssignedDoctor() != null) {
+            appointment.setDoctor(checkInRecord.getAssignedDoctor());
+        }
+
+        // Save the appointment record
+        Appointment savedAppointment = appointmentRepository.save(appointment);
+        log.info("Saved appointment ID: {}, Doctor in saved appointment: {}",
+            savedAppointment.getId(),
+            savedAppointment.getDoctor() != null ? savedAppointment.getDoctor().getFirstName() : "NULL");
     }
 
     @PostMapping("/uncheck/{id}")
@@ -646,6 +651,58 @@ public class PatientController {
                 model.addAttribute("duplicateAllowed", duplicateAllowed);
             } catch (Exception e) {
                 log.warn("Could not prepare duplicate permissions: {}", e.getMessage());
+            }
+
+            // Add appointments for this patient and compute upcoming appointment
+            try {
+                List<com.example.logindemo.model.Appointment> patientAppointments = appointmentRepository.findByPatient_Id(patient.get().getId());
+
+                // Convert LocalDateTime to Date and strings for JSP display
+                java.time.format.DateTimeFormatter dateFormatter = java.time.format.DateTimeFormatter.ofPattern("yyyy-MM-dd");
+                java.time.format.DateTimeFormatter timeFormatter = java.time.format.DateTimeFormatter.ofPattern("hh:mm a");
+                java.util.List<java.util.Map<String, Object>> appointmentsView = new java.util.ArrayList<>();
+                for (com.example.logindemo.model.Appointment a : patientAppointments) {
+                    java.util.Map<String, Object> row = new java.util.HashMap<>();
+                    row.put("id", a.getId());
+                    java.time.LocalDateTime dt = a.getAppointmentDateTime();
+                    if (dt != null) {
+                        java.util.Date dtDate = java.util.Date.from(dt.atZone(java.time.ZoneId.systemDefault()).toInstant());
+                        row.put("date", dtDate);
+                        row.put("dateIso", dt.format(java.time.format.DateTimeFormatter.ISO_LOCAL_DATE_TIME));
+                        row.put("dateStr", dt.format(dateFormatter));
+                        row.put("timeStr", dt.format(timeFormatter));
+                    }
+                    row.put("notes", a.getNotes());
+                    row.put("status", a.getStatus());
+                    row.put("statusDisplay", a.getStatus() != null ? a.getStatus().getDisplayName() : "");
+                    appointmentsView.add(row);
+                }
+                model.addAttribute("appointmentsData", appointmentsView);
+
+                // Find most immediate upcoming appointment (SCHEDULED and in future)
+                java.util.Optional<com.example.logindemo.model.Appointment> upcomingOpt = patientAppointments.stream()
+                    .filter(ap -> ap.getStatus() == com.example.logindemo.model.AppointmentStatus.SCHEDULED &&
+                                  ap.getAppointmentDateTime() != null &&
+                                  ap.getAppointmentDateTime().isAfter(java.time.LocalDateTime.now()))
+                    .min(java.util.Comparator.comparing(com.example.logindemo.model.Appointment::getAppointmentDateTime));
+
+                if (upcomingOpt.isPresent()) {
+                    com.example.logindemo.model.Appointment up = upcomingOpt.get();
+                    java.util.Map<String, Object> upView = new java.util.HashMap<>();
+                    upView.put("id", up.getId());
+                    java.time.LocalDateTime dt = up.getAppointmentDateTime();
+                    upView.put("dateStr", dt != null ? dt.format(dateFormatter) : "");
+                    upView.put("timeStr", dt != null ? dt.format(timeFormatter) : "");
+                    upView.put("notes", up.getNotes());
+                    upView.put("statusDisplay", up.getStatus() != null ? up.getStatus().getDisplayName() : "");
+                    model.addAttribute("upcomingAppointment", upView);
+                } else {
+                    model.addAttribute("upcomingAppointment", null);
+                }
+            } catch (Exception e) {
+                log.warn("Could not load appointments for patient {}: {}", id, e.getMessage());
+                model.addAttribute("appointmentsData", java.util.Collections.emptyList());
+                model.addAttribute("upcomingAppointment", null);
             }
         }
         return "patient/patientDetails"; // Return the name of the patient details view
@@ -967,6 +1024,22 @@ public class PatientController {
             allDoctors.addAll(doctors);
             allDoctors.addAll(opdDoctors);
             model.addAttribute("doctorDetails", allDoctors);
+            
+            // Populate assignedDoctorName for cross-clinic read-only display
+            try {
+                Long assignedId = examination.getAssignedDoctorId();
+                if (assignedId != null) {
+                    java.util.Optional<com.example.logindemo.dto.UserDTO> assignedDoctorOpt = userService.getUserById(assignedId);
+                    if (assignedDoctorOpt.isPresent()) {
+                        com.example.logindemo.dto.UserDTO userDto = assignedDoctorOpt.get();
+                        String first = userDto.getFirstName() != null ? userDto.getFirstName() : "";
+                        String last = userDto.getLastName() != null ? userDto.getLastName() : "";
+                        examination.setAssignedDoctorName((first + " " + last).trim());
+                    }
+                }
+            } catch (Exception e) {
+                log.warn("Could not populate assignedDoctorName for examination {}: {}", examination.getId(), e.getMessage());
+            }
             
             model.addAttribute("examination", examination);
             model.addAttribute("patient", patient.get());
@@ -2626,7 +2699,316 @@ public class PatientController {
             ));
         }
     }
-    
+
+    @PostMapping("/examinations/status/payment-completed/bulk")
+    @ResponseBody
+    @Transactional
+    public ResponseEntity<?> bulkMarkPaymentCompleted(@RequestBody Map<String, Object> request) {
+        try {
+            Object idsObj = request.get("examinationIds");
+            if (idsObj == null) {
+                return ResponseEntity.badRequest().body(Map.of(
+                    "success", false,
+                    "message", "Missing examinationIds"
+                ));
+            }
+
+            List<Long> examinationIds = new ArrayList<>();
+            if (idsObj instanceof List<?>) {
+                for (Object o : (List<?>) idsObj) {
+                    if (o instanceof Number) {
+                        examinationIds.add(((Number) o).longValue());
+                    } else if (o instanceof String) {
+                        try {
+                            examinationIds.add(Long.parseLong((String) o));
+                        } catch (NumberFormatException nfe) {
+                            // skip invalid
+                        }
+                    }
+                }
+            } else {
+                return ResponseEntity.badRequest().body(Map.of(
+                    "success", false,
+                    "message", "examinationIds must be an array"
+                ));
+            }
+
+            if (examinationIds.isEmpty()) {
+                return ResponseEntity.badRequest().body(Map.of(
+                    "success", false,
+                    "message", "No valid examinationIds provided"
+                ));
+            }
+
+            String currentUsername = com.example.logindemo.utils.PeriDeskUtils.getCurrentClinicUserName();
+            User currentUser = userService.findByUsername(currentUsername).orElse(null);
+
+            List<Long> updatedIds = new ArrayList<>();
+            List<Map<String, Object>> errors = new ArrayList<>();
+
+            for (Long examId : examinationIds) {
+                try {
+                    Optional<ToothClinicalExamination> examOpt = toothClinicalExaminationRepository.findById(examId);
+                    if (examOpt.isEmpty()) {
+                        errors.add(Map.of(
+                            "examinationId", examId,
+                            "message", "Examination not found"
+                        ));
+                        continue;
+                    }
+
+                    ToothClinicalExamination exam = examOpt.get();
+
+                    if (currentUser != null && exam.getExaminationClinic() != null && currentUser.getClinic() != null) {
+                        String userClinicId = currentUser.getClinic().getClinicId();
+                        String examClinicId = exam.getExaminationClinic().getClinicId();
+                        if (userClinicId != null && examClinicId != null && !userClinicId.equals(examClinicId)) {
+                            errors.add(Map.of(
+                                "examinationId", examId,
+                                "message", "You don't have permission to update this examination"
+                            ));
+                            continue;
+                        }
+                    }
+
+                    ProcedureStatus currentStatus = exam.getProcedureStatus();
+                    ProcedureStatus targetStatus = ProcedureStatus.PAYMENT_COMPLETED;
+
+                    if (currentStatus == null) {
+                        errors.add(Map.of(
+                            "examinationId", examId,
+                            "message", "Current status is not set"
+                        ));
+                        continue;
+                    }
+
+                    // Prevent marking completed when payment is pending
+                    try {
+                        Double remainingAmount = exam.getRemainingAmount();
+                        if (remainingAmount != null && remainingAmount > 0) {
+                            errors.add(Map.of(
+                                "examinationId", examId,
+                                "message", "Payment is still pending"
+                            ));
+                            continue;
+                        }
+                    } catch (Exception ignore) {}
+
+                    if (!currentStatus.getAllowedTransitions().contains(targetStatus)) {
+                        errors.add(Map.of(
+                            "examinationId", examId,
+                            "message", "Invalid transition from " + currentStatus + " to PAYMENT_COMPLETED"
+                        ));
+                        continue;
+                    }
+
+                    if (currentStatus == ProcedureStatus.PAYMENT_COMPLETED) {
+                        errors.add(Map.of(
+                            "examinationId", examId,
+                            "message", "Already PAYMENT_COMPLETED"
+                        ));
+                        continue;
+                    }
+
+                    exam.setProcedureStatus(targetStatus);
+                    toothClinicalExaminationRepository.save(exam);
+
+                    ProcedureLifecycleTransition transition = new ProcedureLifecycleTransition();
+                    transition.setExamination(exam);
+                    transition.setStageName(targetStatus.toString());
+                    transition.setStageDescription(getStatusDescription(targetStatus));
+                    transition.setTransitionTime(java.time.LocalDateTime.now());
+                    transition.setCompleted(true);
+                    transition.setTransitionedBy(currentUser != null ? currentUser : getCurrentUser());
+                    procedureLifecycleTransitionRepository.save(transition);
+
+                    updatedIds.add(examId);
+                } catch (Exception ex) {
+                    errors.add(Map.of(
+                        "examinationId", examId,
+                        "message", ex.getMessage()
+                    ));
+                }
+            }
+
+            Map<String, Object> response = new HashMap<>();
+            boolean allSucceeded = errors.isEmpty() && updatedIds.size() == examinationIds.size();
+            response.put("success", allSucceeded);
+            response.put("updatedIds", updatedIds);
+            response.put("updatedCount", updatedIds.size());
+            response.put("failedCount", examinationIds.size() - updatedIds.size());
+            response.put("totalCount", examinationIds.size());
+            response.put("errors", errors);
+            response.put("message", allSucceeded ? "Updated successfully" : "Partial update completed");
+            return ResponseEntity.ok(response);
+        } catch (Exception e) {
+            return ResponseEntity.badRequest().body(Map.of(
+                "success", false,
+                "message", e.getMessage()
+            ));
+        }
+    }
+
+    @PostMapping("/examinations/status/in-progress/bulk")
+    @ResponseBody
+    @Transactional
+    public ResponseEntity<?> bulkMarkInProgress(@RequestBody Map<String, Object> request) {
+        try {
+            Object idsObj = request.get("examinationIds");
+            if (idsObj == null) {
+                return ResponseEntity.badRequest().body(Map.of(
+                    "success", false,
+                    "message", "Missing examinationIds"
+                ));
+            }
+
+            List<Long> examinationIds = new ArrayList<>();
+            if (idsObj instanceof List<?>) {
+                for (Object o : (List<?>) idsObj) {
+                    if (o instanceof Number) {
+                        examinationIds.add(((Number) o).longValue());
+                    } else if (o instanceof String) {
+                        try {
+                            examinationIds.add(Long.parseLong((String) o));
+                        } catch (NumberFormatException nfe) {
+                            // skip invalid
+                        }
+                    }
+                }
+            } else {
+                return ResponseEntity.badRequest().body(Map.of(
+                    "success", false,
+                    "message", "examinationIds must be an array"
+                ));
+            }
+
+            if (examinationIds.isEmpty()) {
+                return ResponseEntity.badRequest().body(Map.of(
+                    "success", false,
+                    "message", "No valid examinationIds provided"
+                ));
+            }
+
+            String currentUsername = com.example.logindemo.utils.PeriDeskUtils.getCurrentClinicUserName();
+            User currentUser = userService.findByUsername(currentUsername).orElse(null);
+
+            List<Long> updatedIds = new ArrayList<>();
+            List<Map<String, Object>> errors = new ArrayList<>();
+
+            for (Long examId : examinationIds) {
+                try {
+                    Optional<ToothClinicalExamination> examOpt = toothClinicalExaminationRepository.findById(examId);
+                    if (examOpt.isEmpty()) {
+                        errors.add(Map.of(
+                            "examinationId", examId,
+                            "message", "Examination not found"
+                        ));
+                        continue;
+                    }
+
+                    ToothClinicalExamination exam = examOpt.get();
+
+                    if (currentUser != null && exam.getExaminationClinic() != null && currentUser.getClinic() != null) {
+                        String userClinicId = currentUser.getClinic().getClinicId();
+                        String examClinicId = exam.getExaminationClinic().getClinicId();
+                        if (userClinicId != null && examClinicId != null && !userClinicId.equals(examClinicId)) {
+                            errors.add(Map.of(
+                                "examinationId", examId,
+                                "message", "You don't have permission to update this examination"
+                            ));
+                            continue;
+                        }
+                    }
+
+                    // Validate that a procedure is attached
+                    if (exam.getProcedure() == null) {
+                        errors.add(Map.of(
+                            "examinationId", examId,
+                            "message", "No procedure attached"
+                        ));
+                        continue;
+                    }
+
+                    ProcedureStatus currentStatus = exam.getProcedureStatus();
+                    ProcedureStatus targetStatus = ProcedureStatus.IN_PROGRESS;
+
+                    if (currentStatus == null) {
+                        errors.add(Map.of(
+                            "examinationId", examId,
+                            "message", "Current status is not set"
+                        ));
+                        continue;
+                    }
+
+                    // Enforce only PAYMENT_COMPLETED -> IN_PROGRESS
+                    if (currentStatus != ProcedureStatus.PAYMENT_COMPLETED) {
+                        errors.add(Map.of(
+                            "examinationId", examId,
+                            "message", "Only PAYMENT_COMPLETED can be marked IN_PROGRESS"
+                        ));
+                        continue;
+                    }
+
+                    // Only allow if transition is permitted by lifecycle
+                    if (!currentStatus.getAllowedTransitions().contains(targetStatus)) {
+                        errors.add(Map.of(
+                            "examinationId", examId,
+                            "message", "Invalid transition from " + currentStatus + " to IN_PROGRESS"
+                        ));
+                        continue;
+                    }
+
+                    // Skip if already in target status
+                    if (currentStatus == ProcedureStatus.IN_PROGRESS) {
+                        errors.add(Map.of(
+                            "examinationId", examId,
+                            "message", "Already IN_PROGRESS"
+                        ));
+                        continue;
+                    }
+
+                    // Perform update: set status and start time
+                    exam.setProcedureStatus(targetStatus);
+                    exam.setProcedureStartTime(LocalDateTime.now());
+                    toothClinicalExaminationRepository.save(exam);
+
+                    // Record lifecycle transition
+                    ProcedureLifecycleTransition transition = new ProcedureLifecycleTransition();
+                    transition.setExamination(exam);
+                    transition.setStageName(targetStatus.toString());
+                    transition.setStageDescription(getStatusDescription(targetStatus));
+                    transition.setTransitionTime(java.time.LocalDateTime.now());
+                    transition.setCompleted(true);
+                    transition.setTransitionedBy(currentUser != null ? currentUser : getCurrentUser());
+                    procedureLifecycleTransitionRepository.save(transition);
+
+                    updatedIds.add(examId);
+                } catch (Exception ex) {
+                    errors.add(Map.of(
+                        "examinationId", examId,
+                        "message", ex.getMessage()
+                    ));
+                }
+            }
+
+            Map<String, Object> response = new HashMap<>();
+            boolean allSucceeded = errors.isEmpty() && updatedIds.size() == examinationIds.size();
+            response.put("success", allSucceeded);
+            response.put("updatedIds", updatedIds);
+            response.put("updatedCount", updatedIds.size());
+            response.put("failedCount", examinationIds.size() - updatedIds.size());
+            response.put("totalCount", examinationIds.size());
+            response.put("errors", errors);
+            response.put("message", allSucceeded ? "Updated successfully" : "Partial update completed");
+            return ResponseEntity.ok(response);
+        } catch (Exception e) {
+            return ResponseEntity.badRequest().body(Map.of(
+                "success", false,
+                "message", e.getMessage()
+            ));
+        }
+    }
+
     @PostMapping("/update-examination-status-with-xray")
     @ResponseBody
     @Transactional
@@ -2718,6 +3100,320 @@ public class PatientController {
             
         } catch (Exception e) {
             log.error("Error closing examination with X-ray: {}", e.getMessage(), e);
+            return ResponseEntity.badRequest().body(Map.of(
+                "success", false,
+                "message", e.getMessage()
+            ));
+        }
+    }
+
+    @PostMapping("/examinations/status/completed/bulk")
+    @ResponseBody
+    @Transactional
+    public ResponseEntity<?> bulkMarkCompleted(@RequestBody Map<String, Object> request) {
+        try {
+            Object idsObj = request.get("examinationIds");
+            if (idsObj == null) {
+                return ResponseEntity.badRequest().body(Map.of(
+                    "success", false,
+                    "message", "Missing examinationIds"
+                ));
+            }
+
+            List<Long> examinationIds = new ArrayList<>();
+            if (idsObj instanceof List<?>) {
+                for (Object o : (List<?>) idsObj) {
+                    if (o instanceof Number) {
+                        examinationIds.add(((Number) o).longValue());
+                    } else if (o instanceof String) {
+                        try {
+                            examinationIds.add(Long.parseLong((String) o));
+                        } catch (NumberFormatException nfe) {
+                            // skip invalid
+                        }
+                    }
+                }
+            } else {
+                return ResponseEntity.badRequest().body(Map.of(
+                    "success", false,
+                    "message", "examinationIds must be an array"
+                ));
+            }
+
+            if (examinationIds.isEmpty()) {
+                return ResponseEntity.badRequest().body(Map.of(
+                    "success", false,
+                    "message", "No valid examinationIds provided"
+                ));
+            }
+
+            String currentUsername = com.example.logindemo.utils.PeriDeskUtils.getCurrentClinicUserName();
+            User currentUser = userService.findByUsername(currentUsername).orElse(null);
+
+            List<Long> updatedIds = new ArrayList<>();
+            List<Map<String, Object>> errors = new ArrayList<>();
+
+            for (Long examId : examinationIds) {
+                try {
+                    Optional<ToothClinicalExamination> examOpt = toothClinicalExaminationRepository.findById(examId);
+                    if (examOpt.isEmpty()) {
+                        errors.add(Map.of(
+                            "examinationId", examId,
+                            "message", "Examination not found"
+                        ));
+                        continue;
+                    }
+
+                    ToothClinicalExamination exam = examOpt.get();
+
+                    if (currentUser != null && exam.getExaminationClinic() != null && currentUser.getClinic() != null) {
+                        String userClinicId = currentUser.getClinic().getClinicId();
+                        String examClinicId = exam.getExaminationClinic().getClinicId();
+                        if (userClinicId != null && examClinicId != null && !userClinicId.equals(examClinicId)) {
+                            errors.add(Map.of(
+                                "examinationId", examId,
+                                "message", "You don't have permission to update this examination"
+                            ));
+                            continue;
+                        }
+                    }
+
+                    if (exam.getProcedure() == null) {
+                        errors.add(Map.of(
+                            "examinationId", examId,
+                            "message", "No procedure attached"
+                        ));
+                        continue;
+                    }
+
+                    ProcedureStatus currentStatus = exam.getProcedureStatus();
+                    ProcedureStatus targetStatus = ProcedureStatus.COMPLETED;
+
+                    if (currentStatus == null) {
+                        errors.add(Map.of(
+                            "examinationId", examId,
+                            "message", "Current status is not set"
+                        ));
+                        continue;
+                    }
+
+                    // Enforce only IN_PROGRESS -> COMPLETED
+                    if (currentStatus != ProcedureStatus.IN_PROGRESS) {
+                        errors.add(Map.of(
+                            "examinationId", examId,
+                            "message", "Only IN_PROGRESS can be marked COMPLETED"
+                        ));
+                        continue;
+                    }
+
+                    if (!currentStatus.getAllowedTransitions().contains(targetStatus)) {
+                        errors.add(Map.of(
+                            "examinationId", examId,
+                            "message", "Invalid transition from " + currentStatus + " to COMPLETED"
+                        ));
+                        continue;
+                    }
+
+                    if (currentStatus == ProcedureStatus.COMPLETED) {
+                        errors.add(Map.of(
+                            "examinationId", examId,
+                            "message", "Already COMPLETED"
+                        ));
+                        continue;
+                    }
+
+                    exam.setProcedureStatus(targetStatus);
+                    exam.setProcedureEndTime(LocalDateTime.now());
+                    toothClinicalExaminationRepository.save(exam);
+
+                    ProcedureLifecycleTransition transition = new ProcedureLifecycleTransition();
+                    transition.setExamination(exam);
+                    transition.setStageName(targetStatus.toString());
+                    transition.setStageDescription(getStatusDescription(targetStatus));
+                    transition.setTransitionTime(java.time.LocalDateTime.now());
+                    transition.setCompleted(true);
+                    transition.setTransitionedBy(currentUser != null ? currentUser : getCurrentUser());
+                    procedureLifecycleTransitionRepository.save(transition);
+
+                    updatedIds.add(examId);
+                } catch (Exception ex) {
+                    errors.add(Map.of(
+                        "examinationId", examId,
+                        "message", ex.getMessage()
+                    ));
+                }
+            }
+
+            Map<String, Object> response = new HashMap<>();
+            boolean allSucceeded = errors.isEmpty() && updatedIds.size() == examinationIds.size();
+            response.put("success", allSucceeded);
+            response.put("updatedIds", updatedIds);
+            response.put("updatedCount", updatedIds.size());
+            response.put("failedCount", examinationIds.size() - updatedIds.size());
+            response.put("totalCount", examinationIds.size());
+            response.put("errors", errors);
+            response.put("message", allSucceeded ? "Updated successfully" : "Partial update completed");
+            return ResponseEntity.ok(response);
+        } catch (Exception e) {
+            return ResponseEntity.badRequest().body(Map.of(
+                "success", false,
+                "message", e.getMessage()
+            ));
+        }
+    }
+
+    @PostMapping("/examinations/status/closed/bulk")
+    @ResponseBody
+    @Transactional
+    public ResponseEntity<?> bulkMarkClosed(@RequestBody Map<String, Object> request) {
+        try {
+            Object idsObj = request.get("examinationIds");
+            if (idsObj == null) {
+                return ResponseEntity.badRequest().body(Map.of(
+                    "success", false,
+                    "message", "Missing examinationIds"
+                ));
+            }
+
+            List<Long> examinationIds = new ArrayList<>();
+            if (idsObj instanceof List<?>) {
+                for (Object o : (List<?>) idsObj) {
+                    if (o instanceof Number) {
+                        examinationIds.add(((Number) o).longValue());
+                    } else if (o instanceof String) {
+                        try {
+                            examinationIds.add(Long.parseLong((String) o));
+                        } catch (NumberFormatException nfe) {
+                            // skip invalid
+                        }
+                    }
+                }
+            } else {
+                return ResponseEntity.badRequest().body(Map.of(
+                    "success", false,
+                    "message", "examinationIds must be an array"
+                ));
+            }
+
+            if (examinationIds.isEmpty()) {
+                return ResponseEntity.badRequest().body(Map.of(
+                    "success", false,
+                    "message", "No valid examinationIds provided"
+                ));
+            }
+
+            String currentUsername = com.example.logindemo.utils.PeriDeskUtils.getCurrentClinicUserName();
+            User currentUser = userService.findByUsername(currentUsername).orElse(null);
+
+            List<Long> updatedIds = new ArrayList<>();
+            List<Map<String, Object>> errors = new ArrayList<>();
+
+            for (Long examId : examinationIds) {
+                try {
+                    Optional<ToothClinicalExamination> examOpt = toothClinicalExaminationRepository.findById(examId);
+                    if (examOpt.isEmpty()) {
+                        errors.add(Map.of(
+                            "examinationId", examId,
+                            "message", "Examination not found"
+                        ));
+                        continue;
+                    }
+
+                    ToothClinicalExamination exam = examOpt.get();
+
+                    if (currentUser != null && exam.getExaminationClinic() != null && currentUser.getClinic() != null) {
+                        String userClinicId = currentUser.getClinic().getClinicId();
+                        String examClinicId = exam.getExaminationClinic().getClinicId();
+                        if (userClinicId != null && examClinicId != null && !userClinicId.equals(examClinicId)) {
+                            errors.add(Map.of(
+                                "examinationId", examId,
+                                "message", "You don't have permission to update this examination"
+                            ));
+                            continue;
+                        }
+                    }
+
+                    if (exam.getProcedure() == null) {
+                        errors.add(Map.of(
+                            "examinationId", examId,
+                            "message", "No procedure attached"
+                        ));
+                        continue;
+                    }
+
+                    ProcedureStatus currentStatus = exam.getProcedureStatus();
+                    ProcedureStatus targetStatus = ProcedureStatus.CLOSED;
+
+                    if (currentStatus == null) {
+                        errors.add(Map.of(
+                            "examinationId", examId,
+                            "message", "Current status is not set"
+                        ));
+                        continue;
+                    }
+
+                    // Block closing if payment is pending
+                    try {
+                        Double remainingAmount = exam.getRemainingAmount();
+                        if (remainingAmount != null && remainingAmount > 0) {
+                            errors.add(Map.of(
+                                "examinationId", examId,
+                                "message", "Cannot close the case because payment is still pending. Please collect the full payment before closing the case."
+                            ));
+                            continue;
+                        }
+                    } catch (Exception ignore) {}
+
+                    // Only allow if transition is permitted by lifecycle
+                    if (!currentStatus.getAllowedTransitions().contains(targetStatus)) {
+                        errors.add(Map.of(
+                            "examinationId", examId,
+                            "message", "Invalid transition from " + currentStatus + " to CLOSED"
+                        ));
+                        continue;
+                    }
+
+                    if (currentStatus == ProcedureStatus.CLOSED) {
+                        errors.add(Map.of(
+                            "examinationId", examId,
+                            "message", "Already CLOSED"
+                        ));
+                        continue;
+                    }
+
+                    exam.setProcedureStatus(targetStatus);
+                    exam.setProcedureEndTime(LocalDateTime.now());
+                    toothClinicalExaminationRepository.save(exam);
+
+                    ProcedureLifecycleTransition transition = new ProcedureLifecycleTransition();
+                    transition.setExamination(exam);
+                    transition.setStageName(targetStatus.toString());
+                    transition.setStageDescription(getStatusDescription(targetStatus));
+                    transition.setTransitionTime(java.time.LocalDateTime.now());
+                    transition.setCompleted(true);
+                    transition.setTransitionedBy(currentUser != null ? currentUser : getCurrentUser());
+                    procedureLifecycleTransitionRepository.save(transition);
+
+                    updatedIds.add(examId);
+                } catch (Exception ex) {
+                    errors.add(Map.of(
+                        "examinationId", examId,
+                        "message", ex.getMessage()
+                    ));
+                }
+            }
+
+            Map<String, Object> response = new HashMap<>();
+            boolean allSucceeded = errors.isEmpty() && updatedIds.size() == examinationIds.size();
+            response.put("success", allSucceeded);
+            response.put("updatedIds", updatedIds);
+            response.put("updatedCount", updatedIds.size());
+            response.put("failedCount", examinationIds.size() - updatedIds.size());
+            response.put("totalCount", examinationIds.size());
+            response.put("errors", errors);
+            response.put("message", allSucceeded ? "Updated successfully" : "Partial update completed");
+            return ResponseEntity.ok(response);
+        } catch (Exception e) {
             return ResponseEntity.badRequest().body(Map.of(
                 "success", false,
                 "message", e.getMessage()
@@ -4004,8 +4700,16 @@ public class PatientController {
                 examinationData.put("procedure", procedureData);
             }
 
-            // Always use stored totalProcedureAmount as the base for summary
-            examinationData.put("baseAmount", examination.getTotalProcedureAmount() != null ? examination.getTotalProcedureAmount() : 0.0);
+            // Always use original base amount for summary (prefer base at association)
+            double baseAmount = 0.0;
+            if (examination.getBasePriceAtAssociation() != null) {
+                baseAmount = examination.getBasePriceAtAssociation();
+            } else if (examination.getProcedure() != null && examination.getProcedure().getPrice() != null) {
+                baseAmount = examination.getProcedure().getPrice();
+            } else if (examination.getTotalProcedureAmount() != null) {
+                baseAmount = examination.getTotalProcedureAmount();
+            }
+            examinationData.put("baseAmount", baseAmount);
             
             // Get payment entries
             List<Map<String, Object>> paymentData = new ArrayList<>();
@@ -4404,6 +5108,130 @@ public class PatientController {
                     "success", false,
                     "message", "Server error: " + e.getMessage()
             ));
+        }
+    }
+    // Patient-specific appointments list (separate page)
+    @GetMapping("/details/{id}/appointments")
+    public String showPatientAppointments(@PathVariable Long id, Model model) {
+        try {
+            Optional<Patient> patientOpt = patientRepository.findById(id);
+            if (!patientOpt.isPresent()) {
+                return "redirect:/patients/list";
+            }
+
+            Patient patient = patientOpt.get();
+            model.addAttribute("patient", patient);
+
+            // Add appointment statuses for status dropdowns in views
+            model.addAttribute("statuses", com.example.logindemo.model.AppointmentStatus.values());
+
+            // Load appointments for this patient
+            java.util.List<com.example.logindemo.model.Appointment> patientAppointments = appointmentRepository.findByPatient_Id(id);
+
+            java.time.format.DateTimeFormatter dateFormatter = java.time.format.DateTimeFormatter.ofPattern("dd-MM-yyyy");
+            java.time.format.DateTimeFormatter timeFormatter = java.time.format.DateTimeFormatter.ofPattern("hh:mm a");
+
+            java.util.List<java.util.Map<String, Object>> appointmentsView = new java.util.ArrayList<>();
+            for (com.example.logindemo.model.Appointment a : patientAppointments) {
+                java.util.Map<String, Object> row = new java.util.HashMap<>();
+                row.put("id", a.getId());
+                java.time.LocalDateTime dt = a.getAppointmentDateTime();
+                if (dt != null) {
+                    row.put("dateIso", dt.format(java.time.format.DateTimeFormatter.ISO_LOCAL_DATE_TIME));
+                    row.put("dateStr", dt.format(dateFormatter));
+                    row.put("timeStr", dt.format(timeFormatter));
+                }
+                row.put("notes", a.getNotes());
+                row.put("status", a.getStatus());
+                row.put("statusDisplay", a.getStatus() != null ? a.getStatus().getDisplayName() : "");
+                // Add doctor name for display
+                com.example.logindemo.model.User doctor = a.getDoctor();
+                String doctorName = "N/A";
+                if (doctor != null) {
+                    String first = doctor.getFirstName() != null ? doctor.getFirstName().trim() : "";
+                    String last = doctor.getLastName() != null ? doctor.getLastName().trim() : "";
+                    if (!first.isEmpty() || !last.isEmpty()) {
+                        doctorName = (first + " " + last).trim();
+                    } else if (doctor.getUsername() != null && !doctor.getUsername().trim().isEmpty()) {
+                        doctorName = doctor.getUsername().trim();
+                    }
+                }
+                row.put("doctorName", doctorName);
+                // Add mobile number (fallback to patient's phone if not set on appointment)
+                String mobile = "N/A";
+                if (a.getPatientMobile() != null && !a.getPatientMobile().trim().isEmpty()) {
+                    mobile = a.getPatientMobile().trim();
+                } else if (a.getPatient() != null && a.getPatient().getPhoneNumber() != null && !a.getPatient().getPhoneNumber().trim().isEmpty()) {
+                    mobile = a.getPatient().getPhoneNumber().trim();
+                }
+                row.put("mobile", mobile);
+
+                // Add clinic name
+                String clinicName = "N/A";
+                com.example.logindemo.model.ClinicModel clinic = a.getClinic();
+                if (clinic != null && clinic.getClinicName() != null && !clinic.getClinicName().trim().isEmpty()) {
+                    clinicName = clinic.getClinicName().trim();
+                }
+                row.put("clinicName", clinicName);
+                appointmentsView.add(row);
+            }
+            model.addAttribute("appointmentsData", appointmentsView);
+
+            // Compute upcoming appointment
+            java.util.Optional<com.example.logindemo.model.Appointment> upcomingOpt = patientAppointments.stream()
+                .filter(ap -> ap.getStatus() == com.example.logindemo.model.AppointmentStatus.SCHEDULED &&
+                              ap.getAppointmentDateTime() != null &&
+                              ap.getAppointmentDateTime().isAfter(java.time.LocalDateTime.now()))
+                .min(java.util.Comparator.comparing(com.example.logindemo.model.Appointment::getAppointmentDateTime));
+
+            if (upcomingOpt.isPresent()) {
+                com.example.logindemo.model.Appointment up = upcomingOpt.get();
+                java.util.Map<String, Object> upView = new java.util.HashMap<>();
+                java.time.LocalDateTime dt = up.getAppointmentDateTime();
+                upView.put("id", up.getId());
+                upView.put("dateStr", dt != null ? dt.format(dateFormatter) : "");
+                upView.put("timeStr", dt != null ? dt.format(timeFormatter) : "");
+                upView.put("notes", up.getNotes());
+                upView.put("statusDisplay", up.getStatus() != null ? up.getStatus().getDisplayName() : "");
+                // Upcoming appointment doctor name
+                com.example.logindemo.model.User doctor = up.getDoctor();
+                String doctorName = "N/A";
+                if (doctor != null) {
+                    String first = doctor.getFirstName() != null ? doctor.getFirstName().trim() : "";
+                    String last = doctor.getLastName() != null ? doctor.getLastName().trim() : "";
+                    if (!first.isEmpty() || !last.isEmpty()) {
+                        doctorName = (first + " " + last).trim();
+                    } else if (doctor.getUsername() != null && !doctor.getUsername().trim().isEmpty()) {
+                        doctorName = doctor.getUsername().trim();
+                    }
+                }
+                upView.put("doctorName", doctorName);
+
+                // Upcoming appointment mobile
+                String mobile = "N/A";
+                if (up.getPatientMobile() != null && !up.getPatientMobile().trim().isEmpty()) {
+                    mobile = up.getPatientMobile().trim();
+                } else if (up.getPatient() != null && up.getPatient().getPhoneNumber() != null && !up.getPatient().getPhoneNumber().trim().isEmpty()) {
+                    mobile = up.getPatient().getPhoneNumber().trim();
+                }
+                upView.put("mobile", mobile);
+
+                // Upcoming appointment clinic name
+                String clinicName = "N/A";
+                com.example.logindemo.model.ClinicModel clinic = up.getClinic();
+                if (clinic != null && clinic.getClinicName() != null && !clinic.getClinicName().trim().isEmpty()) {
+                    clinicName = clinic.getClinicName().trim();
+                }
+                upView.put("clinicName", clinicName);
+                model.addAttribute("upcomingAppointment", upView);
+            } else {
+                model.addAttribute("upcomingAppointment", null);
+            }
+
+            return "appointments/patient-list";
+        } catch (Exception e) {
+            log.error("Error showing appointments for patient {}: {}", id, e.getMessage(), e);
+            return "redirect:/patients/details/" + id + "?error=Unable to load appointments";
         }
     }
 }
