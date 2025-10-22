@@ -841,5 +841,47 @@ public class PendingPaymentController {
         return response;
     }
 
+    @Autowired
+    private com.example.logindemo.repository.PatientRepository patientRepository;
 
+    // New: search multiple patients by partial registration code or mobile
+    @GetMapping("/search/patients")
+    @PreAuthorize("hasRole('ADMIN') or hasRole('CLINIC_OWNER') or hasRole('DOCTOR') or hasRole('OPD_DOCTOR') or hasRole('STAFF') or hasRole('RECEPTIONIST')")
+    @ResponseBody
+    public Map<String, Object> searchPatients(
+            @RequestParam(required = false) String registrationCode,
+            @RequestParam(required = false) String mobile) {
+        Map<String, Object> response = new java.util.HashMap<>();
+        try {
+            java.util.List<com.example.logindemo.model.Patient> patients;
+            if (registrationCode != null && !registrationCode.trim().isEmpty()) {
+                patients = patientRepository.findByRegistrationCodeContainingIgnoreCase(registrationCode.trim());
+            } else if (mobile != null && !mobile.trim().isEmpty()) {
+                patients = patientRepository.findByPhoneNumberContaining(mobile.trim());
+            } else {
+                response.put("success", false);
+                response.put("message", "Provide registrationCode or mobile to search");
+                return response;
+            }
+
+            java.util.List<java.util.Map<String, Object>> results = new java.util.ArrayList<>();
+            for (com.example.logindemo.model.Patient p : patients) {
+                java.util.Map<String, Object> item = new java.util.HashMap<>();
+                item.put("id", p.getId());
+                item.put("firstName", p.getFirstName());
+                item.put("lastName", p.getLastName());
+                item.put("registrationCode", p.getRegistrationCode());
+                item.put("phoneNumber", p.getPhoneNumber());
+                results.add(item);
+            }
+
+            response.put("success", true);
+            response.put("count", results.size());
+            response.put("patients", results);
+        } catch (Exception e) {
+            response.put("success", false);
+            response.put("message", "Error searching patients: " + e.getMessage());
+        }
+        return response;
+    }
 }

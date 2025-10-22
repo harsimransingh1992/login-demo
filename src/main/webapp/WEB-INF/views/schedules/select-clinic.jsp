@@ -120,23 +120,35 @@
         <input type="datetime-local" id="modalDateTimeInput" />
       </div>
       <div class="form-group">
-        <label class="muted" for="modalPatientSearch">Patient Search (Reg. Code)</label>
-        <div class="inline-input">
-          <input type="text" id="modalPatientSearch" placeholder="Enter registration code" />
+        <label class="muted" for="modalPatientSearch">Patient Search</label>
+        <div class="inline-input search-fields">
+          <input type="text" id="modalPatientSearch" placeholder="Registration code" />
+          <input type="text" id="modalPatientMobileSearch" placeholder="Mobile number" style="margin-left:8px;" />
           <button class="btn btn-outline" id="modalSearchPatientBtn">Search</button>
         </div>
-        <div class="muted" id="modalPatientResult"></div>
+        <div id="modalPatientResult" class="search-results"></div>
+      </div>
+
+      <div class="form-group">
+        <label class="muted" for="modalUnregisteredName">Unregistered Patient Details (optional)</label>
+        <div class="inline-input">
+          <input type="text" id="modalUnregisteredName" placeholder="Patient full name" aria-label="Unregistered patient name" />
+          <input type="text" id="modalUnregisteredMobile" placeholder="Mobile number" aria-label="Unregistered patient mobile" inputmode="tel" />
+        </div>
+        <small class="muted">If you are not selecting a registered patient, enter name and mobile here.</small>
       </div>
 
       <div class="form-group">
         <label class="muted" for="modalNotes">Notes (optional)</label>
         <textarea id="modalNotes" rows="2"></textarea>
       </div>
-      <div class="form-actions" style="display:flex; justify-content:flex-end; gap:10px;">
-        <button class="btn btn-secondary" id="cancelCreateAppointmentBtn">Cancel</button>
-        <button class="btn btn-primary" id="submitCreateAppointmentBtn">Create</button>
+      <div class="form-actions" style="display:flex; flex-direction:column; gap:10px;">
+        <div class="muted" id="modalError" style="color:#c00; display:none; text-align:center; font-size:13px;"></div>
+        <div style="display:flex; justify-content:flex-end; gap:10px;">
+          <button class="btn btn-secondary" id="cancelCreateAppointmentBtn">Cancel</button>
+          <button class="btn btn-primary" id="submitCreateAppointmentBtn">Create</button>
+        </div>
       </div>
-      <div class="muted" id="modalError" style="color:#c00; display:none;"></div>
     </div>
   </div>
 </div>

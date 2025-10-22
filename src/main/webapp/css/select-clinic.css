@@ -87,52 +87,182 @@ select, input[type="date"] { width: 100%; padding: 10px; border: 1px solid #e0e0
   flex: 0 0 auto;
 }
 /* Modal Styles */
-.modal-overlay { position: fixed; inset: 0; background: rgba(0,0,0,0.35); display: none; z-index: 1000; align-items: center; justify-content: center; }
-.modal { background: #fff; border-radius: 12px; box-shadow: 0 12px 30px rgba(0,0,0,0.2); width: 640px; max-width: 95vw; }
-.modal-header { display: flex; align-items: center; justify-content: space-between; padding: 14px 16px; border-bottom: 1px solid #e0e0e0; }
+.modal-overlay { position: fixed; inset: 0; background: rgba(0,0,0,0.35); display: none; z-index: 1000; align-items: center; justify-content: center; padding: 20px; box-sizing: border-box; }
+.modal { 
+  background: #fff; 
+  border-radius: 12px; 
+  box-shadow: 0 12px 30px rgba(0,0,0,0.2); 
+  width: 720px; 
+  max-width: 95vw; 
+  max-height: 90vh;
+  display: flex;
+  flex-direction: column;
+  overflow: hidden;
+}
+.modal-header { 
+  display: flex; 
+  align-items: center; 
+  justify-content: space-between; 
+  padding: 14px 16px; 
+  border-bottom: 1px solid #e0e0e0; 
+  flex-shrink: 0;
+}
 .modal-header h3 { white-space: nowrap; }
 #openCreateAppointmentModal { white-space: nowrap; }
 .modal-close { background: transparent; border: none; font-size: 22px; line-height: 1; cursor: pointer; color: #7f8c8d; }
-.modal-body { padding: 16px; overflow-x: hidden; }
+.modal-body { 
+  padding: 16px; 
+  overflow-x: hidden; 
+  overflow-y: auto;
+  flex: 1;
+  min-height: 0;
+}
 .modal .form-group { margin-bottom: 12px; }
 .inline-input { display: flex; gap: 8px; align-items: center; }
 .inline-input input { flex: 1; }
+.form-actions { 
+  margin-top: 16px;
+  padding-top: 12px;
+  border-top: 1px solid #f0f0f0;
+  flex-shrink: 0;
+}
 .form-actions .btn { min-width: 110px; }
-@media (max-width: 640px) { .modal { width: 95vw; } }
+@media (max-width: 768px) { 
+  .modal { 
+    width: 95vw; 
+    max-height: 85vh;
+  } 
+  .modal-overlay { padding: 10px; }
+}
+@media (max-width: 480px) { 
+  .modal { 
+    width: 100vw; 
+    max-height: 100vh;
+    border-radius: 0;
+  } 
+  .modal-overlay { padding: 0; }
+}
 
-/* Patient search input/button sizing */
-.inline-input { display: flex; gap: 8px; align-items: center; }
-.inline-input #modalPatientSearch {
-  flex: 0 0 280px;
-  width: 280px;
-  max-width: 280px;
-  min-width: 180px;
-  padding: 9px;
+/* Modal Patient Search Enhancements --- */
+/* Layout: two aligned inputs, search button on next line; scrollable results; responsive; accessible */
+
+/* Container with grid to align inputs and place button below */
+.inline-input.search-fields {
+  display: grid;
+  grid-template-columns: 1fr 1fr;
+  grid-auto-rows: min-content;
+  gap: 10px 12px;
+  align-items: start;
+}
+
+/* Inputs: consistent sizing and typography */
+.inline-input.search-fields input[type="text"] {
+  width: 100%;
+  padding: 10px 12px;
+  border: 1px solid #d7dee7;
+  border-radius: 8px;
   box-sizing: border-box;
-}
-#modalSearchPatientBtn {
-  padding: 4px 8px;
-  font-size: 11px;
-  border-radius: 5px;
-  white-space: nowrap;
-}
-@media (max-width: 640px) {
-  .inline-input {
-    flex-direction: column;
-    align-items: stretch;
-    gap: 8px;
-  }
-  #modalSearchPatientBtn {
-    width: 100%;
-    padding: 6px 8px;
-    font-size: 12px;
-  }
-}
-@media (max-width: 640px) {
-  #modalSearchPatientBtn { padding: 5px 8px; font-size: 11px; }
+  font-size: 14px;
+  color: #2c3e50;
+  background-color: #fff;
 }
 
-/* Patient result card */
+/* Remove inline margin on second input; grid gap handles spacing */
+#modalPatientMobileSearch { margin-left: 0 !important; }
+
+/* Button: move to a new line, align right on larger screens */
+.inline-input.search-fields #modalSearchPatientBtn {
+  grid-column: 1 / -1;
+  justify-self: end;
+  padding: 8px 14px;
+  font-size: 13px;
+  border-radius: 8px;
+}
+
+/* Results area: scrollable panel with consistent spacing and colors */
+#modalPatientResult.search-results {
+  margin-top: 10px;
+  max-height: 200px;
+  overflow-y: auto;
+  border: 1px solid #e0e6ed;
+  border-radius: 10px;
+  background: #f9fbfd;
+  padding: 8px;
+}
+
+/* Results list and items */
+.patient-results-list {
+  display: flex;
+  flex-direction: column;
+  gap: 8px;
+}
+
+.patient-result-item {
+  background: #fff;
+  border: 1px solid #e6edf5;
+  border-radius: 8px;
+  padding: 10px 12px;
+}
+
+.patient-result-row {
+  display: flex;
+  align-items: center;
+  justify-content: space-between;
+  gap: 12px;
+}
+
+.patient-col { display: flex; flex-direction: column; gap: 4px; }
+.patient-name { font-weight: 600; color: #1565c0; font-size: 15px; }
+.patient-meta { display: flex; flex-wrap: wrap; gap: 10px; color: #546e7a; font-size: 13px; }
+.patient-reg { background: #eaf3ff; color: #1565c0; padding: 2px 6px; border-radius: 6px; }
+.patient-phone { background: #e8f0fe; color: #1a73e8; padding: 2px 6px; border-radius: 6px; }
+
+.patient-col-actions .btn { padding: 8px 12px; font-size: 12px; border-radius: 8px; }
+
+/* Selected summary */
+.patient-selected-summary {
+  background: #fff;
+  border: 1px solid #dfe7f3;
+  border-radius: 8px;
+  padding: 10px 12px;
+  color: #2c3e50;
+}
+
+/* Accessibility: focus states and contrast */
+.inline-input.search-fields input[type="text"]:focus,
+.inline-input.search-fields input[type="text"]:focus-visible,
+.inline-input.search-fields #modalSearchPatientBtn:focus,
+.inline-input.search-fields #modalSearchPatientBtn:focus-visible,
+.patient-col-actions .btn:focus,
+.patient-col-actions .btn:focus-visible {
+  outline: 2px solid #1565c0;
+  outline-offset: 2px;
+  box-shadow: 0 0 0 3px rgba(21,101,192,0.12);
+}
+
+/* Improve clickable target size for Select button */
+.patient-col-actions .btn { min-height: 36px; }
+
+/* Responsive behavior */
+@media (max-width: 768px) {
+  .inline-input.search-fields {
+    grid-template-columns: 1fr; /* stack inputs */
+  }
+  .inline-input.search-fields #modalSearchPatientBtn {
+    justify-self: stretch; /* full width button */
+  }
+}
+
+/* Modal spacing and typography refinement */
+.modal .form-group { margin-bottom: 14px; }
+.modal-body { padding: 18px; }
+.modal-header { padding: 16px 18px; }
+.modal-header h3 { font-size: 18px; color: #2c3e50; }
+
+/* Keep color scheme consistent for buttons */
+.btn-outline { border-color: #cbd5e1; color: #2c3e50; }
+.btn-outline:hover { background: #eef2f7; }
+
 .patient-result { padding: 10px 12px; border: 1px solid #e0e0e0; border-radius: 10px; background: #f9fbff; }
 .patient-result .patient-name { font-weight: 700; color: #1565c0; font-size: 16px; }
 .patient-result .patient-meta { margin-top: 4px; display: flex; gap: 12px; color: #7f8c8d; font-size: 13px; align-items: center; flex-wrap: wrap; }

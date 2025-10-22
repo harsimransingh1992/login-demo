@@ -364,6 +364,9 @@
     const modalPatientSearch = document.getElementById('modalPatientSearch');
     const modalSearchPatientBtn = document.getElementById('modalSearchPatientBtn');
     const modalPatientResult = document.getElementById('modalPatientResult');
+    const modalPatientMobileSearch = document.getElementById('modalPatientMobileSearch');
+    const modalUnregisteredName = document.getElementById('modalUnregisteredName');
+    const modalUnregisteredMobile = document.getElementById('modalUnregisteredMobile');
 
     const modalNotes = document.getElementById('modalNotes');
     const submitCreateAppointmentBtn = document.getElementById('submitCreateAppointmentBtn');
@@ -419,7 +422,10 @@
         if (modalDoctorSelect) modalDoctorSelect.innerHTML = '<option value="">-- Select Doctor --</option>';
         modalDateTimeInput && (modalDateTimeInput.value = '');
         modalPatientSearch && (modalPatientSearch.value = '');
-        modalPatientResult && (modalPatientResult.textContent = '');
+        modalPatientMobileSearch && (modalPatientMobileSearch.value = '');
+        modalUnregisteredName && (modalUnregisteredName.value = '');
+        modalUnregisteredMobile && (modalUnregisteredMobile.value = '');
+        if (modalPatientResult) { modalPatientResult.innerHTML = ''; modalPatientResult.textContent = ''; }
         modalSelectedPatientId = null;
         modalSelectedPatientName = null;
         modalSelectedPatientReg = null;
@@ -472,11 +478,17 @@
         resetCreateModal();
         // Pre-fill clinic and doctor if selected in page
         if (clinicDropdown && clinicDropdown.value) {
-            modalClinicSelect.value = clinicDropdown.value;
-            loadModalDoctors(clinicDropdown.value).then(() => {
+            // Ensure clinic options are loaded so the selected value displays proper text
+            loadModalClinics().then(() => {
+                modalClinicSelect.value = clinicDropdown.value;
+                return loadModalDoctors(clinicDropdown.value);
+            }).then(() => {
                 if (selectedDoctorId) {
                     modalDoctorSelect.value = String(selectedDoctorId);
                 }
+            }).catch(() => {
+                // Fallback: set value directly even if options failed to load
+                modalClinicSelect.value = clinicDropdown.value;
             });
         } else {
             loadModalClinics();
@@ -510,14 +522,19 @@
     });
 
     modalSearchPatientBtn && modalSearchPatientBtn.addEventListener('click', async () => {
-        if (!modalPatientSearch || !modalPatientSearch.value.trim()) {
-            modalPatientResult.textContent = 'Enter a registration code to search';
+        const reg = (modalPatientSearch && modalPatientSearch.value || '').trim();
+        const mobile = (modalPatientMobileSearch && modalPatientMobileSearch.value || '').trim();
+        if (!reg && !mobile) {
+            if (modalPatientResult) modalPatientResult.textContent = 'Enter a registration code or mobile to search';
             return;
         }
-        modalPatientResult.textContent = 'Searching...';
+        if (modalPatientResult) modalPatientResult.textContent = 'Searching...';
         modalSelectedPatientId = null;
         try {
-            const url = contextPath + '/payments/search?registrationCode=' + encodeURIComponent(modalPatientSearch.value.trim());
+            const params = [];
+            if (reg) params.push('registrationCode=' + encodeURIComponent(reg));
+            if (mobile) params.push('mobile=' + encodeURIComponent(mobile));
+            const url = contextPath + '/payments/search/patients?' + params.join('&');
             const res = await fetch(url, {
                 credentials: 'same-origin',
                 headers: { 'Accept': 'application/json' }
@@ -531,41 +548,65 @@
                 try { data = JSON.parse(text); } catch { data = { success: false, message: 'Unexpected response format' }; }
             }
 
-            // Normalize possible shapes of patient data
-            let p = null;
-            if (data && data.patient) {
-                p = data.patient;
-            } else if (data && data.data && data.data.patient) {
-                p = data.data.patient;
-            } else if (data && (data.firstName || data.lastName || data.registrationCode || data.phoneNumber || data.mobile)) {
-                p = data;
+            const patients = (data && data.patients && Array.isArray(data.patients)) ? data.patients : [];
+            if (!patients.length) {
+                if (modalPatientResult) modalPatientResult.textContent = (data && data.message) ? data.message : 'No patients found';
+                return;
             }
 
-            if (p) {
-                modalSelectedPatientId = p.id || p.patientId || p.userId || null;
-                const name = ((p.firstName || '') + ' ' + (p.lastName || '')).trim() || p.patientName || p.name || 'Unknown';
-                const reg = p.registrationCode || p.regCode || p.registrationId || '';
-                const phone = p.phoneNumber || p.mobile || p.phone || '';
-                modalSelectedPatientName = name;
-                modalSelectedPatientReg = reg;
-                modalSelectedPatientMobile = phone;
-                modalPatientResult.innerHTML = `
-                    <div class="patient-result">
+            const frag = document.createDocumentFragment();
+            const list = document.createElement('div');
+            list.className = 'patient-results-list';
+            patients.forEach(p => {
+                const name = (((p.firstName || '') + ' ' + (p.lastName || '')).trim()) || 'Unknown';
+                const regCode = p.registrationCode || '';
+                const phone = p.phoneNumber || '';
+                const item = document.createElement('div');
+                item.className = 'patient-result-item';
+                item.innerHTML = `
+                    <div class="patient-result-row">
+                      <div class="patient-col">
                         <div class="patient-name">${name}</div>
                         <div class="patient-meta">
-                            ${reg ? `<span class="patient-reg">${reg}</span>` : ''}
-                            ${phone ? `<span class="patient-phone">${phone}</span>` : ''}
+                          ${regCode ? `<span class="patient-reg">Registration Code: ${regCode}</span>` : ''}
+                          ${phone ? `<span class="patient-phone">Phone Number: ${phone}</span>` : ''}
                         </div>
-                    </div>
-                `;
-            } else {
-                modalPatientResult.textContent = (data && data.message) ? data.message : 'Patient not found';
+                      </div>
+                      <div class="patient-col-actions">
+                        <button type="button" class="btn btn-primary btn-sm patient-select-btn" data-id="${p.id}" data-name="${name}" data-reg="${regCode}" data-mobile="${phone}">Select</button>
+                      </div>
+                    </div>`;
+                frag.appendChild(item);
+            });
+            list.appendChild(frag);
+            if (modalPatientResult) {
+                modalPatientResult.innerHTML = '';
+                modalPatientResult.appendChild(list);
             }
         } catch (e) {
             console.error(e);
-            modalPatientResult.textContent = 'Search failed';
+            if (modalPatientResult) modalPatientResult.textContent = 'Search failed';
         }
     });
+
+    // Delegate selection clicks in the results list
+    if (modalPatientResult) {
+        modalPatientResult.addEventListener('click', (e) => {
+            const btn = e.target.closest('.patient-select-btn');
+            if (!btn) return;
+            modalSelectedPatientId = btn.dataset.id ? Number(btn.dataset.id) : null;
+            modalSelectedPatientName = btn.dataset.name || null;
+            modalSelectedPatientReg = btn.dataset.reg || null;
+            modalSelectedPatientMobile = btn.dataset.mobile || null;
+            // Show a simple confirmation inline
+            const summary = document.createElement('div');
+            summary.className = 'patient-selected-summary';
+            summary.textContent = `Selected: ${modalSelectedPatientName || ''}${modalSelectedPatientReg ? ' ('+modalSelectedPatientReg+')' : ''}${modalSelectedPatientMobile ? ' · '+modalSelectedPatientMobile : ''}`;
+            // Clear list and show summary to reduce ambiguity
+            modalPatientResult.innerHTML = '';
+            modalPatientResult.appendChild(summary);
+        });
+    }
 
     async function submitCreateAppointment() {
         modalError.style.display = 'none';
@@ -578,18 +619,31 @@
         let isoDateTime;
         try { isoDateTime = dateTimeStr; } catch (_) { isoDateTime = null; }
         if (!isoDateTime) { modalError.textContent = 'Invalid date/time format'; modalError.style.display = 'block'; return; }
-        if (!modalSelectedPatientId) {
-            modalError.textContent = 'Please search and select a registered patient';
-            modalError.style.display = 'block';
-            return;
-        }
         const payload = {
             clinicId: clinicId,
             doctorId: Number(doctorId),
             appointmentDateTime: isoDateTime,
-            patientId: Number(modalSelectedPatientId),
             notes: (modalNotes && modalNotes.value) ? modalNotes.value : null
         };
+        if (modalSelectedPatientId) {
+            payload.patientId = Number(modalSelectedPatientId);
+        } else {
+            const manualName = (modalUnregisteredName && modalUnregisteredName.value || '').trim();
+            const manualMobile = (modalUnregisteredMobile && modalUnregisteredMobile.value || '').trim();
+            if (!manualName || !manualMobile) {
+                modalError.textContent = 'Enter patient name and mobile when no registered patient is selected';
+                modalError.style.display = 'block';
+                return;
+            }
+            const mobileOk = /^\+?[0-9][0-9\s-]{6,}$/.test(manualMobile);
+            if (!mobileOk) {
+                modalError.textContent = 'Please enter a valid mobile number';
+                modalError.style.display = 'block';
+                return;
+            }
+            payload.patientName = manualName;
+            payload.patientMobile = manualMobile;
+        }
         let created = false;
         try {
             const headers = { 'Content-Type': 'application/json' };
@@ -631,7 +685,7 @@
             const dtPretty = isoDateTime.replace('T',' ');
             const patientText = modalSelectedPatientName
               ? `${modalSelectedPatientName}${modalSelectedPatientReg ? ' ('+modalSelectedPatientReg+')' : ''}${modalSelectedPatientMobile ? ' · '+modalSelectedPatientMobile : ''}`
-              : `Patient ID ${modalSelectedPatientId}`;
+              : (payload.patientName ? `${payload.patientName}${payload.patientMobile ? ' · '+payload.patientMobile : ''}` : (modalSelectedPatientId ? `Patient ID ${modalSelectedPatientId}` : 'Unregistered patient'));
             const apptIdText = data && (data.appointmentId || data.id) ? ` · ID ${data.appointmentId || data.id}` : '';
 
             showToast({ type: 'success', title: 'Appointment created', message: `${clinicText} · ${doctorText} · ${dtPretty} · ${patientText}${apptIdText}` });
