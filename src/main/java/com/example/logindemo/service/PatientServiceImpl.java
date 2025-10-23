@@ -14,6 +14,7 @@ import com.example.logindemo.utils.PeriDeskUtils;
 import lombok.NonNull;
 import lombok.extern.slf4j.Slf4j;
 import org.modelmapper.ModelMapper;
+import org.springframework.beans.factory.annotation.Autowired;
 
 import org.springframework.data.domain.Page;
 import org.springframework.data.domain.Pageable;
@@ -30,6 +31,8 @@ import java.util.Calendar;
 import java.util.Collections;
 import java.util.Date;
 import java.util.List;
+import java.util.Map;
+import java.util.HashMap;
 import java.util.Optional;
 
 @Service
@@ -61,6 +64,9 @@ public class PatientServiceImpl implements PatientService{
     @Resource
     private UserService userService;
 
+    @Autowired
+    private UserJourneyService userJourneyService;
+
     @Override
     public void checkInPatient(Long patientId, String currentClinicId) {
         Optional<Patient> patients = patientRepository.findById(patientId);
@@ -88,6 +94,27 @@ public class PatientServiceImpl implements PatientService{
         patient.setCurrentCheckInRecord(checkInRecord);
         patient.setCheckedIn(true); // Ensure checked in status is set
         
+        // Log journey event for clinic check-in
+        try {
+            Map<String, Object> payload = new HashMap<>();
+            payload.put("eventType", "clinic_checkin");
+            payload.put("eventStatus", "WAITING");
+            payload.put("eventDesc", "Patient checked in at clinic");
+            payload.put("patientId", patient.getId());
+            payload.put("patientName", patient.getFirstName() + (patient.getLastName() != null ? (" " + patient.getLastName()) : ""));
+            if (currentClinicModel.getClinic() != null) {
+                payload.put("clinicId", currentClinicModel.getClinic().getClinicId());
+                payload.put("clinicName", currentClinicModel.getClinic().getClinicName());
+            }
+            payload.put("doctorId", checkInRecord.getAssignedDoctor() != null ? checkInRecord.getAssignedDoctor().getId() : null);
+            payload.put("doctorName", checkInRecord.getAssignedDoctor() != null ? checkInRecord.getAssignedDoctor().getFirstName() + " " + checkInRecord.getAssignedDoctor().getLastName() : null);
+            payload.put("metadata", Map.of(
+                "checkInRecordId", checkInRecord.getId(),
+                "status", checkInRecord.getStatus().toString()
+            ));
+            userJourneyService.logEvent(payload);
+        } catch (Exception ignore) {}
+        
         // Save the patient with updated relationships
         patientRepository.save(patient);
         
@@ -106,8 +133,31 @@ public class PatientServiceImpl implements PatientService{
                 
                 // Set check-out time on the current check-in record
                 if (patient.getCurrentCheckInRecord() != null) {
-                    patient.getCurrentCheckInRecord().setCheckOutTime(LocalDateTime.now());
-                    checkInRecordRepository.save(patient.getCurrentCheckInRecord());
+                    CheckInRecord currentRecord = patient.getCurrentCheckInRecord();
+                    currentRecord.setCheckOutTime(LocalDateTime.now());
+                    checkInRecordRepository.save(currentRecord);
+
+                    // Log clinic checkout event
+                    try {
+                        Map<String, Object> payload = new HashMap<>();
+                        payload.put("eventType", "clinic_checkout");
+                        payload.put("eventDesc", "Patient checked out from clinic");
+                        payload.put("patientId", patient.getId());
+                        payload.put("patientName", (patient.getFirstName() + " " + (patient.getLastName() != null ? patient.getLastName() : "")).trim());
+                        if (currentRecord.getClinic() != null) {
+                            payload.put("clinicId", currentRecord.getClinic().getId());
+                            payload.put("clinicName", currentRecord.getClinic().getClinicName());
+                        }
+                        payload.put("doctorId", currentRecord.getAssignedDoctor() != null ? currentRecord.getAssignedDoctor().getId() : null);
+                        payload.put("doctorName", currentRecord.getAssignedDoctor() != null ? (currentRecord.getAssignedDoctor().getFirstName() + " " + currentRecord.getAssignedDoctor().getLastName()).trim() : null);
+                        payload.put("metadata", Map.of(
+                                "checkInRecordId", currentRecord.getId(),
+                                "checkInTime", currentRecord.getCheckInTime() != null ? currentRecord.getCheckInTime().toString() : null,
+                                "checkOutTime", currentRecord.getCheckOutTime() != null ? currentRecord.getCheckOutTime().toString() : null,
+                                "status", currentRecord.getStatus() != null ? currentRecord.getStatus().toString() : null
+                        ));
+                        userJourneyService.logEvent(payload);
+                    } catch (Exception ignore) {}
                 }
                 patient.setCurrentCheckInRecord(null);
                 
@@ -128,8 +178,31 @@ public class PatientServiceImpl implements PatientService{
                     
                     // Set check-out time on the current check-in record
                     if (patient.getCurrentCheckInRecord() != null) {
-                        patient.getCurrentCheckInRecord().setCheckOutTime(LocalDateTime.now());
-                        checkInRecordRepository.save(patient.getCurrentCheckInRecord());
+                        CheckInRecord currentRecord = patient.getCurrentCheckInRecord();
+                        currentRecord.setCheckOutTime(LocalDateTime.now());
+                        checkInRecordRepository.save(currentRecord);
+
+                        // Log clinic checkout event
+                        try {
+                            Map<String, Object> payload = new HashMap<>();
+                            payload.put("eventType", "clinic_checkout");
+                            payload.put("eventDesc", "Patient checked out from clinic");
+                            payload.put("patientId", patient.getId());
+                            payload.put("patientName", (patient.getFirstName() + " " + (patient.getLastName() != null ? patient.getLastName() : "")).trim());
+                            if (currentRecord.getClinic() != null) {
+                                payload.put("clinicId", currentRecord.getClinic().getId());
+                                payload.put("clinicName", currentRecord.getClinic().getClinicName());
+                            }
+                            payload.put("doctorId", currentRecord.getAssignedDoctor() != null ? currentRecord.getAssignedDoctor().getId() : null);
+                            payload.put("doctorName", currentRecord.getAssignedDoctor() != null ? (currentRecord.getAssignedDoctor().getFirstName() + " " + currentRecord.getAssignedDoctor().getLastName()).trim() : null);
+                            payload.put("metadata", Map.of(
+                                    "checkInRecordId", currentRecord.getId(),
+                                    "checkInTime", currentRecord.getCheckInTime() != null ? currentRecord.getCheckInTime().toString() : null,
+                                    "checkOutTime", currentRecord.getCheckOutTime() != null ? currentRecord.getCheckOutTime().toString() : null,
+                                    "status", currentRecord.getStatus() != null ? currentRecord.getStatus().toString() : null
+                            ));
+                            userJourneyService.logEvent(payload);
+                        } catch (Exception ignore) {}
                     }
                     patient.setCurrentCheckInRecord(null);
                     
@@ -221,6 +294,23 @@ public class PatientServiceImpl implements PatientService{
             patientRepository.save(patient);
             log.info("Successfully registered patient with ID: {} and registration code: {} by user: {} at clinic: {}", 
                 patient.getId(), registrationCode, currentUser.getUsername(), currentUser.getClinic().getClinicName());
+
+            // Log journey event for registration
+            try {
+                Map<String, Object> payload = new HashMap<>();
+                payload.put("eventType", "registration");
+                payload.put("eventStatus", "SUCCESS");
+                payload.put("eventDesc", "Patient registered");
+                payload.put("patientId", patient.getId());
+                payload.put("patientName", patient.getFirstName() + (patient.getLastName() != null ? (" " + patient.getLastName()) : ""));
+                payload.put("clinicId", currentUser.getClinic().getClinicId());
+                payload.put("clinicName", currentUser.getClinic().getClinicName());
+                payload.put("metadata", Map.of(
+                    "registrationCode", registrationCode,
+                    "phoneNumber", patient.getPhoneNumber()
+                ));
+                userJourneyService.logEvent(payload);
+            } catch (Exception ignore) {}
         } catch (Exception e) {
             log.error("Error registering patient: {}", e.getMessage(), e);
             throw new RuntimeException("Failed to register patient: " + e.getMessage(), e);

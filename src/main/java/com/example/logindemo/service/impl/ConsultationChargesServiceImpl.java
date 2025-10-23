@@ -39,6 +39,9 @@ public class ConsultationChargesServiceImpl implements ConsultationChargesServic
     @Autowired
     private UserService userService;
 
+    @Autowired
+    private com.example.logindemo.service.UserJourneyService userJourneyService;
+
     @Override
     public Double getConsultationFee(String clinicId) {
         try {
@@ -162,6 +165,32 @@ public class ConsultationChargesServiceImpl implements ConsultationChargesServic
             
             // Save payment entry
             PaymentEntry savedPaymentEntry = paymentEntryRepository.save(paymentEntry);
+            
+            // Log user journey event for consultation payment
+            try {
+                java.util.Map<String, Object> payload = new java.util.HashMap<>();
+                payload.put("patientId", patient.getId());
+                payload.put("patientName", patient.getFirstName() + " " + patient.getLastName());
+                payload.put("clinicId", clinic.getId());
+                payload.put("clinicName", clinic.getClinicName());
+                com.example.logindemo.model.User doctorForEvent = treatingDoctor != null ? treatingDoctor : currentUser;
+                payload.put("doctorId", doctorForEvent != null ? doctorForEvent.getId() : null);
+                payload.put("doctorName", doctorForEvent != null ? (doctorForEvent.getFirstName() + " " + doctorForEvent.getLastName()) : null);
+                payload.put("examinationId", savedExamination.getId());
+                payload.put("eventType", "payment_transaction");
+                payload.put("eventStatus", "success");
+                payload.put("eventDesc", "Consultation payment captured");
+                payload.put("amount", consultationFee);
+                java.util.Map<String, Object> metadata = new java.util.HashMap<>();
+                metadata.put("paymentEntryId", savedPaymentEntry.getId());
+                metadata.put("paymentMode", paymentMode != null ? paymentMode.toString() : null);
+                metadata.put("notes", paymentNotes);
+                metadata.put("source", "web");
+                payload.put("metadata", metadata);
+                userJourneyService.logEvent(payload);
+            } catch (Exception le) {
+                log.warn("Failed to log consultation payment_transaction event: {}", le.getMessage());
+            }
             
             // Add payment entry to examination
             if (savedExamination.getPaymentEntries() == null) {

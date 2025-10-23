@@ -124,6 +124,9 @@ public class PatientController {
     @Autowired
     private PaymentEntryRepository paymentEntryRepository;
 
+    @Autowired
+    private UserJourneyService userJourneyService;
+
     @InitBinder
     public void initBinder(WebDataBinder binder) {
         // Register custom date editor for dateOfBirth
@@ -517,6 +520,30 @@ public class PatientController {
 
             // Save the patient with the updated check-in record
             patientService.savePatient(patient);
+
+            // Log patient clinic check-in
+            try {
+                Map<String, Object> payload = new HashMap<>();
+                payload.put("eventType", "clinic_checkin");
+                payload.put("eventStatus", checkInRecord.getStatus() != null ? checkInRecord.getStatus().toString() : "WAITING");
+                payload.put("eventDesc", "Patient checked in at clinic");
+                payload.put("patientId", patient.getId());
+                payload.put("patientName", (patient.getFirstName() + " " + (patient.getLastName() != null ? patient.getLastName() : "")).trim());
+                if (loggedInUser.getClinic() != null) {
+                    payload.put("clinicId", loggedInUser.getClinic().getId());
+                    payload.put("clinicName", loggedInUser.getClinic().getClinicName());
+                }
+                payload.put("doctorId", checkInRecord.getAssignedDoctor() != null ? checkInRecord.getAssignedDoctor().getId() : null);
+                payload.put("doctorName", checkInRecord.getAssignedDoctor() != null ? (checkInRecord.getAssignedDoctor().getFirstName() + " " + checkInRecord.getAssignedDoctor().getLastName()).trim() : null);
+                payload.put("metadata", Map.of(
+                        "checkInRecordId", checkInRecord.getId(),
+                        "checkInTime", checkInRecord.getCheckInTime() != null ? checkInRecord.getCheckInTime().toString() : null,
+                        "status", checkInRecord.getStatus() != null ? checkInRecord.getStatus().toString() : null
+                ));
+                userJourneyService.logEvent(payload);
+            } catch (Exception e) {
+                log.warn("Failed to log clinic_checkin event: {}", e.getMessage());
+            }
 
             //Create appointment upon check-in
             //createAppointment(patient, loggedInUser, checkInRecord);
@@ -2520,6 +2547,33 @@ public class PatientController {
             transition.setCompleted(true);
             transition.setTransitionedBy(getCurrentUser());
             procedureLifecycleTransitionRepository.save(transition);
+
+            // Log user journey event for status change
+            try {
+                Map<String, Object> payload = new HashMap<>();
+                Patient p = examination.getPatient();
+                ClinicModel c = examination.getExaminationClinic();
+                payload.put("patientId", p != null ? p.getId() : null);
+                payload.put("patientName", p != null ? (p.getFirstName() + " " + p.getLastName()) : null);
+                payload.put("clinicId", c != null ? c.getId() : null);
+                payload.put("clinicName", c != null ? c.getClinicName() : null);
+                User doctorForEvent = examination.getDoctor() != null ? examination.getDoctor() : getCurrentUser();
+                payload.put("doctorId", doctorForEvent != null ? doctorForEvent.getId() : null);
+                payload.put("doctorName", doctorForEvent != null ? (doctorForEvent.getFirstName() + " " + doctorForEvent.getLastName()) : null);
+                payload.put("examinationId", examination.getId());
+                payload.put("eventType", "status_changed");
+                payload.put("eventStatus", "success");
+                payload.put("eventDesc", "Status changed");
+                payload.put("amount", examination.getEffectiveTotalProcedureAmount() != null ? examination.getEffectiveTotalProcedureAmount() : examination.getTotalProcedureAmount());
+                Map<String, Object> metadata = new HashMap<>();
+                metadata.put("fromStatus", currentStatus.toString());
+                metadata.put("toStatus", newStatus.toString());
+                metadata.put("source", "web");
+                payload.put("metadata", metadata);
+                userJourneyService.logEvent(payload);
+            } catch (Exception le) {
+                log.warn("Failed to log status_changed event: {}", le.getMessage());
+            }
 
             log.info("=== STATUS UPDATE SUCCESS ===");
             log.info("Successfully updated examination {} status from {} to {}",
@@ -4582,6 +4636,32 @@ public class PatientController {
                 savedAppointment.getId(), patient.getFirstName() + " " + patient.getLastName(), 
                 appointmentDate, appointmentTime);
             
+            // Log user journey event for appointment booking
+            try {
+                Map<String, Object> payload = new HashMap<>();
+                payload.put("patientId", patient.getId());
+                payload.put("patientName", patient.getFirstName() + " " + patient.getLastName());
+                payload.put("clinicId", clinic != null ? clinic.getId() : null);
+                payload.put("clinicName", clinic != null ? clinic.getClinicName() : null);
+                User doctorForEvent = savedAppointment.getDoctor() != null ? savedAppointment.getDoctor() : currentUser;
+                payload.put("doctorId", doctorForEvent != null ? doctorForEvent.getId() : null);
+                payload.put("doctorName", doctorForEvent != null ? (doctorForEvent.getFirstName() + " " + doctorForEvent.getLastName()) : null);
+                payload.put("appointmentId", savedAppointment.getId());
+                payload.put("eventType", "appointment_booked");
+                payload.put("eventStatus", "success");
+                payload.put("eventDesc", "Appointment booked");
+                payload.put("amount", null);
+                Map<String, Object> metadata = new HashMap<>();
+                metadata.put("appointmentDate", appointmentDate);
+                metadata.put("appointmentTime", appointmentTime);
+                metadata.put("notes", notes);
+                metadata.put("source", "web");
+                payload.put("metadata", metadata);
+                userJourneyService.logEvent(payload);
+            } catch (Exception le) {
+                log.warn("Failed to log appointment_booked event: {}", le.getMessage());
+            }
+            
             return ResponseEntity.ok(Map.of(
                 "success", true,
                 "message", "Appointment scheduled successfully",
@@ -4880,6 +4960,30 @@ public class PatientController {
                 
                 log.info("Created examination {} for patient {} tooth {} with procedure {}", 
                     saved.getId(), patientId, toothNumber.toString(), procedureDTO.getProcedureName());
+                
+                // Log user journey event for examination creation
+                try {
+                    Map<String, Object> payload = new HashMap<>();
+                    payload.put("patientId", patient.getId());
+                    payload.put("patientName", patient.getFirstName() + " " + patient.getLastName());
+                    payload.put("clinicId", clinic != null ? clinic.getId() : null);
+                    payload.put("clinicName", clinic != null ? clinic.getClinicName() : null);
+                    payload.put("doctorId", currentUser != null ? currentUser.getId() : null);
+                    payload.put("doctorName", currentUser != null ? (currentUser.getFirstName() + " " + currentUser.getLastName()) : null);
+                    payload.put("eventType", "examination_added");
+                    payload.put("eventStatus", "success");
+                    payload.put("eventDesc", "Examination added");
+                    payload.put("amount", saved.getEffectiveTotalProcedureAmount() != null ? saved.getEffectiveTotalProcedureAmount() : saved.getTotalProcedureAmount());
+                    Map<String, Object> metadata = new HashMap<>();
+                    metadata.put("examinationId", saved.getId());
+                    metadata.put("tooth", toothNumber.toString());
+                    metadata.put("procedureId", procedure.getId());
+                    metadata.put("procedureName", procedureDTO.getProcedureName());
+                    payload.put("metadata", metadata);
+                    userJourneyService.logEvent(payload);
+                } catch (Exception le) {
+                    log.warn("Failed to log examination_added event: {}", le.getMessage());
+                }
             }
 
             return ResponseEntity.ok(Map.of(

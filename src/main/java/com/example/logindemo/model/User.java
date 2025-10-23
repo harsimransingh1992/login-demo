@@ -100,4 +100,11 @@ public class User {
         inverseJoinColumns = @JoinColumn(name = "clinic_id")
     )
     private List<ClinicModel> accessibleClinics;
+
+    // Explicit getters/setters to ensure compilation when Lombok is unavailable
+    public String getEmail() { return this.email; }
+    public String getFirstName() { return this.firstName; }
+    public String getUsername() { return this.username; }
+    public void setPassword(String password) { this.password = password; }
+    public void setForcePasswordChange(Boolean force) { this.forcePasswordChange = force; }
 }

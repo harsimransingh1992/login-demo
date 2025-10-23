@@ -67,6 +67,9 @@ public class ToothClinicalExaminationServiceImpl implements ToothClinicalExamina
     @Autowired
     private ProcedurePriceHistoryRepository priceHistoryRepository;
 
+    @Autowired
+    private com.example.logindemo.service.UserJourneyService userJourneyService;
+
     @Override
     public ToothClinicalExaminationDTO updateExamination(ToothClinicalExaminationDTO examinationDTO) {
         // Get the existing examination
@@ -289,19 +292,108 @@ public class ToothClinicalExaminationServiceImpl implements ToothClinicalExamina
         examination.setProcedure(procedure);
         examination.setBasePriceAtAssociation(basePrice);
         examination.setPaymentAmount(basePrice); // updates totalProcedureAmount internally
+        // Log user journey event for procedure association
+        try {
+            java.util.Map<String, Object> payload = new java.util.HashMap<>();
+            com.example.logindemo.model.Patient p = examination.getPatient();
+            com.example.logindemo.model.ClinicModel c = examination.getExaminationClinic();
+            payload.put("patientId", p != null ? p.getId() : null);
+            payload.put("patientName", p != null ? (p.getFirstName() + " " + p.getLastName()) : null);
+            payload.put("clinicId", c != null ? c.getId() : null);
+            payload.put("clinicName", c != null ? c.getClinicName() : null);
+            com.example.logindemo.model.User doctorForEvent = examination.getDoctor() != null ? examination.getDoctor() : com.example.logindemo.utils.PeriDeskUtils.getCurrentUser();
+            payload.put("doctorId", doctorForEvent != null ? doctorForEvent.getId() : null);
+            payload.put("doctorName", doctorForEvent != null ? (doctorForEvent.getFirstName() + " " + doctorForEvent.getLastName()) : null);
+            payload.put("examinationId", examination.getId());
+            payload.put("eventType", "examination_updated");
+            payload.put("eventStatus", "success");
+            payload.put("eventDesc", "Procedure associated with examination");
+            java.util.Map<String, Object> metadata = new java.util.HashMap<>();
+            metadata.put("associatedProcedureId", procedureId);
+            metadata.put("associatedProcedureName", procedure.getProcedureName());
+            metadata.put("basePriceAtAssociation", basePrice);
+            payload.put("metadata", metadata);
+            userJourneyService.logEvent(payload);
+        } catch (Exception le) {
+            log.warn("Failed to log examination_updated event: {}", le.getMessage());
+        }
+
         toothClinicalExaminationRepository.save(examination);
     }
 
     @Override
     public ToothClinicalExamination saveExamination(ToothClinicalExamination examination) {
-        return toothClinicalExaminationRepository.save(examination);
+        ToothClinicalExamination saved = toothClinicalExaminationRepository.save(examination);
+        // Log user journey event for examination creation
+        try {
+            java.util.Map<String, Object> payload = new java.util.HashMap<>();
+            com.example.logindemo.model.Patient p = saved.getPatient();
+            com.example.logindemo.model.ClinicModel c = saved.getExaminationClinic();
+            payload.put("patientId", p != null ? p.getId() : null);
+            payload.put("patientName", p != null ? (p.getFirstName() + " " + p.getLastName()) : null);
+            payload.put("clinicId", c != null ? c.getId() : null);
+            payload.put("clinicName", c != null ? c.getClinicName() : null);
+            com.example.logindemo.model.User doctorForEvent = saved.getAssignedDoctor() != null ? saved.getAssignedDoctor() : com.example.logindemo.utils.PeriDeskUtils.getCurrentUser();
+            payload.put("doctorId", doctorForEvent != null ? doctorForEvent.getId() : null);
+            payload.put("doctorName", doctorForEvent != null ? (doctorForEvent.getFirstName() + " " + doctorForEvent.getLastName()) : null);
+            payload.put("examinationId", saved.getId());
+            payload.put("eventType", "examination_added");
+            payload.put("eventStatus", "success");
+            payload.put("eventDesc", "Examination created");
+            java.util.Map<String, Object> metadata = new java.util.HashMap<>();
+            if (saved.getProcedure() != null) {
+                metadata.put("procedureId", saved.getProcedure().getId());
+                metadata.put("procedureName", saved.getProcedure().getProcedureName());
+                metadata.put("procedurePrice", saved.getProcedure().getPrice());
+            }
+            if (saved.getToothNumber() != null) {
+                metadata.put("toothNumber", saved.getToothNumber().toString());
+            }
+            metadata.put("source", "service");
+            payload.put("metadata", metadata);
+            userJourneyService.logEvent(payload);
+        } catch (Exception le) {
+            log.warn("Failed to log examination_added event: {}", le.getMessage());
+        }
+        return saved;
     }
 
     @Override
-    public ToothClinicalExaminationDTO saveExamination(ToothClinicalExaminationDTO examinationDTO) {
-        ToothClinicalExamination examination = modelMapper.map(examinationDTO, ToothClinicalExamination.class);
-        ToothClinicalExamination savedExamination = toothClinicalExaminationRepository.save(examination);
-        return modelMapper.map(savedExamination, ToothClinicalExaminationDTO.class);
+    public ToothClinicalExaminationDTO saveExamination(com.example.logindemo.dto.ToothClinicalExaminationDTO examinationDTO) {
+        com.example.logindemo.model.ToothClinicalExamination examination = modelMapper.map(examinationDTO, com.example.logindemo.model.ToothClinicalExamination.class);
+        com.example.logindemo.model.ToothClinicalExamination savedExamination = toothClinicalExaminationRepository.save(examination);
+        // Log user journey event for examination creation (DTO)
+        try {
+            java.util.Map<String, Object> payload = new java.util.HashMap<>();
+            com.example.logindemo.model.Patient p = savedExamination.getPatient();
+            com.example.logindemo.model.ClinicModel c = savedExamination.getExaminationClinic();
+            payload.put("patientId", p != null ? p.getId() : null);
+            payload.put("patientName", p != null ? (p.getFirstName() + " " + p.getLastName()) : null);
+            payload.put("clinicId", c != null ? c.getId() : null);
+            payload.put("clinicName", c != null ? c.getClinicName() : null);
+            com.example.logindemo.model.User doctorForEvent = savedExamination.getAssignedDoctor() != null ? savedExamination.getAssignedDoctor() : com.example.logindemo.utils.PeriDeskUtils.getCurrentUser();
+            payload.put("doctorId", doctorForEvent != null ? doctorForEvent.getId() : null);
+            payload.put("doctorName", doctorForEvent != null ? (doctorForEvent.getFirstName() + " " + doctorForEvent.getLastName()) : null);
+            payload.put("examinationId", savedExamination.getId());
+            payload.put("eventType", "examination_added");
+            payload.put("eventStatus", "success");
+            payload.put("eventDesc", "Examination created (DTO)");
+            java.util.Map<String, Object> metadata = new java.util.HashMap<>();
+            if (savedExamination.getProcedure() != null) {
+                metadata.put("procedureId", savedExamination.getProcedure().getId());
+                metadata.put("procedureName", savedExamination.getProcedure().getProcedureName());
+                metadata.put("procedurePrice", savedExamination.getProcedure().getPrice());
+            }
+            if (savedExamination.getToothNumber() != null) {
+                metadata.put("toothNumber", savedExamination.getToothNumber().toString());
+            }
+            metadata.put("source", "service");
+            payload.put("metadata", metadata);
+            userJourneyService.logEvent(payload);
+        } catch (Exception le) {
+            log.warn("Failed to log examination_added event (DTO): {}", le.getMessage());
+        }
+        return modelMapper.map(savedExamination, com.example.logindemo.dto.ToothClinicalExaminationDTO.class);
     }
 
     @Override
@@ -491,6 +583,35 @@ public class ToothClinicalExaminationServiceImpl implements ToothClinicalExamina
             log.info("Changed status from PAYMENT_PENDING to PAYMENT_COMPLETED for examination: {}", examinationId);
         } else {
             log.info("Payment collected but status remains {} for examination: {}", examination.getProcedureStatus(), examinationId);
+        }
+
+        // Log user journey event for payment transaction
+        try {
+            java.util.Map<String, Object> payload = new java.util.HashMap<>();
+            com.example.logindemo.model.Patient p = examination.getPatient();
+            com.example.logindemo.model.ClinicModel c = examination.getExaminationClinic();
+            payload.put("patientId", p != null ? p.getId() : null);
+            payload.put("patientName", p != null ? (p.getFirstName() + " " + p.getLastName()) : null);
+            payload.put("clinicId", c != null ? c.getId() : null);
+            payload.put("clinicName", c != null ? c.getClinicName() : null);
+            com.example.logindemo.model.User doctorForEvent = examination.getDoctor() != null ? examination.getDoctor() : PeriDeskUtils.getCurrentUser();
+            payload.put("doctorId", doctorForEvent != null ? doctorForEvent.getId() : null);
+            payload.put("doctorName", doctorForEvent != null ? (doctorForEvent.getFirstName() + " " + doctorForEvent.getLastName()) : null);
+            payload.put("examinationId", examination.getId());
+            payload.put("eventType", "payment_transaction");
+            payload.put("eventStatus", "success");
+            payload.put("eventDesc", "Payment captured");
+            payload.put("amount", savedEntry.getAmount());
+            java.util.Map<String, Object> metadata = new java.util.HashMap<>();
+            metadata.put("paymentEntryId", savedEntry.getId());
+            metadata.put("paymentMode", paymentMode != null ? paymentMode.toString() : null);
+            metadata.put("notes", notes);
+            metadata.put("transactionReference", transactionReference);
+            metadata.put("source", "web");
+            payload.put("metadata", metadata);
+            userJourneyService.logEvent(payload);
+        } catch (Exception le) {
+            log.warn("Failed to log payment_transaction event: {}", le.getMessage());
         }
 
         toothClinicalExaminationRepository.save(examination);
