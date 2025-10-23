@@ -19,6 +19,17 @@
                         <link rel="stylesheet"
                             href="https://cdnjs.cloudflare.com/ajax/libs/font-awesome/6.4.0/css/all.min.css">
                         <script src="https://code.jquery.com/jquery-3.6.4.min.js"></script>
+                        <!-- Resource Hints for faster connections -->
+                        <link rel="dns-prefetch" href="https://fonts.googleapis.com">
+                        <link rel="preconnect" href="https://fonts.googleapis.com" crossorigin>
+                        <link rel="dns-prefetch" href="https://fonts.gstatic.com">
+                        <link rel="preconnect" href="https://fonts.gstatic.com" crossorigin>
+                        <link rel="dns-prefetch" href="https://cdn.jsdelivr.net">
+                        <link rel="preconnect" href="https://cdn.jsdelivr.net" crossorigin>
+                        <link rel="dns-prefetch" href="https://cdnjs.cloudflare.com">
+                        <link rel="preconnect" href="https://cdnjs.cloudflare.com" crossorigin>
+                        <link rel="dns-prefetch" href="https://code.jquery.com">
+                        <link rel="preconnect" href="https://code.jquery.com" crossorigin>
                         <!-- FullCalendar (jQuery v3) via jsDelivr to avoid ORB on cdnjs -->
                         <link rel="stylesheet"
                             href="https://cdn.jsdelivr.net/npm/fullcalendar@3.10.5/dist/fullcalendar.min.css" />
@@ -1078,6 +1089,12 @@
                                 }
                             }
                         </style>
+                        <script>
+                            // Performance mark for DOMContentLoaded
+                            document.addEventListener('DOMContentLoaded', function () { 
+                                try { performance.mark('calendar-dcl'); } catch (e) {}
+                            });
+                        </script>
                     </head>
 
                     <body>
@@ -2015,6 +2032,7 @@
                             }
 
                             function initFullCalendar() {
+                                try { performance.mark('calendar-init-start'); } catch (e) {}
                                 var calendarEl = $('#appointmentsCalendar');
                                 var label = document.getElementById('calendarDateLabel');
                                 if (!calendarEl.length) return;
@@ -2082,6 +2100,15 @@
                                     viewRender: function(view, element) {
                                         // Update the date label when view changes
                                         updateDateLabel(view);
+                                        // Measure time to first render once
+                                        if (!window.__calendarFirstRenderDone) {
+                                            try {
+                                                performance.mark('calendar-first-render');
+                                                performance.measure('calendar-init-to-first-render', 'calendar-init-start', 'calendar-first-render');
+                                                try { performance.measure('calendar-dcl-to-first-render', 'calendar-dcl', 'calendar-first-render'); } catch (e) {}
+                                            } catch (e) {}
+                                            window.__calendarFirstRenderDone = true;
+                                        }
                                     },
                                     eventRender: function (event, element) {
                                         // Color by status
@@ -2669,6 +2696,18 @@
                                         btnLoadingText.style.display = 'inline';
                                     });
                                 }
+                            });
+                        </script>
+                        <script>
+                            // Non-invasive image optimization: lazy-load and async decode uploads
+                            document.addEventListener('DOMContentLoaded', function() {
+                                try {
+                                    var images = document.querySelectorAll('img[src*="/uploads/"]');
+                                    images.forEach(function(img) {
+                                        if (!img.hasAttribute('loading')) img.setAttribute('loading', 'lazy');
+                                        if (!img.hasAttribute('decoding')) img.setAttribute('decoding', 'async');
+                                    });
+                                } catch (e) {}
                             });
                         </script>
                     </body>
