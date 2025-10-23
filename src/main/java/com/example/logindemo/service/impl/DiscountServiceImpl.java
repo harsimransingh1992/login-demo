@@ -49,12 +49,9 @@ public class DiscountServiceImpl implements DiscountService {
             return true;
         }
 
-        // Doctors can only discount their own examinations
+        // Doctors can apply discount to any examination when permission is enabled
         if (role == UserRole.DOCTOR || role == UserRole.OPD_DOCTOR) {
-            return (examination.getAssignedDoctor() != null &&
-                    examination.getAssignedDoctor().getId().equals(user.getId())) ||
-                   (examination.getOpdDoctor() != null &&
-                    examination.getOpdDoctor().getId().equals(user.getId()));
+            return true;
         }
 
         // Staff cannot apply discounts, even if permission is set
@@ -82,18 +79,8 @@ public class DiscountServiceImpl implements DiscountService {
         }
 
         if (role == UserRole.DOCTOR || role == UserRole.OPD_DOCTOR) {
-            boolean isAssignedDoctor = examination.getAssignedDoctor() != null &&
-                    examination.getAssignedDoctor().getId().equals(user.getId());
-            boolean isOpdDoctor = examination.getOpdDoctor() != null &&
-                    examination.getOpdDoctor().getId().equals(user.getId());
-
-            if (isAssignedDoctor || isOpdDoctor) {
-                return null; // allowed
-            }
-
-            Long assignedId = examination.getAssignedDoctor() != null ? examination.getAssignedDoctor().getId() : null;
-            Long opdId = examination.getOpdDoctor() != null ? examination.getOpdDoctor().getId() : null;
-            return String.format("Not assigned to this examination: assignedDoctorId=%s, opdDoctorId=%s", assignedId, opdId);
+            // Relaxed: allow doctors to apply discounts regardless of assignment when permission is enabled
+            return null; // allowed
         }
 
         return String.format("Role '%s' not permitted to apply discounts", role);

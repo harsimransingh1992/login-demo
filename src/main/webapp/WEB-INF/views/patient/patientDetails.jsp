@@ -35,7 +35,15 @@
         const contextPath = '${pageContext.request.contextPath}';
         // Permission flag for discount actions
         const CURRENT_USER_CAN_APPLY_DISCOUNT = ('${currentUser.canApplyDiscount}' === 'true');
+        console.log('[PD] CURRENT_USER_CAN_APPLY_DISCOUNT =', CURRENT_USER_CAN_APPLY_DISCOUNT);
     </script>
+    <script>window.CURRENT_USER_CAN_ASSIGN_PROCEDURE = false;</script>
+    <sec:authorize access="hasAnyRole('DOCTOR','OPD_DOCTOR','ADMIN')">
+    <script>window.CURRENT_USER_CAN_ASSIGN_PROCEDURE = true; console.log('[Gate] hasAnyRole(DOCTOR,OPD_DOCTOR,ADMIN): TRUE');</script>
+    </sec:authorize>
+    <sec:authorize access="!hasAnyRole('DOCTOR','OPD_DOCTOR','ADMIN')">
+    <script>console.log('[Gate] hasAnyRole(DOCTOR,OPD_DOCTOR,ADMIN): FALSE');</script>
+    </sec:authorize>
     <script src="${pageContext.request.contextPath}/js/patient-details.js?v=notesModalFix2"></script>
 <script>
 // Fallback: define openNotesModal globally if not provided by patient-details.js
@@ -437,45 +445,104 @@ window.openNotesModal = window.openNotesModal || function(examId) {
             const selectedCountSpan = document.getElementById('selectedExaminationCount');
 
             selectedCountSpan.textContent = selectedCount;
+            console.log('[PD] updateTableSelectionCount called:', { selectedCount, canApplyDiscount: CURRENT_USER_CAN_APPLY_DISCOUNT, canAssignProcedure: window.CURRENT_USER_CAN_ASSIGN_PROCEDURE });
 
             if (selectedCount > 0) {
                 selectedCountDisplay.style.visibility = 'visible';
-                if (bulkUploadBtn) bulkUploadBtn.disabled = false;
-                if (bulkAssignBtn) bulkAssignBtn.disabled = false;
+                
+                // Helper function to set button state with visual styling
+                function setButtonState(btn, enabled, hasPermission = true) {
+                    if (!btn) return;
+                    btn.disabled = !enabled;
+                    btn.classList.remove('btn-disabled-permission', 'btn-disabled-selection', 'btn-enabled');
+                    if (enabled) {
+                        btn.classList.add('btn-enabled');
+                    } else if (!hasPermission) {
+                        btn.classList.add('btn-disabled-permission');
+                    } else {
+                        btn.classList.add('btn-disabled-selection');
+                    }
+                }
+                
+                setButtonState(bulkUploadBtn, true);
+                setButtonState(bulkAssignBtn, true);
+                
                 // Keep bulk send enabled; issues will be shown inside the modal
                 if (bulkSendForPaymentBtn) {
-                    bulkSendForPaymentBtn.disabled = false;
+                    setButtonState(bulkSendForPaymentBtn, true);
                     bulkSendForPaymentBtn.title = 'Send selected examinations for payment';
                 }
                 if (bulkMarkPaymentCompletedBtn) {
-                    bulkMarkPaymentCompletedBtn.disabled = false;
+                    setButtonState(bulkMarkPaymentCompletedBtn, true);
                     bulkMarkPaymentCompletedBtn.title = 'Mark payment completed for selected examinations';
                 }
                 if (bulkMarkCompletedBtn) {
-                    bulkMarkCompletedBtn.disabled = false;
+                    setButtonState(bulkMarkCompletedBtn, true);
                     bulkMarkCompletedBtn.title = 'Mark selected examinations as completed';
                 }
                 if (bulkMarkClosedBtn) {
-                    bulkMarkClosedBtn.disabled = false;
+                    setButtonState(bulkMarkClosedBtn, true);
                     bulkMarkClosedBtn.title = 'Close selected examinations';
                 }
-                if (bulkAssignProcedureBtn) bulkAssignProcedureBtn.disabled = false;
-                if (bulkAddNotesBtn) bulkAddNotesBtn.disabled = false;
+                
+                if (bulkAssignProcedureBtn) {
+                    const hasPermission = window.CURRENT_USER_CAN_ASSIGN_PROCEDURE;
+                    setButtonState(bulkAssignProcedureBtn, hasPermission, hasPermission);
+                    const tooltip = document.getElementById('bulkAssignProcedureTooltip');
+                    if (tooltip) {
+                        tooltip.textContent = hasPermission ? 'Assign procedure to selected examinations' : 'You do not have permission to assign procedures';
+                    }
+                    console.log('[PD] bulkAssignProcedureBtn state:', { disabled: bulkAssignProcedureBtn.disabled, hasPermission, tooltip: tooltip ? tooltip.textContent : null });
+                }
+                
+                setButtonState(bulkAddNotesBtn, true);
+                
                 if (bulkApplyDiscountBtn) {
-                    bulkApplyDiscountBtn.disabled = !CURRENT_USER_CAN_APPLY_DISCOUNT;
-                    bulkApplyDiscountBtn.title = CURRENT_USER_CAN_APPLY_DISCOUNT ? 'Apply or remove discount for selected examinations' : 'You do not have permission to apply discounts';
+                    const hasPermission = CURRENT_USER_CAN_APPLY_DISCOUNT;
+                    setButtonState(bulkApplyDiscountBtn, hasPermission, hasPermission);
+                    bulkApplyDiscountBtn.title = hasPermission ? 'Apply or remove discount for selected examinations' : 'You do not have permission to apply discounts';
                 }
             } else {
                 selectedCountDisplay.style.visibility = 'hidden';
-                if (bulkUploadBtn) bulkUploadBtn.disabled = true;
-                if (bulkAssignBtn) bulkAssignBtn.disabled = true;
-                if (bulkSendForPaymentBtn) bulkSendForPaymentBtn.disabled = true;
-                if (bulkMarkPaymentCompletedBtn) bulkMarkPaymentCompletedBtn.disabled = true;
-                if (bulkMarkCompletedBtn) bulkMarkCompletedBtn.disabled = true;
-                if (bulkMarkClosedBtn) bulkMarkClosedBtn.disabled = true;
-                if (bulkAssignProcedureBtn) bulkAssignProcedureBtn.disabled = true;
-                if (bulkAddNotesBtn) bulkAddNotesBtn.disabled = true;
-                if (bulkApplyDiscountBtn) bulkApplyDiscountBtn.disabled = true;
+                
+                // Helper function to set button state with visual styling (redefine for scope)
+                function setButtonState(btn, enabled, hasPermission = true) {
+                    if (!btn) return;
+                    btn.disabled = !enabled;
+                    btn.classList.remove('btn-disabled-permission', 'btn-disabled-selection', 'btn-enabled');
+                    if (enabled) {
+                        btn.classList.add('btn-enabled');
+                    } else if (!hasPermission) {
+                        btn.classList.add('btn-disabled-permission');
+                    } else {
+                        btn.classList.add('btn-disabled-selection');
+                    }
+                }
+                
+                // All buttons disabled due to no selection
+                setButtonState(bulkUploadBtn, false, true);
+                setButtonState(bulkAssignBtn, false, true);
+                setButtonState(bulkSendForPaymentBtn, false, true);
+                setButtonState(bulkMarkPaymentCompletedBtn, false, true);
+                setButtonState(bulkMarkCompletedBtn, false, true);
+                setButtonState(bulkMarkClosedBtn, false, true);
+                setButtonState(bulkAddNotesBtn, false, true);
+                
+                if (bulkAssignProcedureBtn) {
+                    const hasPermission = window.CURRENT_USER_CAN_ASSIGN_PROCEDURE;
+                    setButtonState(bulkAssignProcedureBtn, false, hasPermission);
+                    const tooltip = document.getElementById('bulkAssignProcedureTooltip');
+                    if (tooltip) {
+                        tooltip.textContent = !hasPermission ? 'You do not have permission to assign procedures' : 'Select at least one examination';
+                    }
+                    console.log('[PD] No selection: bulkAssignProcedureBtn disabled. disabled=', bulkAssignProcedureBtn.disabled, 'hasPermission=', hasPermission, 'tooltip=', tooltip ? tooltip.textContent : null);
+                }
+                
+                if (bulkApplyDiscountBtn) {
+                    const hasPermission = CURRENT_USER_CAN_APPLY_DISCOUNT;
+                    setButtonState(bulkApplyDiscountBtn, false, hasPermission);
+                    bulkApplyDiscountBtn.title = !hasPermission ? 'You do not have permission to apply discounts' : 'Select at least one examination';
+                }
             }
         }
 
@@ -4290,9 +4357,12 @@ window.openNotesModal = window.openNotesModal || function(examId) {
                                     <button type="button" id="bulkMarkClosedBtn" class="btn btn-secondary btn-sm" onclick="openBulkMarkClosedModal()" title="Close selected examinations" disabled>
                                         <i class="fas fa-times-circle"></i> Close
                                     </button>
-                                    <button type="button" id="bulkAssignProcedureBtn" class="btn btn-secondary btn-sm" onclick="openBulkAssignProcedureModal()" title="Assign procedure to selected examinations" disabled>
-                                        <i class="fas fa-tooth"></i> Assign Procedure
-                                    </button>
+                                    <span class="tooltip-container">
+                                        <button type="button" id="bulkAssignProcedureBtn" class="btn btn-secondary btn-sm" onclick="openBulkAssignProcedureModal()" disabled>
+                                            <i class="fas fa-tooth"></i> Assign Procedure
+                                        </button>
+                                        <span class="tooltip-text" id="bulkAssignProcedureTooltip">Assign procedure to selected examinations</span>
+                                    </span>
                                     <button type="button" id="bulkAddNotesBtn" class="btn btn-secondary btn-sm" onclick="openBulkAddNotesModal()" title="Add notes to selected examinations" disabled>
                                         <i class="fas fa-sticky-note"></i> Add Notes
                                     </button>
@@ -4301,6 +4371,51 @@ window.openNotesModal = window.openNotesModal || function(examId) {
                                     </button>
                                     <input type="file" id="bulkSelectedInput" multiple accept="image/*,application/pdf" style="display: none;" />
                                 </div>
+                                <style>
+                                     .tooltip-container { position: relative; display: inline-block; }
+                                     .tooltip-container .tooltip-text {
+                                         visibility: hidden; opacity: 0; transition: opacity 0.2s;
+                                         position: absolute; z-index: 10; bottom: 125%; left: 50%; transform: translateX(-50%);
+                                         background: #2c3e50; color: #fff; padding: 6px 8px; border-radius: 4px; width: 220px; text-align: center; font-size: 0.8rem;
+                                     }
+                                     .tooltip-container:hover .tooltip-text { visibility: visible; opacity: 1; }
+                                     
+                                     /* Custom disabled states for bulk buttons */
+                                     .btn-disabled-permission {
+                                         background-color: #f8d7da !important;
+                                         border-color: #f5c6cb !important;
+                                         color: #721c24 !important;
+                                         opacity: 0.8 !important;
+                                         cursor: not-allowed !important;
+                                     }
+                                     
+                                     .btn-disabled-selection {
+                                         background-color: #e2e3e5 !important;
+                                         border-color: #d6d8db !important;
+                                         color: #6c757d !important;
+                                         opacity: 0.65 !important;
+                                         cursor: not-allowed !important;
+                                     }
+                                     
+                                     .btn-enabled {
+                                         background-color: #6c757d !important;
+                                         border-color: #6c757d !important;
+                                         color: #fff !important;
+                                         opacity: 1 !important;
+                                         cursor: pointer !important;
+                                     }
+                                     
+                                     .btn-enabled:hover {
+                                         background-color: #5a6268 !important;
+                                         border-color: #545b62 !important;
+                                     }
+                                 </style>
+                                 <script>
+                                     document.addEventListener('DOMContentLoaded', function() {
+                                         console.log('[PD] DOMContentLoaded: initializing table selection count');
+                                         try { if (typeof updateTableSelectionCount === 'function') updateTableSelectionCount(); } catch (e) { console.warn('[PD] updateTableSelectionCount threw:', e); }
+                                     });
+                                 </script>
                             </div>
                         </sec:authorize>
                     </div>
@@ -7353,7 +7468,16 @@ window.openNotesModal = window.openNotesModal || function(examId) {
         let _bulkSelectedProcedure = null;
 
         function openBulkAssignProcedureModal() {
+            const triggerBtn = document.getElementById('bulkAssignProcedureBtn');
+            console.log('[PD] openBulkAssignProcedureModal: disabled=', triggerBtn ? triggerBtn.disabled : null, 'canAssignProcedure=', window.CURRENT_USER_CAN_ASSIGN_PROCEDURE);
+            if (triggerBtn && triggerBtn.disabled) { console.warn('[PD] Blocked: triggerBtn.disabled is true'); return; }
+            if (!window.CURRENT_USER_CAN_ASSIGN_PROCEDURE) {
+                console.warn('[PD] Blocked: user lacks assign-procedure permission');
+                showAlertModal('You do not have permission to assign procedures.', 'error');
+                return;
+            }
             const selectedIds = getSelectedExaminationIds();
+            console.log('[PD] openBulkAssignProcedureModal: selectedIds=', selectedIds);
             if (selectedIds.length === 0) {
                 showAlertModal('Please select at least one examination to assign a procedure.', 'warning');
                 return;
@@ -7544,6 +7668,18 @@ window.openNotesModal = window.openNotesModal || function(examId) {
             }
             if (m.includes('role') && m.includes('not permitted')) {
                 return 'You don\'t have permission to apply discounts.';
+            }
+            if (m.includes('missing permission') || m.includes('canapplydiscount')) {
+                return 'Your account doesn\'t have discount permission. Ask an admin to enable it.';
+            }
+            if (m.includes('invalid discount reason')) {
+                return 'Invalid reason. Choose a valid standardized reason or select Other with a percentage.';
+            }
+            if (m.includes('provide a valid percentage')) {
+                return 'Enter a valid percentage for Other or when no reason is selected.';
+            }
+            if (m.includes('examination not found')) {
+                return 'The selected examination could not be found.';
             }
             return msg;
         }
