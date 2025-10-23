@@ -50,6 +50,7 @@ public class AppointmentManagementController {
     public String appointmentManagement(
             @RequestParam(required = false) String date,
             @RequestParam(required = false) Boolean myAppointments,
+            @RequestParam(required = false) Long doctorId,
             @RequestParam(defaultValue = "day") String view,
             @RequestParam(defaultValue = "0") int page,
             @RequestParam(defaultValue = "20") int size,
@@ -140,21 +141,37 @@ public class AppointmentManagementController {
                 )
             );
             
-            if (myAppointmentsEffective) {
-                // Get user's appointments for the current date within their clinic with pagination
-                LocalDateTime startOfToday = LocalDateTime.now().withHour(0).withMinute(0).withSecond(0);
-                LocalDateTime endOfToday = startOfToday.plusDays(1);
-                appointmentsPage = appointmentService.getAppointmentsByDateRangeAndClinicPaginated(startOfToday, endOfToday, userClinic, pageable);
-                logger.info("Found {} appointments for today for user {} in clinic {} (page {} of {})", 
-                    appointmentsPage.getTotalElements(), currentUser.getUsername(), userClinic.getClinicName(), 
-                    page + 1, appointmentsPage.getTotalPages());
+            // Determine target doctor for filtering
+            User targetDoctor = null;
+            if (myAppointmentsEffective && isDoctor) {
+                targetDoctor = currentUser;
+            } else if (doctorId != null) {
+                userRepository.findById(doctorId).ifPresent(d -> {
+                    if (d.getClinic() != null && d.getClinic().equals(userClinic)) {
+                        // Only allow filtering within the same clinic
+                        //noinspection Convert2MethodRef
+                        // assign captured variable
+                    }
+                });
+                User requestedDoctor = userRepository.findById(doctorId).orElse(null);
+                if (requestedDoctor != null && requestedDoctor.getClinic() != null && requestedDoctor.getClinic().equals(userClinic)) {
+                    targetDoctor = requestedDoctor;
+                } else if (doctorId != null) {
+                    logger.warn("Requested doctorId {} not found in user's clinic; ignoring filter", doctorId);
+                }
+            }
+
+            // Fetch appointments based on target doctor or clinic-wide
+            if (targetDoctor != null) {
+                appointmentsPage = appointmentService.getAppointmentsByClinicAndDoctorAndDateRangePaginated(userClinic, targetDoctor, startOfPeriod, endOfPeriod, pageable);
+                logger.info("Found {} appointments for doctor {} for {} view ({}) in clinic {} (page {} of {})",
+                        appointmentsPage.getTotalElements(), (targetDoctor.getFirstName() + " " + targetDoctor.getLastName()), view, formattedDate,
+                        userClinic.getClinicName(), page + 1, appointmentsPage.getTotalPages());
             } else {
-                // Get appointments for the selected period within user's clinic with pagination
-                logger.debug("Fetching appointments between {} and {} for clinic {} with pagination", startOfPeriod, endOfPeriod, userClinic.getClinicName());
                 appointmentsPage = appointmentService.getAppointmentsByDateRangeAndClinicPaginated(startOfPeriod, endOfPeriod, userClinic, pageable);
-                logger.info("Found {} appointments for {} view ({}) in clinic {} (page {} of {})", 
-                    appointmentsPage.getTotalElements(), view, formattedDate, userClinic.getClinicName(), 
-                    page + 1, appointmentsPage.getTotalPages());
+                logger.info("Found {} appointments for {} view ({}) in clinic {} (page {} of {})",
+                        appointmentsPage.getTotalElements(), view, formattedDate,
+                        userClinic.getClinicName(), page + 1, appointmentsPage.getTotalPages());
             }
         }
         
@@ -200,6 +217,7 @@ public class AppointmentManagementController {
                     event.put("doctorName", appointment.getDoctor() != null ? 
                         appointment.getDoctor().getFirstName() + " " + appointment.getDoctor().getLastName() : 
                         "Unassigned");
+                    event.put("doctorId", appointment.getDoctor() != null ? appointment.getDoctor().getId() : null);
                     event.put("notes", appointment.getNotes());
                     return event;
                 })
@@ -207,6 +225,7 @@ public class AppointmentManagementController {
             
             String appointmentsJson = mapper.writeValueAsString(calendarEvents);
             model.addAttribute("appointmentsJson", appointmentsJson);
+            model.addAttribute("doctorId", doctorId);
 
         } catch (Exception e) {
             logger.error("Error generating calendar events JSON", e);

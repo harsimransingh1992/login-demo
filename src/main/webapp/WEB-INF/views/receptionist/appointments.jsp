@@ -1088,13 +1088,12 @@
                                 <div class="welcome-header">
                                     <h1 class="welcome-message">Appointment Management</h1>
                                     <div style="display: flex; gap: 15px; align-items: center;">
-                                        <div class="form-group date-picker-container ${myAppointments ? 'disabled' : ''}"
+                                        <div class="form-group date-picker-container"
                                             style="margin: 0;" data-bs-toggle="tooltip" data-bs-placement="top"
-                                            title="${myAppointments ? 'Date picker is disabled when viewing My Appointments' : 'Select a date to view appointments'}">
+                                            title="Select a date to view appointments">
                                             <i class="fas fa-calendar"></i>
                                             <input type="text" id="appointmentDate" class="form-control"
-                                                value="${selectedDate}" placeholder="Select Date" ${myAppointments
-                                                ? 'disabled' : '' }>
+                                                value="${selectedDate}" placeholder="Select Date">
                                         </div>
                                         <input type="hidden" id="myAppointmentsState" value="${myAppointments}">
                                         <sec:authorize access="hasRole('DOCTOR') or hasRole('OPD_DOCTOR')">
@@ -1730,53 +1729,24 @@
                                     }
                                 });
 
-                                // Disable/enable date picker based on My Appointments filter
-                                var myAppointmentsState = document.getElementById('myAppointmentsState').value === 'true';
+                                // Ensure date picker is always enabled and visible
                                 var datePickerContainer = document.querySelector('.date-picker-container');
                                 var datePickerInput = document.getElementById('appointmentDate');
 
-                                if (myAppointmentsState) {
-                                    // Disable the date picker
-                                    if (datePicker && typeof datePicker.disable === 'function') {
-                                        try {
-                                            datePicker.disable();
-                                        } catch (error) {
-                                            console.warn('Flatpickr disable method not available, using fallback:', error);
-                                            if (datePickerInput) {
-                                                datePickerInput.disabled = true;
-                                                datePickerInput.style.opacity = '0.6';
-                                                datePickerInput.style.cursor = 'not-allowed';
-                                            }
-                                        }
-                                    } else if (datePickerInput) {
-                                        datePickerInput.disabled = true;
-                                        datePickerInput.style.opacity = '0.6';
-                                        datePickerInput.style.cursor = 'not-allowed';
+                                if (datePicker && typeof datePicker.enable === 'function') {
+                                    try {
+                                        datePicker.enable();
+                                    } catch (error) {
+                                        console.warn('Flatpickr enable method not available, using fallback:', error);
                                     }
-                                    if (datePickerContainer) {
-                                        datePickerContainer.classList.add('disabled');
-                                    }
-                                } else {
-                                    // Enable the date picker
-                                    if (datePicker && typeof datePicker.enable === 'function') {
-                                        try {
-                                            datePicker.enable();
-                                        } catch (error) {
-                                            console.warn('Flatpickr enable method not available, using fallback:', error);
-                                            if (datePickerInput) {
-                                                datePickerInput.disabled = false;
-                                                datePickerInput.style.opacity = '1';
-                                                datePickerInput.style.cursor = 'pointer';
-                                            }
-                                        }
-                                    } else if (datePickerInput) {
-                                        datePickerInput.disabled = false;
-                                        datePickerInput.style.opacity = '1';
-                                        datePickerInput.style.cursor = 'pointer';
-                                    }
-                                    if (datePickerContainer) {
-                                        datePickerContainer.classList.remove('disabled');
-                                    }
+                                }
+                                if (datePickerInput) {
+                                    datePickerInput.disabled = false;
+                                    datePickerInput.style.opacity = '1';
+                                    datePickerInput.style.cursor = 'pointer';
+                                }
+                                if (datePickerContainer) {
+                                    datePickerContainer.classList.remove('disabled');
                                 }
 
                                 // Form validation
@@ -2067,6 +2037,7 @@
                                         patientName: e.patientName || '',
                                         patientId: e.patientId || null,
                                         doctorName: e.doctorName || '',
+                                        doctorId: e.doctorId || null,
                                         isRegistered: isRegistered,
                                         patientTitle: patientTitle
                                     };
@@ -2181,11 +2152,27 @@
                                                 calendarEl.fullCalendar('gotoDate', iso);
                                             }
                                         } else if (currentView === 'month') {
-                                            // For month view, try to parse "Month Year" format
-                                            var today = new Date();
-                                            var currentMonth = today.getMonth();
-                                            var currentYear = today.getFullYear();
-                                            calendarEl.fullCalendar('gotoDate', new Date(currentYear, currentMonth, 1));
+                                            // For month view, navigate using the 'date' URL param if available
+                                            var urlObj; try { urlObj = new URL(window.location.href); } catch (e) { urlObj = null; }
+                                            var isoDate = urlObj ? urlObj.searchParams.get('date') : null;
+                                            if (isoDate) {
+                                                calendarEl.fullCalendar('gotoDate', isoDate);
+                                                if (label) {
+                                                    if (window.moment) {
+                                                        label.textContent = window.moment(isoDate).format('MMMM YYYY');
+                                                    } else {
+                                                        var dt = new Date(isoDate);
+                                                        var monthNames = ['January','February','March','April','May','June','July','August','September','October','November','December'];
+                                                        label.textContent = monthNames[dt.getMonth()] + ' ' + dt.getFullYear();
+                                                    }
+                                                }
+                                            } else {
+                                                // Fallback: use current month
+                                                var today = new Date();
+                                                var currentMonth = today.getMonth();
+                                                var currentYear = today.getFullYear();
+                                                calendarEl.fullCalendar('gotoDate', new Date(currentYear, currentMonth, 1));
+                                            }
                                         }
                                     }
                                 } catch (e) {
@@ -2198,24 +2185,56 @@
                                 $('#todayBtn').on('click', function () { calendarEl.fullCalendar('today'); syncUrlWithCalendar(); });
                                 // Populate doctor filter
                                 try {
-                                    // Build doctor filter list from non-cancelled events only
-                                    var uniqueDoctors = Array.from(new Set(events.map(function (e) { return e.doctorName || ''; }))).filter(Boolean).sort();
+                                    // Build doctor filter list from non-cancelled events only using doctorId
+                                    var uniqueDoctorMap = new Map();
+                                    events.forEach(function (e) {
+                                        if (e.doctorId && e.doctorName) {
+                                            uniqueDoctorMap.set(String(e.doctorId), e.doctorName);
+                                        }
+                                    });
                                     var sel = document.getElementById('doctorFilter');
                                     if (sel) {
-                                        uniqueDoctors.forEach(function (name) {
-                                            var opt = document.createElement('option');
-                                            opt.value = name;
-                                            opt.textContent = name;
-                                            sel.appendChild(opt);
-                                        });
+                                        sel.innerHTML = '';
+                                        var allOpt = document.createElement('option');
+                                        allOpt.value = '';
+                                        allOpt.textContent = 'All';
+                                        sel.appendChild(allOpt);
+                                        Array.from(uniqueDoctorMap.entries())
+                                            .sort(function(a,b){return a[1].localeCompare(b[1]);})
+                                            .forEach(function (entry) {
+                                                var opt = document.createElement('option');
+                                                opt.value = entry[0];
+                                                opt.textContent = entry[1];
+                                                sel.appendChild(opt);
+                                            });
+                                        // Preselect from server doctorId if provided
+                                        var serverDoctorId = '${doctorId != null ? doctorId : ""}';
+                                        if (serverDoctorId) { sel.value = String(serverDoctorId); }
                                         sel.addEventListener('change', function () {
-                                            var selected = sel.value;
-                                            // Keep cancelled appointments hidden when filtering by doctor
-                                            var filtered = selected ? events.filter(function (e) { return e.doctorName === selected; }) : events.slice();
+                                            var selectedId = sel.value;
+                                            // Reload with doctorId filter for server-side list view and calendar
+                                            var m = calendarEl.fullCalendar('getDate');
+                                            var y = m.year();
+                                            var mo = String(m.month() + 1); if (mo.length === 1) mo = '0' + mo;
+                                            var d = String(m.date()); if (d.length === 1) d = '0' + d;
+                                            var currentView = '${currentView}' || 'day';
+                                            var url = new URL(window.location.href);
+                                            url.searchParams.set('date', y + '-' + mo + '-' + d);
+                                            url.searchParams.set('view', currentView);
+                                            if (selectedId) { url.searchParams.set('doctorId', selectedId); } else { url.searchParams.delete('doctorId'); }
+                                            // Preserve myAppointments state
+                                            var myAppointmentsStateElement = document.getElementById('myAppointmentsState');
+                                            var myAppointmentsEffective = myAppointmentsStateElement && myAppointmentsStateElement.value === 'true';
+                                            url.searchParams.set('myAppointments', myAppointmentsEffective ? 'true' : 'false');
+                                            window.location.href = url.toString();
+                                        });
+                                        // If already selected, filter calendar events by doctorId
+                                        if (sel.value) {
+                                            var filtered = events.filter(function (e) { return String(e.doctorId || '') === sel.value; });
                                             calendarEl.fullCalendar('removeEvents');
                                             calendarEl.fullCalendar('addEventSource', filtered);
                                             calendarEl.fullCalendar('rerenderEvents');
-                                        });
+                                        }
                                     }
                                 } catch (e) { console.warn('Doctor filter setup failed:', e); }
                                 function syncUrlWithCalendar() {
@@ -2226,7 +2245,18 @@
                                     var d = String(m.date());
                                     if (d.length === 1) d = '0' + d;
                                     var currentView = '${currentView}' || 'day';
-                                    window.location.href = '${pageContext.request.contextPath}/appointments/management?date=' + y + '-' + mo + '-' + d + '&view=' + currentView;
+                                    // Use absolute base to avoid URL constructor errors
+                                    var url = new URL('${pageContext.request.contextPath}/appointments/management', window.location.origin);
+                                    url.searchParams.set('date', y + '-' + mo + '-' + d);
+                                    url.searchParams.set('view', currentView);
+                                    // Preserve doctorId selection
+                                    var sel = document.getElementById('doctorFilter');
+                                    if (sel && sel.value) { url.searchParams.set('doctorId', sel.value); }
+                                    // Preserve myAppointments state
+                                    var myAppointmentsStateElement = document.getElementById('myAppointmentsState');
+                                    var myAppointmentsEffective = myAppointmentsStateElement && myAppointmentsStateElement.value === 'true';
+                                    url.searchParams.set('myAppointments', myAppointmentsEffective ? 'true' : 'false');
+                                    window.location.href = url.toString();
                                 }
                             }
 
@@ -2388,10 +2418,12 @@
                                 var currentEffective = stateEl ? (stateEl.value === 'true') : (url.searchParams.get('myAppointments') === 'true');
                                 var newMyAppointments = !currentEffective;
                                 if (newMyAppointments) {
+                                    // Switch to doctor-only view; clear explicit doctorId and date to let server pick defaults
                                     url.searchParams.set('myAppointments', 'true');
+                                    url.searchParams.delete('doctorId');
                                     url.searchParams.delete('date');
                                 } else {
-                                    // Explicitly set to false so we override the server's default for doctors
+                                    // Switch to clinic-wide view; keep current doctorId selection if any
                                     url.searchParams.set('myAppointments', 'false');
                                 }
                                 window.location.href = url.pathname + '?' + url.searchParams.toString();

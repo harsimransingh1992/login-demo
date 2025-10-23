@@ -40,6 +40,9 @@ public interface AppointmentService {
     Page<Appointment> getAppointmentsByDateRangeAndClinicPaginated(LocalDateTime startDate, LocalDateTime endDate, ClinicModel clinic, Pageable pageable);
     Page<Appointment> getUpcomingAppointmentsForUserInClinicPaginated(User user, ClinicModel clinic, Pageable pageable);
     Page<Appointment> getAppointmentsByDateRangeAndClinicAndStatusPaginated(LocalDateTime startDate, LocalDateTime endDate, ClinicModel clinic, AppointmentStatus status, Pageable pageable);
+
+    // New: Paginated filtering by clinic, doctor, and date range
+    Page<Appointment> getAppointmentsByClinicAndDoctorAndDateRangePaginated(ClinicModel clinic, User doctor, LocalDateTime startDate, LocalDateTime endDate, Pageable pageable);
     
     // Enhanced reschedule methods
     Appointment rescheduleAppointment(RescheduleAppointmentDTO dto, User currentUser);

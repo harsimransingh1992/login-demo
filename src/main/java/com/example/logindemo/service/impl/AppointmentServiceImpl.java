@@ -276,6 +276,12 @@ public class AppointmentServiceImpl implements AppointmentService {
     public Page<Appointment> getAppointmentsByDateRangeAndClinicAndStatusPaginated(LocalDateTime startDate, LocalDateTime endDate, ClinicModel clinic, AppointmentStatus status, Pageable pageable) {
         return appointmentRepository.findByClinicAndAppointmentDateTimeBetweenAndStatusOrderByAppointmentDateTimeDesc(clinic, startDate, endDate, status, pageable);
     }
+
+    @Override
+    @Transactional(readOnly = true)
+    public Page<Appointment> getAppointmentsByClinicAndDoctorAndDateRangePaginated(ClinicModel clinic, User doctor, LocalDateTime startDate, LocalDateTime endDate, Pageable pageable) {
+        return appointmentRepository.findByClinicAndDoctorAndAppointmentDateTimeBetweenOrderByAppointmentDateTimeDesc(clinic, doctor, startDate, endDate, pageable);
+    }
     
     // Enhanced reschedule methods
     @Override

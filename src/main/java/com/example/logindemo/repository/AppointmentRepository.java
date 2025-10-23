@@ -114,4 +114,8 @@ public interface AppointmentRepository extends JpaRepository<Appointment, Long> 
 
     Page<Appointment> findByClinicAndAppointmentDateTimeBetweenAndStatusOrderByAppointmentDateTimeDesc(
         ClinicModel clinic, LocalDateTime start, LocalDateTime end, AppointmentStatus status, Pageable pageable);
+
+    // Find appointments by clinic, doctor and date range with pagination
+    Page<Appointment> findByClinicAndDoctorAndAppointmentDateTimeBetweenOrderByAppointmentDateTimeDesc(
+        ClinicModel clinic, User doctor, LocalDateTime start, LocalDateTime end, Pageable pageable);
 }
