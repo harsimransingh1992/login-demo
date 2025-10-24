@@ -6077,7 +6077,7 @@ window.openNotesModal = window.openNotesModal || function(examId) {
             // Prefer existing formatter if present
             const formatted = (typeof formatCurrentDate === 'function') ? formatCurrentDate() : (new Date()).toLocaleString();
             timestampEl.textContent = 'Receipt generated on ' + formatted;
-            timestampEl.style.cssText = 'display: block; text-align: center; margin-bottom: 5px; font-size: 7pt;';
+            timestampEl.style.cssText = 'display: block; text-align: left; margin-bottom: 5px; font-size: 7pt;';
             printContent.insertBefore(timestampEl, printContent.firstChild);
             
             // Make print content visible

@@ -1906,10 +1906,6 @@ public class PatientController {
             }
             model.addAttribute("canAttachMoreImages", canAttachMoreImages);
 
-            // Get motivation quote for doctors
-            MotivationQuote motivationQuote = motivationQuoteService.getRandomQuote().orElse(null);
-            model.addAttribute("motivationQuote", motivationQuote);
-            
             // Get follow-up records for this examination
             List<FollowUpRecord> followUpRecords = followUpService.getFollowUpsForExamination(examination);
             model.addAttribute("followUpRecords", followUpRecords);

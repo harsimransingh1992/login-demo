@@ -15,6 +15,7 @@
     <link rel="stylesheet" href="${pageContext.request.contextPath}/css/chairside-note-component.css">
     <link href="https://fonts.googleapis.com/css2?family=Poppins:wght@300;400;500;600;700&display=swap" rel="stylesheet">
     <link rel="stylesheet" href="https://cdnjs.cloudflare.com/ajax/libs/font-awesome/6.4.0/css/all.min.css">
+    <link rel="stylesheet" href="${pageContext.request.contextPath}/css/pages/lifecycle.page.css">
     <script src="https://code.jquery.com/jquery-3.6.4.min.js"></script>
     <script src="${pageContext.request.contextPath}/js/imageCompression.js"></script>
     <script src="${pageContext.request.contextPath}/js/imagePerformanceMonitor.js"></script>
@@ -24,31 +25,7 @@
     <!-- Include common menu styles -->
     <jsp:include page="/WEB-INF/views/common/menuStyles.jsp" />
     
-    <script>
-    window.showRescheduleNextSittingModal = function(followUpId, examinationId) {
-        document.getElementById('rescheduleNextSittingId').value = followUpId;
-        document.getElementById('rescheduleExaminationId').value = examinationId;
-        var dateInput = document.getElementById('rescheduleDate');
-        var timeInput = document.getElementById('rescheduleTime');
-        var notesInput = document.getElementById('rescheduleNotes');
-        if (dateInput) dateInput.value = '';
-        if (timeInput) timeInput.value = '';
-        if (notesInput) notesInput.value = '';
-        document.getElementById('rescheduleNextSittingModal').style.display = 'block';
-    };
-    window.showCompleteNextSittingModal = function(followUpId, examinationId) {
-        document.getElementById('completeNextSittingId').value = followUpId;
-        document.getElementById('completeExaminationId').value = examinationId;
-        var notesInput = document.getElementById('clinicalNotes');
-        if (notesInput) notesInput.value = '';
-        document.getElementById('completeNextSittingModal').style.display = 'block';
-    };
-    window.showCancelNextSittingModal = function(followUpId, examinationId) {
-        document.getElementById('cancelNextSittingId').value = followUpId;
-        document.getElementById('cancelExaminationId').value = examinationId;
-        document.getElementById('cancelNextSittingModal').style.display = 'block';
-    };
-    </script>
+    <script defer src="${pageContext.request.contextPath}/js/pages/lifecycle.page.js"></script>
     
     <style>
         body {
@@ -575,71 +552,7 @@
             border-bottom: 1px solid #dfe1e6;
         }
         
-        .status-option {
-            padding: 8px 12px;
-            cursor: pointer;
-            display: flex;
-            align-items: center;
-            gap: 8px;
-            transition: background-color 0.2s;
-        }
-        
-        .status-option:hover {
-            background-color: #f4f5f7;
-        }
-        
-        .status-option.active {
-            background-color: #ebecf0;
-        }
-        
-        .status-dot {
-            width: 14px;
-            height: 14px;
-            border-radius: 50%;
-            display: inline-block;
-        }
-        
-        .status-dot.open { background-color: #3498db; }
-        .status-dot.payment-pending { background-color: #e67e22; }
-        .status-dot.payment-completed { background-color: #9b59b6; }
-        .status-dot.payment-denied { background-color: #e74c3c; }
-        .status-dot.in-progress { background-color: #1abc9c; }
-        .status-dot.on-hold { background-color: #f39c12; }
-        .status-dot.completed { background-color: #2ecc71; }
-        .status-dot.follow-up-scheduled { background-color: #34495e; }
-        .status-dot.follow-up-completed { background-color: #16a085; }
-        .status-dot.closed { background-color: #7f8c8d; }
-        .status-dot.cancelled { background-color: #c0392b; }
-        
-        .status-text {
-            font-size: 14px;
-            color: #172b4d;
-        }
-        
-        .status-description {
-            color: #6b778c;
-            font-size: 12px;
-            margin-top: 2px;
-        }
-        
-        .status-notification {
-            display: none;
-            position: fixed;
-            top: 20px;
-            right: 20px;
-            background-color: #2ecc71;
-            color: white;
-            padding: 15px 20px;
-            border-radius: 4px;
-            box-shadow: 0 4px 8px rgba(0, 0, 0, 0.1);
-            z-index: 1000;
-            animation: slideIn 0.3s ease-out;
-        }
-        
-        @keyframes slideIn {
-            0% { transform: translateX(100%); opacity: 0; }
-            100% { transform: translateX(0); opacity: 1; }
-        }
+        /* moved to external stylesheet: lifecycle.page.css */
         
         /* Responsive design */
         @media (max-width: 768px) {
@@ -2113,7 +2026,7 @@
         }
     </style>
 </head>
-<body>
+<body data-context-path="${pageContext.request.contextPath}">
     <div class="welcome-container">
         <jsp:include page="/WEB-INF/views/common/menu.jsp" />
         
@@ -3041,7 +2954,7 @@
                 <div class="clinical-action-bar">
                     <div class="status-dropdown" id="statusDropdown">
                         <div class="status-dropdown-btn${scheduledCount > 0 && examination.procedureStatus != 'CLOSED' ? ' disabled' : ''}${examination.procedureStatus == 'CANCELLED' ? ' cancelled' : ''}" id="statusDropdownBtn"
-                             title="${scheduledCount > 0 && examination.procedureStatus != 'CLOSED' ? 'Cannot change status while follow-ups are scheduled. Please complete or cancel all follow-ups first.' : examination.procedureStatus == 'CANCELLED' ? 'Cannot change status for cancelled procedures.' : ''}">
+                             title="${scheduledCount > 0 && examination.procedureStatus != 'CLOSED' ? 'Cannot change status while follow-ups are scheduled. Please complete or cancel all follow-ups first.' : examination.procedureStatus == 'CANCELLED' ? 'Cannot change status for cancelled procedures.' : ''}" data-current-status="${examination.procedureStatus}">
                             <span class="current-status">
                                 <span class="status-dot ${fn:toLowerCase(examination.procedureStatus)}"></span>
                                 <span class="status-text">${examination.procedureStatus.label}</span>
@@ -3054,7 +2967,7 @@
                             <div class="status-dropdown-header">Change status</div>
                             <c:forEach items="${examination.procedureStatus.allowedTransitions}" var="nextStatus">
                                 <c:if test="${nextStatus != 'REOPEN' || examination.procedureStatus != 'CLOSED'}">
-                                    <div class="status-option" data-status="${nextStatus}">
+                                    <div class="status-option${examination.procedureStatus == nextStatus ? ' active' : ''}" data-status="${nextStatus}" role="button" tabindex="0" aria-selected="${examination.procedureStatus == nextStatus}">
                                         <span class="status-dot ${fn:toLowerCase(nextStatus)}"></span>
                                         <div>
                                             <div class="status-text">${nextStatus.label}</div>
@@ -3065,7 +2978,7 @@
                             </c:forEach>
                             <!-- Special allowance: show Payment Completed when effective total is zero (full waiver) -->
                             <c:if test="${examination.procedureStatus == 'PAYMENT_PENDING' && examination.effectiveTotalProcedureAmount <= 0}">
-                                <div class="status-option" data-status="PAYMENT_COMPLETED">
+                                <div class="status-option${examination.procedureStatus == 'PAYMENT_COMPLETED' ? ' active' : ''}" data-status="PAYMENT_COMPLETED" role="button" tabindex="0" aria-selected="${examination.procedureStatus == 'PAYMENT_COMPLETED'}">
                                     <span class="status-dot payment-completed"></span>
                                     <div>
                                         <div class="status-text">Payment Completed</div>
@@ -4147,224 +4060,7 @@
                 }
             }
             
-            // Status dropdown functionality
-            const statusDropdown = document.querySelector('.status-dropdown');
-            const statusDropdownContent = document.querySelector('.status-dropdown-content');
-            const statusOptions = document.querySelectorAll('.status-option');
-            
-            
-            
-            if (statusDropdown) {
-                statusDropdown.addEventListener('click', function(e) {
-                    e.stopPropagation();
-                    const statusDropdownBtn = this.querySelector('.status-dropdown-btn');
-                    if (statusDropdownBtn && !statusDropdownBtn.classList.contains('disabled') && !statusDropdownBtn.classList.contains('cancelled')) {
-                        statusDropdownContent.classList.toggle('show');
-                        const dropdownIcon = statusDropdownBtn.querySelector('.dropdown-icon i');
-                        if (dropdownIcon) {
-                            dropdownIcon.style.transform = statusDropdownContent.classList.contains('show') ? 'rotate(180deg)' : 'rotate(0deg)';
-                        }
-                    }
-                });
-                
-                // Close dropdown when clicking outside
-                document.addEventListener('click', function(e) {
-                    if (!statusDropdown.contains(e.target) && !statusDropdownContent.contains(e.target)) {
-                        statusDropdownContent.classList.remove('show');
-                        const dropdownIcon = statusDropdown.querySelector('.dropdown-icon i');
-                        if (dropdownIcon) {
-                            dropdownIcon.style.transform = 'rotate(0deg)';
-                        }
-                    }
-                });
-                
-                // Handle status option clicks
-                statusOptions.forEach(option => {
-                    option.addEventListener('click', function() {
-                        const newStatus = this.getAttribute('data-status');
-                        const currentStatus = '${examination.procedureStatus}';
-                        
-                        if (newStatus) {
-                            // Prevent selecting the same status
-                            if (newStatus === currentStatus) {
-                                alert('This status is already active. No change needed.');
-                                statusDropdownContent.classList.remove('show');
-                                const dropdownIcon = statusDropdown.querySelector('.dropdown-icon i');
-                                if (dropdownIcon) {
-                                    dropdownIcon.style.transform = 'rotate(0deg)';
-                                }
-                                return;
-                            }
-                            
-                            updateProcedureStatus(newStatus);
-                        }
-                        statusDropdownContent.classList.remove('show');
-                        const dropdownIcon = statusDropdown.querySelector('.dropdown-icon i');
-                        if (dropdownIcon) {
-                            dropdownIcon.style.transform = 'rotate(0deg)';
-                        }
-                    });
-                });
-            }
-            
-            // Update procedure status directly (without X-ray)
-            window.updateProcedureStatusDirect = async function(newStatus) {
-                const examinationId = $('#examinationId').val();
-                
-                // First, refresh the payment status from server
-                try {
-                    const refreshResponse = await fetch(`${pageContext.request.contextPath}/patients/examination/${examinationId}/payment-status`, {
-                        method: 'GET',
-                        headers: {
-                            'Content-Type': 'application/json'
-                        }
-                    });
-                    
-                    if (refreshResponse.ok) {
-                        const paymentData = await refreshResponse.json();
-                        
-                        // Update the payment status on the page
-                        const paymentStatusElement = document.querySelector('.payment-status');
-                        if (paymentStatusElement && paymentData.paymentStatus) {
-                            paymentStatusElement.textContent = paymentData.paymentStatus;
-                        }
-                    }
-                } catch (error) {
-                    // Silent on refresh errors
-                }
-                
-                // Get CSRF token
-                const token = $("meta[name='_csrf']").attr("content");
-                const header = $("meta[name='_csrf_header']").attr("content");
-                
-                try {
-                    const url = '${pageContext.request.contextPath}/patients/update-procedure-status';
-                    
-                    const response = await fetch(url, {
-                        method: 'POST',
-                        headers: {
-                            'Content-Type': 'application/json',
-                            [header]: token
-                        },
-                        body: JSON.stringify({ examinationId: examinationId, status: newStatus })
-                    });
-                    
-                    const responseText = await response.text();
-                    
-                    if (responseText.trim().startsWith('<!DOCTYPE')) {
-                        alert('Authentication error. Please refresh the page and try again.');
-                        return;
-                    }
-                    
-                    let result;
-                    try {
-                        result = JSON.parse(responseText);
-                    } catch (parseError) {
-                        alert('Server returned invalid response. Please try again.');
-                        return;
-                    }
-                    
-                    if (result.success) {
-                        alert('Status updated successfully!');
-                        window.location.reload();
-                    } else {
-                        // Check if it's a payment pending error
-                        if (result.message && result.message.includes('payment') && result.message.includes('pending')) {
-                            showPaymentPendingModal();
-                        } else {
-                            alert(result.message || 'Failed to update status');
-                        }
-                    }
-                } catch (error) {
-                    alert('Failed to update status. Please try again.');
-                }
-            }
-            
-            // Update procedure status
-            async function updateProcedureStatus(newStatus) {
-                const examinationId = $('#examinationId').val();
-                
-                // Get CSRF token
-                const token = $("meta[name='_csrf']").attr("content");
-                const header = $("meta[name='_csrf_header']").attr("content");
-                
-                // Check if X-ray is required for closing
-                const currentStatus = '${examination.procedureStatus}';
-                
-                if (newStatus === 'CLOSED' && currentStatus !== 'CLOSED' && !xrayUploadComplete) {
-                    window.pendingStatusUpdate = newStatus;
-                    try {
-                        showXrayConfirmationModal();
-                    } catch (error) {
-                        // Fallback to alert
-                        const userChoice = confirm('Do you want to upload an X-ray image before closing the case?\n\nClick "OK" to upload X-ray\nClick "Cancel" to close without X-ray');
-                        if (userChoice) {
-                            const xrayUploadModal = document.getElementById('xrayUploadModal');
-                            if (xrayUploadModal) {
-                                xrayUploadModal.style.display = 'block';
-                            }
-                        } else {
-                            updateProcedureStatusDirect(newStatus);
-                        }
-                    }
-                    return;
-                }
-                
-                if (newStatus === 'CLOSED' && currentStatus === 'CLOSED') {
-                    alert('This case is already closed. No action needed.');
-                    return;
-                }
-                
-                try {
-                    const url = '${pageContext.request.contextPath}/patients/update-procedure-status';
-                    
-                    const response = await fetch(url, {
-                        method: 'POST',
-                        headers: {
-                            'Content-Type': 'application/json'
-                            // Temporarily removed CSRF token for testing
-                        },
-                        body: JSON.stringify({ examinationId: examinationId, status: newStatus })
-                    });
-                    
-                    // Debug: Check if response is JSON or HTML
-                    const responseText = await response.text();
-                    
-                    if (responseText.trim().startsWith('<!DOCTYPE')) {
-                        alert('Authentication error. Please refresh the page and try again.');
-                        return;
-                    }
-                    
-                    // Try to parse as JSON
-                    let result;
-                    try {
-                        result = JSON.parse(responseText);
-                    } catch (parseError) {
-                        alert('Server returned invalid response. Please try again.');
-                        return;
-                    }
-                    
-                    if (result.success) {
-                        // Show success notification
-                        const notification = document.querySelector('.status-notification');
-                        notification.style.display = 'block';
-                        setTimeout(() => {
-                            notification.style.display = 'none';
-                        }, 3000);
-                        
-                        // Reload page to reflect changes
-                        setTimeout(() => {
-                        window.location.reload();
-                        }, 1000);
-                    } else {
-                        alert(result.message || 'Failed to update status');
-                        return;
-                    }
-                } catch (error) {
-                    alert('Failed to update status. Please try again.');
-                }
-            }
-            
+            // Status dropdown and status update functions externalized to lifecycle.page.js
             // Clinical notes modal toggle
             const toggleClinicalNotes = document.getElementById('toggleClinicalNotes');
             

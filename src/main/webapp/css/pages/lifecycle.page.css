@@ -1,0 +1,138 @@
+/* Lifecycle Page Styles (extracted from inline JSP) */
+
+/* Status badge */
+.status-badge {
+  display: inline-flex;
+  align-items: center;
+  gap: 8px;
+  padding: 8px 12px;
+  border-radius: 8px;
+  font-weight: 600;
+  font-size: 0.95rem;
+  transition: all 0.2s ease;
+}
+.status-badge i { font-size: 1.1rem; }
+.status-badge span { font-weight: 700; letter-spacing: 0.3px; }
+
+/* Badge variants */
+.status-badge.completed { background: #2ecc71; color: #ffffff; }
+.status-badge.pending { background: #f39c12; color: #fff; }
+.status-badge.cancelled { background: #e74c3c; color: #fff; }
+.status-badge.in-progress { background: #3498db; color: #fff; }
+
+/* Motivation container */
+.motivation-container {
+  margin-top: 20px;
+  padding: 15px;
+  border-radius: 8px;
+  background: #ecf0f1;
+}
+.motivation-container h4 { margin: 0 0 10px; }
+.motivation-container p { margin: 0; }
+
+/* Lifecycle timeline */
+.lifecycle-timeline {
+  margin-top: 20px;
+  padding: 15px;
+  border-radius: 8px;
+  background: #f8f9fa;
+}
+.lifecycle-timeline .timeline-header { font-weight: bold; margin-bottom: 10px; }
+.lifecycle-timeline .timeline-item { padding: 8px 0; border-bottom: 1px solid #ddd; }
+.lifecycle-timeline .timeline-item:last-child { border-bottom: none; }
+
+/* Status dropdown */
+.status-dropdown { position: relative; display: inline-block; }
+.status-dropdown-btn {
+  display: inline-flex;
+  align-items: center;
+  gap: 8px;
+  padding: 8px 12px;
+  border-radius: 8px;
+  border: 1px solid #ddd;
+  background: #fff;
+  cursor: pointer;
+}
+.status-dropdown-btn.disabled { opacity: 0.6; cursor: not-allowed; }
+.status-dropdown-btn.cancelled { opacity: 0.7; text-decoration: line-through; }
+.status-dropdown-btn.payment-pending { border-color: #e74c3c; color: #e74c3c; }
+
+.status-dropdown-content {
+  display: none;
+  position: absolute;
+  top: calc(100% + 8px);
+  left: 0;
+  min-width: 220px;
+  padding: 8px;
+  border-radius: 8px;
+  background: #fff;
+  box-shadow: 0 8px 24px rgba(0,0,0,0.12);
+  z-index: 1000;
+  border: 1px solid #dfe1e6;
+  margin-top: 4px;
+  max-width: 360px;
+  white-space: normal;
+  word-break: break-word;
+}
+.status-dropdown-content.show { display: block; animation: dropDown 120ms ease-out; }
+
+.status-option {
+  display: flex;
+  align-items: center;
+  gap: 8px;
+  padding: 8px 10px;
+  border-radius: 6px;
+  cursor: pointer;
+}
+.status-option:hover { background: #f4f6f8; }
+.status-option[disabled] { opacity: 0.5; cursor: not-allowed; }
+
+/* Status notification */
+.status-notification {
+  position: fixed;
+  bottom: 20px;
+  right: 20px;
+  background: #2ecc71;
+  color: #fff;
+  padding: 10px 14px;
+  border-radius: 6px;
+  box-shadow: 0 8px 24px rgba(0,0,0,0.12);
+  transform: translateY(120%);
+  opacity: 0;
+  transition: transform 180ms ease, opacity 180ms ease;
+  z-index: 10000;
+}
+.status-notification.show { transform: translateY(0); opacity: 1; }
+
+@keyframes dropDown {
+  from { transform: translateY(-6px); opacity: 0; }
+  to { transform: translateY(0px); opacity: 1; }
+}
+
+.status-dot {
+  width: 14px;
+  height: 14px;
+  border-radius: 50%;
+  display: inline-block;
+}
+.status-dot.open { background-color: #3498db; }
+.status-dot.payment-pending { background-color: #e67e22; }
+.status-dot.payment-completed { background-color: #9b59b6; }
+.status-dot.payment-denied { background-color: #e74c3c; }
+.status-dot.in-progress { background-color: #1abc9c; }
+.status-dot.on-hold { background-color: #f39c12; }
+.status-dot.completed { background-color: #2ecc71; }
+.status-dot.follow-up-scheduled { background-color: #34495e; }
+.status-dot.follow-up-completed { background-color: #16a085; }
+.status-dot.closed { background-color: #7f8c8d; }
+.status-dot.cancelled { background-color: #c0392b; }
+.status-option.active { background: #ebecf0; }
+.status-text { font-size: 14px; color: #172b4d; }
+.status-description { color: #6b778c; font-size: 12px; margin-top: 2px; }
+.status-dropdown-header { padding: 10px 12px; font-size: 12px; color: #6b778c; border-bottom: 1px solid #dfe1e6; }
+
+@media (max-width: 480px) {
+  .status-dropdown-content {
+    max-width: 90vw;
+  }
+}
