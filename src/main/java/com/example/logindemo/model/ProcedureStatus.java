@@ -21,15 +21,15 @@ public enum ProcedureStatus {
     ON_HOLD("On Hold", "Procedure is temporarily paused"),
 
     // Completion Phase
-    COMPLETED("Completed", "Procedure completed successfully"),
+    COMPLETED("Sitting Completed", "Sitting Completed successfully"),
     CANCELLED("Cancelled", "Procedure was cancelled before completion"),
 
     // Post-Procedure Phase
-    FOLLOW_UP_SCHEDULED("Next Sitting Scheduled", "Next sitting appointment has been scheduled"),
+    FOLLOW_UP_SCHEDULED("Schedule Next Sitting", "Next sitting appointment has been scheduled"),
     FOLLOW_UP_COMPLETED("Next-Sitting Completed", "Next sitting has been completed"),
 
     // Closure
-    CLOSED("Closed", "Procedure and follow-ups are fully completed, case closed"),
+    CLOSED("Procedure Completed", "Procedure and follow-ups are fully completed, case closed"),
     
     // Reopening
     REOPEN("Reopen", "Case has been reopened for further treatment");
@@ -55,7 +55,7 @@ public enum ProcedureStatus {
             case OPEN, PAYMENT_DENIED -> Set.of(PAYMENT_PENDING, CANCELLED);
             case PAYMENT_PENDING -> Set.of(PAYMENT_DENIED, CANCELLED);
             case PAYMENT_COMPLETED, ON_HOLD -> Set.of(IN_PROGRESS, CANCELLED);
-            case IN_PROGRESS -> Set.of(ON_HOLD, COMPLETED, CANCELLED);
+            case IN_PROGRESS -> Set.of(ON_HOLD, COMPLETED);
             case COMPLETED -> Set.of(FOLLOW_UP_SCHEDULED, CLOSED);
             case FOLLOW_UP_SCHEDULED -> Set.of(FOLLOW_UP_COMPLETED, CLOSED);
             case FOLLOW_UP_COMPLETED -> Set.of(CLOSED);

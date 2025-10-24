@@ -2126,6 +2126,9 @@
                     <a href="${pageContext.request.contextPath}/patients/examination/${examination.id}" class="btn btn-primary">
                         <i class="fas fa-arrow-left"></i> Back to Examination
                     </a>
+                    <a href="${pageContext.request.contextPath}/patients/details/${patient.id}" class="btn btn-primary" style="margin-left:8px;">
+                        <i class="fas fa-user"></i> Back to Patient Details
+                    </a>
                 </div>
             </div>
             

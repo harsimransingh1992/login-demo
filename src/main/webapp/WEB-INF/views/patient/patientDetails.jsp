@@ -6070,6 +6070,15 @@ window.openNotesModal = window.openNotesModal || function(examId) {
             // Show the print content temporarily
             const printContent = document.getElementById('printContent');
             const originalDisplay = printContent.style.display;
+
+            // Add generated timestamp line at the top
+            const timestampEl = document.createElement('div');
+            timestampEl.className = 'print-generated-timestamp';
+            // Prefer existing formatter if present
+            const formatted = (typeof formatCurrentDate === 'function') ? formatCurrentDate() : (new Date()).toLocaleString();
+            timestampEl.textContent = 'Receipt generated on ' + formatted;
+            timestampEl.style.cssText = 'display: block; text-align: center; margin-bottom: 5px; font-size: 7pt;';
+            printContent.insertBefore(timestampEl, printContent.firstChild);
             
             // Make print content visible
             printContent.style.display = 'block';
@@ -6091,6 +6100,13 @@ window.openNotesModal = window.openNotesModal || function(examId) {
             allElements.forEach((element, index) => {
                 element.style.display = originalStyles[index];
             });
+            
+            // Remove the timestamp element after printing to avoid duplications
+            try {
+                if (timestampEl && timestampEl.parentNode) {
+                    timestampEl.parentNode.removeChild(timestampEl);
+                }
+            } catch (e) { /* ignore */ }
         }
         
         function formatCurrentDate() {
@@ -7984,41 +8000,37 @@ window.openNotesModal = window.openNotesModal || function(examId) {
      <!-- Hidden Print Content -->
      <div class="print-content" id="printContent">
          <div class="registration-details" style="text-align: center; display: block;">
-             <div class="detail-item" style="display: block; text-align: center; margin-bottom: 10px; font-size: 14pt;">
+             <div class="detail-item" style="display: block; text-align: center; margin-bottom: 5px; font-size: 7pt;">
                  <strong>Full Name:</strong> ${patient.firstName} ${patient.lastName}
              </div>
-             <div class="detail-item" style="display: block; text-align: center; margin-bottom: 10px; font-size: 14pt;">
+             <div class="detail-item" style="display: block; text-align: center; margin-bottom: 5px; font-size: 7pt;">
                  <strong>Age:</strong> ${patient.age} years
              </div>
-             <div class="detail-item" style="display: block; text-align: center; margin-bottom: 10px; font-size: 14pt;">
+             <div class="detail-item" style="display: block; text-align: center; margin-bottom: 5px; font-size: 7pt;">
                  <strong>Gender:</strong> ${patient.gender}
              </div>
-             <div class="detail-item" style="display: block; text-align: center; margin-bottom: 10px; font-size: 14pt;">
+             <div class="detail-item" style="display: block; text-align: center; margin-bottom: 5px; font-size: 7pt;">
                  <strong>Phone Number:</strong> ${patient.phoneNumber}
              </div>
-             <div class="detail-item" style="display: block; text-align: center; margin-bottom: 10px; font-size: 14pt;">
+             <div class="detail-item" style="display: block; text-align: center; margin-bottom: 5px; font-size: 7pt;">
                 <strong>Medical History:</strong>
                 <c:choose>
                     <c:when test="${not empty patient.medicalHistory}">${fn:escapeXml(patient.medicalHistory)}</c:when>
                     <c:otherwise>None reported</c:otherwise>
                 </c:choose>
              </div>
-             <div class="detail-item" style="display: block; text-align: center; margin-bottom: 10px; font-size: 14pt;">
+             <div class="detail-item" style="display: block; text-align: center; margin-bottom: 5px; font-size: 7pt;">
                 <strong>Branch:</strong>
                 <c:choose>
                     <c:when test="${not empty patient.registeredClinic}">${fn:escapeXml(patient.registeredClinic.clinicName)}</c:when>
                     <c:otherwise>Not specified</c:otherwise>
                 </c:choose>
              </div>
-             <div class="detail-item" style="display: block; text-align: center; margin-bottom: 10px; font-size: 14pt;">
+             <div class="detail-item" style="display: block; text-align: center; margin-bottom: 5px; font-size: 7pt;    ">
                  <strong>Registration Code:</strong> ${patient.registrationCode}
              </div>
          </div>
-         
-         <!-- Footer positioned 7 lines from bottom -->
-         <div style="position: fixed; bottom: 7em; left: 0; right: 0; text-align: center; font-size: 10pt; color: #666;">
-             Generated using PeriDesk developed by NavTech Labs
-         </div>
+
      </div>
 
      <!-- Customer Ledger Modal -->
