@@ -63,4 +63,14 @@ public interface ToothClinicalExaminationRepository extends JpaRepository<ToothC
 
     // Find patient by examination ID
     Optional<ToothClinicalExamination> findByIdAndPatientIsNotNull(Long id);
+
+    // Pageable queries for assigned cases
+    Page<ToothClinicalExamination> findByAssignedDoctor(User assignedDoctor, Pageable pageable);
+    Page<ToothClinicalExamination> findByAssignedDoctorAndProcedureStatus(User assignedDoctor, ProcedureStatus status, Pageable pageable);
+    Page<ToothClinicalExamination> findByAssignedDoctorAndExaminationDateBetween(User assignedDoctor, LocalDateTime from, LocalDateTime to, Pageable pageable);
+    Page<ToothClinicalExamination> findByAssignedDoctorAndProcedureStatusAndExaminationDateBetween(User assignedDoctor, ProcedureStatus status, LocalDateTime from, LocalDateTime to, Pageable pageable);
+
+    // Pageable queries using treatmentStartingDate for scheduled filters
+    Page<ToothClinicalExamination> findByAssignedDoctorAndTreatmentStartingDateBetween(User assignedDoctor, LocalDateTime from, LocalDateTime to, Pageable pageable);
+    Page<ToothClinicalExamination> findByAssignedDoctorAndProcedureStatusAndTreatmentStartingDateBetween(User assignedDoctor, ProcedureStatus status, LocalDateTime from, LocalDateTime to, Pageable pageable);
 }

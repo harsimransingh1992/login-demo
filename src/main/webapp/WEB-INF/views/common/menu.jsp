@@ -132,6 +132,14 @@
                 <h3>My Dashboard</h3>
             </div>
         </a>
+        <!-- Assigned Cases menu item -->
+        <c:set var="isAssignedCasesActive" value="${pageContext.request.requestURI == pageContext.request.contextPath.concat('/assigned-cases')}" />
+        <a href="${pageContext.request.contextPath}/assigned-cases" class="action-card${isAssignedCasesActive ? ' active' : ''}">
+            <i class="fas fa-briefcase-medical"></i>
+            <div class="card-text">
+                <h3>Assigned Cases</h3>
+            </div>
+        </a>
     </sec:authorize>
     <sec:authorize access="hasRole('MODERATOR')">
         <c:set var="isActive" value="${pageContext.request.requestURI == pageContext.request.contextPath.concat('/moderator/tooth-exam-dashboard')}" />

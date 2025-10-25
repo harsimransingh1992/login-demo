@@ -616,6 +616,35 @@ public class ToothClinicalExaminationServiceImpl implements ToothClinicalExamina
     }
     
     @Override
+    public Page<ToothClinicalExaminationDTO> getAssignedCases(Long doctorUserId, ProcedureStatus status, LocalDateTime from, LocalDateTime to, int page, int size) {
+        User doctor = userRepository.findById(doctorUserId)
+                .orElseThrow(() -> new IllegalArgumentException("Doctor user not found: " + doctorUserId));
+
+        Pageable pageable = PageRequest.of(page, size,
+                Sort.by("treatmentStartingDate").descending().and(Sort.by("createdAt").descending()));
+
+        Page<ToothClinicalExamination> examsPage;
+        boolean hasFromTo = (from != null && to != null);
+        boolean hasStatus = (status != null);
+
+        if (hasStatus && hasFromTo) {
+            examsPage = toothClinicalExaminationRepository
+                    .findByAssignedDoctorAndProcedureStatusAndTreatmentStartingDateBetween(doctor, status, from, to, pageable);
+        } else if (hasFromTo) {
+            examsPage = toothClinicalExaminationRepository
+                    .findByAssignedDoctorAndTreatmentStartingDateBetween(doctor, from, to, pageable);
+        } else if (hasStatus) {
+            examsPage = toothClinicalExaminationRepository
+                    .findByAssignedDoctorAndProcedureStatus(doctor, status, pageable);
+        } else {
+            examsPage = toothClinicalExaminationRepository
+                    .findByAssignedDoctor(doctor, pageable);
+        }
+
+        return examsPage.map(this::convertToDTO);
+    }
+
+    @Override
     public List<ToothClinicalExamination> findByDoctorAndDateWithPayments(User doctor, LocalDateTime from, LocalDateTime to) {
         return toothClinicalExaminationRepository.findByAssignedDoctorAndExaminationDateBetween(doctor, from, to);
     }

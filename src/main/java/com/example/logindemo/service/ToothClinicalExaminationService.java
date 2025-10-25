@@ -116,4 +116,16 @@ public interface ToothClinicalExaminationService {
      * Find examinations by assigned doctor, date range, and with at least one payment entry
      */
     List<ToothClinicalExamination> findByDoctorAndDateWithPayments(com.example.logindemo.model.User doctor, java.time.LocalDateTime from, java.time.LocalDateTime to);
+
+    /**
+     * Get assigned cases for a doctor with optional filters and pagination
+     * @param doctorUserId the user ID of the assigned doctor
+     * @param status optional procedure status filter (nullable)
+     * @param from optional start date-time for scheduled/treatment window (nullable)
+     * @param to optional end date-time for scheduled/treatment window (nullable)
+     * @param page page index (0-based)
+     * @param size page size
+     * @return a page of ToothClinicalExaminationDTO matching filters
+     */
+    Page<ToothClinicalExaminationDTO> getAssignedCases(Long doctorUserId, ProcedureStatus status, LocalDateTime from, LocalDateTime to, int page, int size);
 }

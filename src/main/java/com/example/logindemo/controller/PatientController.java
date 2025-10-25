@@ -2188,6 +2188,9 @@ public class PatientController {
             boolean copyAttachments = Boolean.TRUE.equals(request.get("duplicateAttachments"));
             boolean copyTreatingDoctor = Boolean.TRUE.equals(request.get("duplicateTreatingDoctor"));
             boolean copyProcedure = Boolean.TRUE.equals(request.get("duplicateProcedure"));
+            // Honor flags exactly as provided; do not default to copying
+            boolean copyClinicalNotes = Boolean.TRUE.equals(request.get("duplicateClinicalNotes"));
+            boolean copyTreatmentAdvice = Boolean.TRUE.equals(request.get("duplicateTreatmentAdvice"));
             
             // Get target teeth from request
             @SuppressWarnings("unchecked")
@@ -2221,9 +2224,13 @@ public class PatientController {
                     duplicate.setAssignedDoctor(null);
                 }
 
-                // Copy clinical attributes (always copied)
+                // Copy clinical attributes
                 duplicate.setChiefComplaints(existing.getChiefComplaints());
-                duplicate.setExaminationNotes(existing.getExaminationNotes());
+                if (copyClinicalNotes) {
+                    duplicate.setExaminationNotes(existing.getExaminationNotes());
+                } else {
+                    duplicate.setExaminationNotes(null);
+                }
                 duplicate.setBleedingOnProbing(existing.getBleedingOnProbing());
                 duplicate.setExistingRestoration(existing.getExistingRestoration());
                 duplicate.setFurcationInvolvement(existing.getFurcationInvolvement());
@@ -2235,7 +2242,11 @@ public class PatientController {
                 duplicate.setToothMobility(existing.getToothMobility());
                 duplicate.setToothSensitivity(existing.getToothSensitivity());
                 duplicate.setToothVitality(existing.getToothVitality());
-                duplicate.setAdvised(existing.getAdvised());
+                if (copyTreatmentAdvice) {
+                    duplicate.setAdvised(existing.getAdvised());
+                } else {
+                    duplicate.setAdvised(null);
+                }
 
                 // Copy images (both legacy paths) - always copied
                 duplicate.setUpperDenturePicturePath(existing.getUpperDenturePicturePath());
@@ -2417,8 +2428,17 @@ public class PatientController {
             log.info("Requested Status: {}", status);
 
             // Get the examination
-            ToothClinicalExamination examination = toothClinicalExaminationRepository.findById(examinationId)
-                .orElseThrow(() -> new RuntimeException("Examination not found"));
+            Optional<ToothClinicalExamination> examinationOpt = toothClinicalExaminationRepository.findById(examinationId);
+            if (examinationOpt.isEmpty()) {
+                return ResponseEntity.status(HttpStatus.NOT_FOUND)
+                    .contentType(org.springframework.http.MediaType.APPLICATION_JSON)
+                    .body(Map.of(
+                        "success", false,
+                        "message", "Examination not found",
+                        "examinationId", examinationId
+                    ));
+            }
+            ToothClinicalExamination examination = examinationOpt.get();
 
             // Validate status transition
             ProcedureStatus currentStatus = examination.getProcedureStatus();
@@ -2498,13 +2518,14 @@ public class PatientController {
             // Update the status
             examination.setProcedureStatus(newStatus);
 
-            // Set timestamps based on status
+            // Set timestamps based on status (IST)
             if (newStatus == ProcedureStatus.IN_PROGRESS) {
-                examination.setProcedureStartTime(LocalDateTime.now());
-                log.info("Set procedure start time for IN_PROGRESS status");
+                LocalDateTime nowIst = LocalDateTime.now(java.time.ZoneId.of("Asia/Kolkata"));
+                examination.setProcedureStartTime(nowIst);
+                examination.setTreatmentStartingDate(nowIst);
             } else if (newStatus == ProcedureStatus.COMPLETED) {
-                examination.setProcedureEndTime(LocalDateTime.now());
-                log.info("Set procedure end time for COMPLETED status");
+                LocalDateTime endIst = LocalDateTime.now(java.time.ZoneId.of("Asia/Kolkata"));
+                examination.setProcedureEndTime(endIst);
             }
 
             // Save the examination
@@ -2516,7 +2537,7 @@ public class PatientController {
             transition.setExamination(examination);
             transition.setStageName(newStatus.toString());
             transition.setStageDescription(getStatusDescription(newStatus));
-            transition.setTransitionTime(LocalDateTime.now());
+            transition.setTransitionTime(LocalDateTime.now(java.time.ZoneId.of("Asia/Kolkata")));
             transition.setCompleted(true);
             transition.setTransitionedBy(getCurrentUser());
             procedureLifecycleTransitionRepository.save(transition);
@@ -2525,24 +2546,34 @@ public class PatientController {
             log.info("Successfully updated examination {} status from {} to {}",
                     examinationId, currentStatus, newStatus);
 
+            String treatmentStartIso = (examination.getTreatmentStartingDate() != null)
+                ? examination.getTreatmentStartingDate().atZone(java.time.ZoneId.of("Asia/Kolkata")).format(DateTimeFormatter.ISO_OFFSET_DATE_TIME)
+                : null;
+            PatientDTO patientDto = patientMapper.toDto(examination.getPatient());
+
+            Map<String, Object> successBody = new java.util.LinkedHashMap<>();
+            successBody.put("success", true);
+            successBody.put("message", "Status updated successfully");
+            successBody.put("newStatus", newStatus.name());
+            successBody.put("newStatusLabel", newStatus.getLabel());
+            successBody.put("examinationId", examination.getId());
+            successBody.put("treatmentStartingDateIso", treatmentStartIso);
+            successBody.put("patient", patientDto);
+
             return ResponseEntity.ok()
                 .contentType(org.springframework.http.MediaType.APPLICATION_JSON)
-                .body(Map.of(
-                    "success", true,
-                    "message", "Status updated successfully",
-                    "newStatus", newStatus.name(),
-                    "newStatusLabel", newStatus.getLabel()
-                ));
+                .body(successBody);
 
         } catch (Exception e) {
             log.error("=== STATUS UPDATE ERROR ===");
             log.error("Error updating examination status: {}", e.getMessage(), e);
+            String errorMessage = (e.getMessage() != null) ? e.getMessage() : "Unexpected error";
+            Map<String, Object> errorBody = new java.util.LinkedHashMap<>();
+            errorBody.put("success", false);
+            errorBody.put("message", errorMessage);
             return ResponseEntity.badRequest()
                 .contentType(org.springframework.http.MediaType.APPLICATION_JSON)
-                .body(Map.of(
-                    "success", false,
-                    "message", e.getMessage()
-                ));
+                .body(errorBody);
         }
     }
 

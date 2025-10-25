@@ -209,6 +209,7 @@ public class AppointmentManagementController {
                     event.put("start", appointment.getAppointmentDateTime().toString());
                     event.put("status", appointment.getStatus().toString());
                     event.put("patientName", appointment.getPatientName());
+                    event.put("patientMobile", appointment.getPatientMobile());
                     // Explicitly handle patient registration status
                     boolean hasPatient = appointment.getPatient() != null;
                     event.put("patientId", hasPatient ? appointment.getPatient().getId() : null);

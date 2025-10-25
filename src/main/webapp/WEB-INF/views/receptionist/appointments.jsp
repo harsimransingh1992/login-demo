@@ -2057,7 +2057,8 @@
                                         doctorName: e.doctorName || '',
                                         doctorId: e.doctorId || null,
                                         isRegistered: isRegistered,
-                                        patientTitle: patientTitle
+                                        patientTitle: patientTitle,
+                                        patientMobile: e.patientMobile || ''
                                     };
                                 });
                                 // Exclude cancelled appointments from calendar view
@@ -2129,6 +2130,7 @@
                                         var registrationStatus = event.isRegistered ? 'Registered Patient (Click to view details)' : 'Unregistered Patient';
                                         var tip = (timeStr ? ('Time: ' + timeStr + '\n') : '') + 
                                                  'Patient: ' + (event.patientName || '-') + '\n' + 
+                                                 'Phone: ' + (event.patientMobile || '-') + '\n' +
                                                  'Doctor: ' + (event.doctorName || '-') + '\n' +
                                                  'Status: ' + registrationStatus;
                                         if (event.notes) { tip += '\nNotes: ' + event.notes; }

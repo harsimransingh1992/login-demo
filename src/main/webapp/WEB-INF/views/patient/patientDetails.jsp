@@ -5227,6 +5227,26 @@ window.openNotesModal = window.openNotesModal || function(examId) {
                         </span>
                     </label>
                 </div>
+                <div class="form-group">
+                    <label class="checkbox-container">
+                        <input type="checkbox" id="duplicateClinicalNotes">
+                        <span class="checkmark"></span>
+                        <span class="checkbox-label">
+                            Clinical Notes
+                            <span id="clinicalNotesInfo" class="detail-name"></span>
+                        </span>
+                    </label>
+                </div>
+                <div class="form-group">
+                    <label class="checkbox-container">
+                        <input type="checkbox" id="duplicateTreatmentAdvice">
+                        <span class="checkmark"></span>
+                        <span class="checkbox-label">
+                            Treatment Advice
+                            <span id="treatmentAdviceInfo" class="detail-name"></span>
+                        </span>
+                    </label>
+                </div>
             </div>
             <div class="modal-footer">
                 <button type="button" class="btn btn-primary" id="confirmDuplicateBtn" onclick="confirmDuplicateExamination()">
@@ -5879,6 +5899,10 @@ window.openNotesModal = window.openNotesModal || function(examId) {
             document.getElementById('duplicateTreatingDoctor').disabled = false;
             document.getElementById('duplicateProcedure').checked = false;
             document.getElementById('duplicateProcedure').disabled = false;
+            document.getElementById('duplicateClinicalNotes').checked = false;
+            document.getElementById('duplicateClinicalNotes').disabled = false;
+            document.getElementById('duplicateTreatmentAdvice').checked = false;
+            document.getElementById('duplicateTreatmentAdvice').disabled = false;
             
             // Reset tooth selection
             selectedTeeth = [];
@@ -5915,6 +5939,8 @@ window.openNotesModal = window.openNotesModal || function(examId) {
             const duplicateAttachments = document.getElementById('duplicateAttachments').checked;
             const duplicateTreatingDoctor = document.getElementById('duplicateTreatingDoctor').checked;
             const duplicateProcedure = document.getElementById('duplicateProcedure').checked;
+            const duplicateClinicalNotes = document.getElementById('duplicateClinicalNotes').checked;
+            const duplicateTreatmentAdvice = document.getElementById('duplicateTreatmentAdvice').checked;
             
             // Call the new selective duplication endpoint with JSON data including selected teeth
             fetch(joinUrl(contextPath, '/patients/examination/' + examinationId + '/duplicate-selective'), {
@@ -5927,6 +5953,8 @@ window.openNotesModal = window.openNotesModal || function(examId) {
                     'duplicateAttachments': duplicateAttachments,
                     'duplicateTreatingDoctor': duplicateTreatingDoctor,
                     'duplicateProcedure': duplicateProcedure,
+                    'duplicateClinicalNotes': duplicateClinicalNotes,
+                    'duplicateTreatmentAdvice': duplicateTreatmentAdvice,
                     'targetTeeth': selectedTeeth
                 })
             })
