@@ -56,11 +56,12 @@ public class HomeController {
                 return "welcome";
             }
         }
-        return "redirect:/login";
+        // Show the public marketing homepage for guests
+        return "marketing/home";
     }
     
     @GetMapping("/access-denied")
     public String accessDenied() {
         return "access-denied";
     }
-} 
+}

@@ -1,0 +1,12 @@
+<svg xmlns="http://www.w3.org/2000/svg" viewBox="0 0 120 140" role="img" aria-label="PeriDesk shield badge with tooth">
+  <defs>
+    <linearGradient id="gShield" x1="0" x2="0" y1="0" y2="1">
+      <stop offset="0%" stop-color="#1663ff"/>
+      <stop offset="100%" stop-color="#5a67d8"/>
+    </linearGradient>
+  </defs>
+  <!-- Shield background -->
+  <path d="M60 8l42 12v44c0 26-19 50-42 60-23-10-42-34-42-60V20z" fill="url(#gShield)"/>
+  <!-- Tooth emblem -->
+  <path d="M60 44c-12 0-18 10-18 20 0 10 5 18 8 26 2 4 5 4 7 0 2-4 3-9 7-9s5 5 7 9c2 4 5 4 7 0 3-8 8-16 8-26 0-10-6-20-18-20z" fill="#ffffff"/>
+</svg>

@@ -1,0 +1,19 @@
+<svg xmlns="http://www.w3.org/2000/svg" viewBox="0 0 360 96" role="img" aria-label="PeriDesk wordmark with dental molar icon">
+  <defs>
+    <linearGradient id="gBlueIndigo" x1="0" x2="1" y1="0" y2="1">
+      <stop offset="0%" stop-color="#1663ff"/>
+      <stop offset="70%" stop-color="#5a67d8"/>
+    </linearGradient>
+  </defs>
+  <!-- Dental molar icon -->
+  <g transform="translate(20,12)">
+    <path d="M40 6c-12 0-18 10-18 20 0 10 5 20 9 29 2 5 6 5 8 0 2-5 4-12 9-12s7 7 9 12c2 5 6 5 8 0 4-9 9-19 9-29 0-10-6-20-18-20-6 0-10 3-15 3s-9-3-15-3z" fill="url(#gBlueIndigo)"/>
+    <!-- subtle shine -->
+    <path d="M34 14c-5 0-8 4-8 9" stroke="#ffffff" stroke-opacity="0.7" stroke-width="2" fill="none"/>
+  </g>
+
+  <!-- Wordmark (preserves name and casing) -->
+  <g transform="translate(100,0)">
+    <text x="0" y="62" font-family="Inter, system-ui, -apple-system, Segoe UI, Roboto, Ubuntu, 'Helvetica Neue', Arial, 'Noto Sans', sans-serif" font-weight="800" font-size="36" fill="#0b1e3d">PeriDesk</text>
+  </g>
+</svg>

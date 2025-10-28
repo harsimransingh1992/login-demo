@@ -1,0 +1,12 @@
+<svg xmlns="http://www.w3.org/2000/svg" viewBox="0 0 380 110" role="img" aria-label="PeriDesk wordmark with smile underline">
+  <defs>
+    <linearGradient id="gBlueTeal" x1="0" x2="1" y1="0" y2="1">
+      <stop offset="0%" stop-color="#1663ff"/>
+      <stop offset="100%" stop-color="#14b8a6"/>
+    </linearGradient>
+  </defs>
+  <!-- Wordmark -->
+  <text x="10" y="70" font-family="Inter, system-ui, -apple-system, Segoe UI, Roboto, Ubuntu, 'Helvetica Neue', Arial, 'Noto Sans', sans-serif" font-weight="800" font-size="40" fill="#0b1e3d">PeriDesk</text>
+  <!-- Smile underline -->
+  <path d="M24 82c40 22 100 22 140 0" fill="none" stroke="url(#gBlueTeal)" stroke-width="6" stroke-linecap="round"/>
+</svg>

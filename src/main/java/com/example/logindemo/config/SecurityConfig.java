@@ -164,6 +164,9 @@ public class SecurityConfig {
                 // Cross-clinic schedules - accessible to admins and moderators
                 .antMatchers("/schedules/**").hasAnyRole("RECEPTIONIST", "ADMIN", "MODERATOR","OPD_DOCTOR","DOCTOR")
                 
+                // Public marketing site and static assets
+                .antMatchers("/", "/marketing/**", "/css/**", "/js/**", "/images/**", "/favicon.ico").permitAll()
+
                 // Welcome page and basic features - accessible to all authenticated users
                 .antMatchers("/welcome", "/profile/**").authenticated()
                 
