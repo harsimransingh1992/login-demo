@@ -96,8 +96,9 @@ public class SecurityConfig {
         return new OncePerRequestFilter() {
             @Override
             protected void doFilterInternal(HttpServletRequest request, HttpServletResponse response, FilterChain filterChain) throws ServletException, IOException {
-                // Conservative Permissions-Policy to reduce risk and improve performance by disabling unnecessary features
-                response.setHeader("Permissions-Policy", "geolocation=(), microphone=(), camera=(), accelerometer=(), gyroscope=(), magnetometer=()");
+                // Permissions-Policy: allow camera on same-origin so webcam can be used on patients pages
+                // Keep other features disabled to remain conservative
+                response.setHeader("Permissions-Policy", "geolocation=(), microphone=(), camera=(self), accelerometer=(), gyroscope=(), magnetometer=()");
                 filterChain.doFilter(request, response);
             }
         };
