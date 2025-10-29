@@ -31,7 +31,8 @@ public class PaymentsProvider implements ReportDataProvider {
         LocalDateTime endOfDay = reportDate.plusDays(1).atStartOfDay();
 
         List<ClinicModel> clinics = clinicRepository.findAll();
-        List<PaymentEntry> payments = paymentEntryRepository.findByPaymentDateBetween(startOfDay, endOfDay);
+        // Use fetch-join to eagerly load examination and clinic, avoiding LazyInitializationException
+        List<PaymentEntry> payments = paymentEntryRepository.findAllWithExaminationClinicByPaymentDateBetween(startOfDay, endOfDay);
 
         Map<Long, List<PaymentEntry>> paymentsByClinicId = payments.stream()
                 .filter(p -> p.getExamination() != null && p.getExamination().getExaminationClinic() != null)

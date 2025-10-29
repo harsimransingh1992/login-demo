@@ -101,6 +101,26 @@
         } catch (_) { return dtStr; }
     }
 
+    function formatTimeOnly(dtStr) {
+        if (!dtStr) return '-';
+        try {
+            const dt = new Date(dtStr);
+            return dt.toLocaleTimeString(undefined, { hour: 'numeric', minute: '2-digit' });
+        } catch (_) { return dtStr; }
+    }
+
+    function buildAppointmentTooltip(a) {
+        const timeStr = formatTimeOnly(a.appointmentDateTime);
+        const registrationStatus = a.isRegistered ? 'Registered Patient (Click to view details)' : 'Unregistered Patient';
+        let tip = (timeStr ? ('Time: ' + timeStr + '\n') : '') +
+                  'Patient: ' + (a.patientName || '-') + '\n' +
+                  'Phone: ' + (a.patientMobile || '-') + '\n' +
+                  'Doctor: ' + (a.doctorName || '-') + '\n' +
+                  'Status: ' + registrationStatus;
+        if (a.notes && a.notes.trim()) { tip += '\nNotes: ' + a.notes; }
+        return tip;
+    }
+
     function ensureCustomCalendarToolbar(calEl) {
         var container = calEl.closest('.calendar-container');
         if (!container.length) container = calEl.parent();
@@ -165,6 +185,8 @@
         appointments.forEach(a => {
             const tr = document.createElement('tr');
             const isRegistered = !!a.isRegistered;
+            // Add hover tooltip on the row
+            tr.title = buildAppointmentTooltip(a);
             const patientCell = document.createElement('td');
             if (isRegistered && a.patientId) {
                 const link = document.createElement('a');
@@ -218,7 +240,15 @@
         const events = (appointments || []).map(a => ({
             title: (a.patientName || a.patientMobile || 'Unknown') + (a.status ? ' • ' + a.status : ''),
             start: a.appointmentDateTime,
-            allDay: false
+            allDay: false,
+            // Additional fields for tooltip and click handling
+            patientName: a.patientName,
+            patientMobile: a.patientMobile,
+            doctorName: a.doctorName,
+            status: a.status,
+            notes: a.notes,
+            isRegistered: !!a.isRegistered,
+            patientId: a.patientId
         }));
         const calEl = jQuery('#selectClinicCalendar');
         ensureCustomCalendarToolbar(calEl);
@@ -242,6 +272,29 @@
             contentHeight: 'auto',
             nowIndicator: true,
             events: events,
+            eventRender: function(event, element) {
+                try {
+                    var timeStr = (window.moment && event.start && event.start.format) ? event.start.format('h:mm A') : '';
+                    var registrationStatus = event.isRegistered ? 'Registered Patient (Click to view details)' : 'Unregistered Patient';
+                    var tip = (timeStr ? ('Time: ' + timeStr + '\n') : '') +
+                              'Patient: ' + (event.patientName || '-') + '\n' +
+                              'Phone: ' + (event.patientMobile || '-') + '\n' +
+                              'Doctor: ' + (event.doctorName || '-') + '\n' +
+                              'Status: ' + registrationStatus;
+                    if (event.notes) { tip += '\nNotes: ' + event.notes; }
+                    element.attr('title', tip);
+                    if (event.isRegistered) { element.css('cursor', 'pointer'); }
+                } catch (e) { /* ignore tooltip failure */ }
+            },
+            eventClick: function(event) {
+                try {
+                    if (!event) return;
+                    if (event.isRegistered === true && event.patientId) {
+                        var patientDetailsUrl = contextPath + '/patients/details/' + event.patientId;
+                        window.open(patientDetailsUrl, '_blank');
+                    }
+                } catch (e) { console.warn('Failed to handle calendar event click:', e); }
+            },
             viewRender: function(view) {
                 var container = calEl.closest('.calendar-container');
                 if (!container.length) container = calEl.parent();
