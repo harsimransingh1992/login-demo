@@ -950,6 +950,31 @@
                                         <h2 class="card-title"><i class="fas fa-clock"></i> Waiting Patients</h2>
                                     </div>
                                     <div class="card-body">
+                                        <!-- Assigned filter toggle -->
+                                        <div style="display: flex; justify-content: space-between; align-items: center; margin-bottom: 12px;">
+                                            <div style="display: flex; align-items: center; gap: 8px;">
+                                                <span style="font-weight: 600; color: #2c3e50;">Filter:</span>
+                                                <c:choose>
+                                                    <c:when test="${assignedOnly}">
+                                                        <a href="${pageContext.request.contextPath}/welcome" class="btn btn-outline-secondary btn-sm">All</a>
+                                                    </c:when>
+                                                    <c:otherwise>
+                                                        <a href="${pageContext.request.contextPath}/welcome" class="btn btn-primary btn-sm">All</a>
+                                                    </c:otherwise>
+                                                </c:choose>
+                                                <c:choose>
+                                                    <c:when test="${assignedOnly}">
+                                                        <a href="${pageContext.request.contextPath}/welcome?assignedOnly=true" class="btn btn-primary btn-sm">Assigned to me</a>
+                                                    </c:when>
+                                                    <c:otherwise>
+                                                        <a href="${pageContext.request.contextPath}/welcome?assignedOnly=true" class="btn btn-outline-secondary btn-sm">Assigned to me</a>
+                                                    </c:otherwise>
+                                                </c:choose>
+                                            </div>
+                                            <c:if test="${assignedOnly}">
+                                                <span class="badge" style="background-color:#3498db;">Showing patients assigned to you</span>
+                                            </c:if>
+                                        </div>
                                         <c:choose>
                                             <c:when test="${not empty waitingPatients}">
                                                 <table class="table">
@@ -1234,9 +1259,18 @@
                                                 </table>
                                             </c:when>
                                             <c:otherwise>
-                                                <div class="no-patients-message">
-                                                    <i class="fas fa-info-circle"></i> No patients currently waiting.
-                                                </div>
+                                                <c:choose>
+                                                    <c:when test="${assignedOnly}">
+                                                        <div class="no-patients-message">
+                                                            <i class="fas fa-info-circle"></i> No patients are currently assigned to you.
+                                                        </div>
+                                                    </c:when>
+                                                    <c:otherwise>
+                                                        <div class="no-patients-message">
+                                                            <i class="fas fa-info-circle"></i> No patients currently waiting.
+                                                        </div>
+                                                    </c:otherwise>
+                                                </c:choose>
                                             </c:otherwise>
                                         </c:choose>
                                     </div>
