@@ -40,6 +40,8 @@ public interface ToothClinicalExaminationRepository extends JpaRepository<ToothC
 
     List<ToothClinicalExamination> findByExaminationDateBetween(LocalDateTime startDate, LocalDateTime endDate);
 
+    List<ToothClinicalExamination> findByCreatedAtBetween(LocalDateTime startDate, LocalDateTime endDate);
+
     Long countByExaminationDateBetween(LocalDateTime startDate, LocalDateTime endDate);
 
     List<ToothClinicalExamination> findTop10ByOrderByExaminationDateDesc();

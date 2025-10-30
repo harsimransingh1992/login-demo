@@ -203,6 +203,14 @@
                     <h3 class="card-title">Report Dashboard</h3>
                     <p class="card-description">Manage automated reports and scheduling triggers</p>
                 </a>
+
+                <a href="${pageContext.request.contextPath}/admin/cronjobs" class="admin-card">
+                    <div class="card-icon">
+                        <i class="fas fa-clock"></i>
+                    </div>
+                    <h3 class="card-title">Cron Jobs</h3>
+                    <p class="card-description">Manage scheduled jobs, triggers, and history</p>
+                </a>
             </div>
 
             <div class="stats-section">

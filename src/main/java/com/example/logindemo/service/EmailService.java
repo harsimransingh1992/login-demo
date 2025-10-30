@@ -20,4 +20,14 @@ public interface EmailService {
      * @param text email body text
      */
     void sendSimpleMessage(String to, String subject, String text);
+
+    /**
+     * Send an email to multiple recipients with attachments
+     * @param recipients array of recipient emails
+     * @param subject email subject
+     * @param text email body text
+     * @param attachments list of attachments
+     */
+    void sendMessageWithAttachments(String[] recipients, String subject, String text,
+                                    java.util.List<com.example.logindemo.service.dto.EmailAttachment> attachments);
 }

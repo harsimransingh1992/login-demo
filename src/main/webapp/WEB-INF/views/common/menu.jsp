@@ -158,6 +158,13 @@
                 <h3>Admin Panel</h3>
             </div>
         </a>
+        <c:set var="isActive" value="${pageContext.request.requestURI == pageContext.request.contextPath.concat('/admin/cronjobs')}" />
+        <a href="${pageContext.request.contextPath}/admin/cronjobs" class="action-card${isActive ? ' active' : ''}">
+            <i class="fas fa-clock"></i>
+            <div class="card-text">
+                <h3>Cron Jobs</h3>
+            </div>
+        </a>
         <c:set var="isActive" value="${pageContext.request.requestURI == pageContext.request.contextPath.concat('/admin/clinics')}" />
         <a href="${pageContext.request.contextPath}/admin/clinics" class="action-card${isActive ? ' active' : ''}">
             <i class="fas fa-clinic-medical"></i>

@@ -1,12 +1,18 @@
 package com.example.logindemo.service.impl;
 
 import com.example.logindemo.service.EmailService;
+import com.example.logindemo.service.dto.EmailAttachment;
 import lombok.extern.slf4j.Slf4j;
 import org.springframework.beans.factory.annotation.Autowired;
 import org.springframework.beans.factory.annotation.Value;
 import org.springframework.mail.SimpleMailMessage;
 import org.springframework.mail.javamail.JavaMailSender;
+import org.springframework.mail.javamail.MimeMessageHelper;
+import org.springframework.core.io.ByteArrayResource;
 import org.springframework.stereotype.Service;
+
+import javax.mail.internet.MimeMessage;
+import java.util.List;
 
 @Service
 @Slf4j
@@ -67,6 +73,34 @@ public class EmailServiceImpl implements EmailService {
             log.error("Error message: {}", e.getMessage());
             log.error("Full stack trace:", e);
             throw new RuntimeException("Failed to send email", e);
+        }
+    }
+
+    @Override
+    public void sendMessageWithAttachments(String[] recipients, String subject, String text,
+                                           List<EmailAttachment> attachments) {
+        try {
+            MimeMessage message = emailSender.createMimeMessage();
+            MimeMessageHelper helper = new MimeMessageHelper(message, true);
+            helper.setFrom(fromEmail);
+            helper.setTo(recipients);
+            helper.setSubject(subject);
+            helper.setText(text, false);
+
+            if (attachments != null) {
+                for (EmailAttachment att : attachments) {
+                    if (att != null && att.getContent() != null && att.getFilename() != null) {
+                        helper.addAttachment(att.getFilename(), new ByteArrayResource(att.getContent()),
+                                att.getContentType() != null ? att.getContentType() : "application/octet-stream");
+                    }
+                }
+            }
+
+            emailSender.send(message);
+            log.info("Email with attachments sent successfully to: {}", (Object) recipients);
+        } catch (Exception e) {
+            log.error("Failed to send email with attachments to recipients", e);
+            throw new RuntimeException("Failed to send email with attachments", e);
         }
     }
 }
