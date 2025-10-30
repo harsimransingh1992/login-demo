@@ -8,6 +8,7 @@ import com.example.logindemo.repository.UserRepository;
 import com.example.logindemo.service.PatientService;
 import com.example.logindemo.service.UserService;
 import lombok.extern.slf4j.Slf4j;
+import org.springframework.web.bind.annotation.RequestParam;
 import org.springframework.beans.factory.annotation.Autowired;
 import org.springframework.security.core.Authentication;
 import org.springframework.stereotype.Controller;
@@ -32,7 +33,7 @@ public class WelcomeController {
     UserRepository userRepository;
 
     @GetMapping("/welcome")
-    public String showWelcomePage(Authentication authentication, Model model) {
+    public String showWelcomePage(Authentication authentication, Model model, @RequestParam(value = "assignedOnly", required = false) Boolean assignedOnly) {
         if (authentication != null && authentication.isAuthenticated()) {
             try {
                 List<PatientDTO> waitingPatients = patientService.getCheckedInPatients();
@@ -53,6 +54,17 @@ public class WelcomeController {
                 User currentUser = userService.findByUsername(username)
                     .orElseThrow(() -> new RuntimeException("User not found"));
                 
+                // Optional filter: show only patients assigned to the current user
+                boolean showAssignedOnly = Boolean.TRUE.equals(assignedOnly);
+                if (showAssignedOnly) {
+                    waitingPatients = waitingPatients.stream()
+                        .filter(p -> p.getCurrentCheckInRecord() != null
+                                && p.getCurrentCheckInRecord().getAssignedDoctor() != null
+                                && p.getCurrentCheckInRecord().getAssignedDoctor().getId() != null
+                                && p.getCurrentCheckInRecord().getAssignedDoctor().getId().equals(currentUser.getId()))
+                        .toList();
+                }
+
                 ClinicModel userClinic = currentUser.getClinic();
                 if (userClinic != null) {
                     List<User> clinicDoctors = userRepository.findByClinicAndRoleIn(
@@ -68,6 +80,7 @@ public class WelcomeController {
                 model.addAttribute("waitingPatients", waitingPatients);
                 model.addAttribute("username", authentication.getName());
                 model.addAttribute("currentUser", currentUser);
+                model.addAttribute("assignedOnly", showAssignedOnly);
                 return "welcome";
             } catch (Exception e) {
                 log.error("Error loading welcome page: {}", e.getMessage(), e);

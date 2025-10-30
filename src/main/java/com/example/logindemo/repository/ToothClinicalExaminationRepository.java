@@ -3,8 +3,11 @@ package com.example.logindemo.repository;
 import com.example.logindemo.model.ToothClinicalExamination;
 import com.example.logindemo.model.User;
 import com.example.logindemo.model.ProcedureStatus;
+import com.example.logindemo.repository.projection.NewPatientProjection;
 import org.springframework.data.jpa.repository.JpaRepository;
 import org.springframework.data.jpa.repository.Query;
+import org.springframework.data.jpa.repository.EntityGraph;
+import org.springframework.data.repository.query.Param;
 import org.springframework.stereotype.Component;
 import org.springframework.stereotype.Repository;
 import org.springframework.data.domain.Page;
@@ -75,4 +78,59 @@ public interface ToothClinicalExaminationRepository extends JpaRepository<ToothC
     // Pageable queries using treatmentStartingDate for scheduled filters
     Page<ToothClinicalExamination> findByAssignedDoctorAndTreatmentStartingDateBetween(User assignedDoctor, LocalDateTime from, LocalDateTime to, Pageable pageable);
     Page<ToothClinicalExamination> findByAssignedDoctorAndProcedureStatusAndTreatmentStartingDateBetween(User assignedDoctor, ProcedureStatus status, LocalDateTime from, LocalDateTime to, Pageable pageable);
+
+    // Fetch examinations in date range where either assignedDoctor or opdDoctor is present
+    // Load discountEntries eagerly to allow discount calculations without lazy-init issues
+    @EntityGraph(attributePaths = {"discountEntries"})
+    @Query("SELECT t FROM ToothClinicalExamination t WHERE ((t.assignedDoctor IS NOT NULL) OR (t.opdDoctor IS NOT NULL)) " +
+           "AND ((t.examinationDate BETWEEN :startDate AND :endDate) OR (t.createdAt BETWEEN :startDate AND :endDate))")
+    List<ToothClinicalExamination> findWithDoctorByDateRange(@Param("startDate") LocalDateTime startDate, @Param("endDate") LocalDateTime endDate);
+
+    // New Patients (system-wide): examinations created yesterday and no prior examinations in the 30 days before yesterday
+    @Query("SELECT p.id AS patientId, p.registrationCode AS registrationCode, MIN(t.createdAt) AS firstExamTime " +
+           "FROM ToothClinicalExamination t JOIN t.patient p " +
+           "WHERE t.createdAt BETWEEN :start AND :end " +
+           "AND NOT EXISTS (SELECT 1 FROM ToothClinicalExamination prev WHERE prev.patient = p AND prev.createdAt BETWEEN :lookbackStart AND :lookbackEnd) " +
+           "GROUP BY p.id, p.registrationCode")
+    List<NewPatientProjection> findDistinctNewPatientsByCreatedAtBetween(
+            @Param("start") LocalDateTime start,
+            @Param("end") LocalDateTime end,
+            @Param("lookbackStart") LocalDateTime lookbackStart,
+            @Param("lookbackEnd") LocalDateTime lookbackEnd);
+
+    @Query("SELECT COUNT(DISTINCT p.id) " +
+           "FROM ToothClinicalExamination t JOIN t.patient p " +
+           "WHERE t.createdAt BETWEEN :start AND :end " +
+           "AND NOT EXISTS (SELECT 1 FROM ToothClinicalExamination prev WHERE prev.patient = p AND prev.createdAt BETWEEN :lookbackStart AND :lookbackEnd)")
+    Long countDistinctNewPatientsByCreatedAtBetween(
+            @Param("start") LocalDateTime start,
+            @Param("end") LocalDateTime end,
+            @Param("lookbackStart") LocalDateTime lookbackStart,
+            @Param("lookbackEnd") LocalDateTime lookbackEnd);
+
+    // New Patients (clinic-specific): examinations created yesterday at the clinic and no prior examinations at any clinic in the lookback window
+    @Query("SELECT p.id AS patientId, p.registrationCode AS registrationCode, MIN(t.createdAt) AS firstExamTime " +
+           "FROM ToothClinicalExamination t JOIN t.patient p " +
+           "WHERE t.examinationClinic.id = :clinicDbId " +
+           "AND t.createdAt BETWEEN :start AND :end " +
+           "AND NOT EXISTS (SELECT 1 FROM ToothClinicalExamination prev WHERE prev.patient = p AND prev.createdAt BETWEEN :lookbackStart AND :lookbackEnd) " +
+           "GROUP BY p.id, p.registrationCode")
+    List<NewPatientProjection> findDistinctNewPatientsByClinicAndCreatedAtBetween(
+            @Param("clinicDbId") Long clinicDbId,
+            @Param("start") LocalDateTime start,
+            @Param("end") LocalDateTime end,
+            @Param("lookbackStart") LocalDateTime lookbackStart,
+            @Param("lookbackEnd") LocalDateTime lookbackEnd);
+
+    @Query("SELECT COUNT(DISTINCT p.id) " +
+           "FROM ToothClinicalExamination t JOIN t.patient p " +
+           "WHERE t.examinationClinic.id = :clinicDbId " +
+           "AND t.createdAt BETWEEN :start AND :end " +
+           "AND NOT EXISTS (SELECT 1 FROM ToothClinicalExamination prev WHERE prev.patient = p AND prev.createdAt BETWEEN :lookbackStart AND :lookbackEnd)")
+    Long countDistinctNewPatientsByClinicAndCreatedAtBetween(
+            @Param("clinicDbId") Long clinicDbId,
+            @Param("start") LocalDateTime start,
+            @Param("end") LocalDateTime end,
+            @Param("lookbackStart") LocalDateTime lookbackStart,
+            @Param("lookbackEnd") LocalDateTime lookbackEnd);
 }
