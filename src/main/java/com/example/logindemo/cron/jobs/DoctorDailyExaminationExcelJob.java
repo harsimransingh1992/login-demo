@@ -7,6 +7,7 @@ import com.example.logindemo.model.ToothClinicalExamination;
 import com.example.logindemo.model.Appointment;
 import com.example.logindemo.model.User;
 import com.example.logindemo.repository.ToothClinicalExaminationRepository;
+import com.example.logindemo.repository.projection.NewPatientProjection;
 import com.example.logindemo.repository.AppointmentRepository;
 import com.example.logindemo.service.EmailService;
 import com.example.logindemo.service.dto.EmailAttachment;
@@ -65,6 +66,8 @@ public class DoctorDailyExaminationExcelJob extends AbstractCronJob {
         LocalDate yesterday = LocalDate.now().minusDays(1);
         LocalDateTime start = yesterday.atStartOfDay();
         LocalDateTime end = yesterday.atTime(LocalTime.MAX);
+        LocalDateTime lookbackStart = start.minusDays(30);
+        LocalDateTime lookbackEnd = start.minusSeconds(1);
 
         log(context, "INFO", "Generating doctor examination Excel report for " + DATE_FMT.format(yesterday));
 
@@ -109,6 +112,34 @@ public class DoctorDailyExaminationExcelJob extends AbstractCronJob {
             row.createCell(c++).setCellValue(list.size());
             row.createCell(c++).setCellValue(appointmentsByDoctor.getOrDefault(doctor, 0L));
             row.createCell(c++).setCellValue(clinics);
+        }
+        // New Patients (system-wide) section: count and details
+        sRowIdx++; // blank row for separation
+        Row npHeader = summary.createRow(sRowIdx++);
+        createHeaderCells(npHeader, headerStyle, new String[]{"New Patients (last day)", "Count"});
+        Long newPatientCount = examinationRepository.countDistinctNewPatientsByCreatedAtBetween(start, end, lookbackStart, lookbackEnd);
+        Row npRow = summary.createRow(sRowIdx++);
+        npRow.createCell(0).setCellValue("System-wide");
+        npRow.createCell(1).setCellValue(newPatientCount != null ? newPatientCount : 0L);
+
+        // Details: Patient ID, Registration Code, First Exam Time
+        sRowIdx++; // blank row
+        Row npDetailHeader = summary.createRow(sRowIdx++);
+        createHeaderCells(npDetailHeader, headerStyle, new String[]{"Patient ID", "Registration Code", "First Exam Time"});
+        java.util.List<NewPatientProjection> newPatients = examinationRepository
+                .findDistinctNewPatientsByCreatedAtBetween(start, end, lookbackStart, lookbackEnd);
+        if (newPatients == null || newPatients.isEmpty()) {
+            Row noneRow = summary.createRow(sRowIdx++);
+            noneRow.createCell(0).setCellValue("No new patients");
+        } else {
+            for (NewPatientProjection np : newPatients) {
+                Row dRow = summary.createRow(sRowIdx++);
+                int c = 0;
+                dRow.createCell(c++).setCellValue(np.getPatientId() != null ? String.valueOf(np.getPatientId()) : "");
+                dRow.createCell(c++).setCellValue(np.getRegistrationCode() != null ? np.getRegistrationCode() : "");
+                String ts = np.getFirstExamTime() != null ? TS_FMT.format(np.getFirstExamTime()) : "";
+                dRow.createCell(c++).setCellValue(ts);
+            }
         }
         autosize(summary, 4);
 
@@ -230,6 +261,36 @@ public class DoctorDailyExaminationExcelJob extends AbstractCronJob {
                 row.createCell(c++).setCellValue(doctor);
                 row.createCell(c++).setCellValue(list.size());
                 row.createCell(c++).setCellValue(clinicAppointmentsByDoctor.getOrDefault(doctor, 0L));
+            }
+            // Clinic-specific New Patients section (same sheet)
+            sRowIdx2++; // blank row
+            Row npClinicHeader = summary2.createRow(sRowIdx2++);
+            createHeaderCells(npClinicHeader, headerStyle2, new String[]{"New Patients (last day)", "Count"});
+            Long clinicNewPatientCount = (clinicDbId != null)
+                    ? examinationRepository.countDistinctNewPatientsByClinicAndCreatedAtBetween(clinicDbId, start, end, lookbackStart, lookbackEnd)
+                    : 0L;
+            Row npClinicRow = summary2.createRow(sRowIdx2++);
+            npClinicRow.createCell(0).setCellValue("Clinic-wide");
+            npClinicRow.createCell(1).setCellValue(clinicNewPatientCount != null ? clinicNewPatientCount : 0L);
+
+            sRowIdx2++; // blank row
+            Row npClinicDetailsHeader = summary2.createRow(sRowIdx2++);
+            createHeaderCells(npClinicDetailsHeader, headerStyle2, new String[]{"Patient ID", "Registration Code", "First Exam Time"});
+            java.util.List<NewPatientProjection> clinicNewPatients = (clinicDbId != null)
+                    ? examinationRepository.findDistinctNewPatientsByClinicAndCreatedAtBetween(clinicDbId, start, end, lookbackStart, lookbackEnd)
+                    : java.util.Collections.emptyList();
+            if (clinicNewPatients == null || clinicNewPatients.isEmpty()) {
+                Row noneRow2 = summary2.createRow(sRowIdx2++);
+                noneRow2.createCell(0).setCellValue("No new patients");
+            } else {
+                for (NewPatientProjection np : clinicNewPatients) {
+                    Row dRow = summary2.createRow(sRowIdx2++);
+                    int c = 0;
+                    dRow.createCell(c++).setCellValue(np.getPatientId() != null ? String.valueOf(np.getPatientId()) : "");
+                    dRow.createCell(c++).setCellValue(np.getRegistrationCode() != null ? np.getRegistrationCode() : "");
+                    String ts2 = np.getFirstExamTime() != null ? TS_FMT.format(np.getFirstExamTime()) : "";
+                    dRow.createCell(c++).setCellValue(ts2);
+                }
             }
             autosize(summary2, 3);
 
