@@ -3773,6 +3773,8 @@
                             let basePinchScale = 1;
                             let wrapperHandlers = null;
                             const activePointers = new Map(); // pointerId -> {x,y}
+                            // Keep Safari gesture handlers in shared scope for teardown
+                            let safariGestureHandlers = null;
 
                             function applyImageTransform() {
                                 const modalImage = document.getElementById('modalImage');
@@ -3880,7 +3882,6 @@
 
                                 const usePointer = 'PointerEvent' in window;
                                 const isSafari = /Safari\//.test(navigator.userAgent) && !/Chrome\//.test(navigator.userAgent);
-                                let safariGestureHandlers = null;
                                 if (usePointer) {
                                     // Register pointer handlers and keep references for teardown
                                     wrapperHandlers = { type: 'pointer', onWheel, onDblClick, onPointerDown, onPointerMove, onPointerUp };
@@ -3970,7 +3971,7 @@
                                     wrapper.removeEventListener('pointermove', wrapperHandlers.onPointerMove);
                                     wrapper.removeEventListener('pointerup', wrapperHandlers.onPointerUp);
                                     wrapper.removeEventListener('pointercancel', wrapperHandlers.onPointerUp);
-                                    if (safariGestureHandlers) {
+                                    if (typeof safariGestureHandlers !== 'undefined' && safariGestureHandlers) {
                                         wrapper.removeEventListener('gesturestart', safariGestureHandlers.onGestureStart);
                                         wrapper.removeEventListener('gesturechange', safariGestureHandlers.onGestureChange);
                                         wrapper.removeEventListener('gestureend', safariGestureHandlers.onGestureEnd);
