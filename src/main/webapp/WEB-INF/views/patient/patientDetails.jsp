@@ -1398,6 +1398,55 @@ window.openNotesModal = window.openNotesModal || function(examId) {
             box-shadow: 0 2px 4px rgba(52, 152, 219, 0.3);
         }
         
+        .compact-tooth.general-consultation:hover {
+            background-color: #d4edda !important;
+            border-color: #1e7e34 !important;
+            transform: translateY(-1px);
+        }
+        
+        .compact-tooth.general-consultation.selected {
+            background-color: #28a745 !important;
+            border-color: #1e7e34 !important;
+            color: white !important;
+            transform: translateY(-1px);
+            box-shadow: 0 2px 4px rgba(40, 167, 69, 0.3);
+        }
+
+        /* General Consultation option container and button alignment */
+        .general-consultation-option {
+            margin-top: 15px;
+            padding-top: 15px;
+            border-top: 1px solid #dee2e6;
+            display: flex;
+            justify-content: center;
+            align-items: center;
+            flex-wrap: wrap;
+        }
+
+        .compact-tooth.general-consultation {
+            background-color: #e8f5e8;
+            border: 2px solid #28a745;
+            color: #155724;
+            font-weight: 600;
+            padding: 8px 12px;
+            border-radius: 6px;
+            cursor: pointer;
+            display: inline-flex;
+            align-items: center;
+            justify-content: center;
+            margin: 5px;
+            transition: all 0.3s ease;
+            box-sizing: border-box;
+            max-width: 100%;
+            text-align: center;
+            /* keep text on one line like other buttons */
+            white-space: nowrap;
+            word-break: normal;
+            overflow: hidden;
+            text-overflow: ellipsis;
+            min-width: 180px; /* ensure enough width to avoid vertical stacking */
+        }
+        
         .section-label {
             font-weight: 600;
             color: #2c3e50;
@@ -3645,6 +3694,9 @@ window.openNotesModal = window.openNotesModal || function(examId) {
                     <button onclick="openCustomerLedger()" class="btn btn-info btn-sm">
                         <i class="fas fa-file-invoice-dollar"></i> Customer Ledger
                     </button>
+                    <a href="${pageContext.request.contextPath}/patients/details/${patient.id}/receipts" target="_blank" class="btn btn-primary btn-sm" title="Open receipts print preview">
+                        <i class="fas fa-print"></i> Print Receipts
+                    </a>
                 </div>
             </div>
             
@@ -5189,6 +5241,14 @@ window.openNotesModal = window.openNotesModal || function(examId) {
                                 <div class="compact-tooth" data-tooth-number="38" onclick="toggleToothSelection(this, 38)">38</div>
                             </div>
                         </div>
+                        
+                        <!-- General Consultation Option -->
+                        <div class="general-consultation-option">
+                            <div class="compact-tooth general-consultation" data-tooth-number="GENERAL_CONSULTATION" onclick="toggleToothSelection(this, 'GENERAL_CONSULTATION')">
+                                General Consultation
+                            </div>
+                        </div>
+                        
                         <div class="selected-teeth-info">
                             <span class="selected-count">Selected: <span id="selectedTeethCount">0</span> teeth</span>
                             <div class="selected-teeth-list" id="selectedTeethList"></div>
@@ -5882,8 +5942,19 @@ window.openNotesModal = window.openNotesModal || function(examId) {
             countElement.textContent = selectedTeeth.length;
             
             if (selectedTeeth.length > 0) {
-                const sortedTeeth = selectedTeeth.sort((a, b) => a - b);
-                listElement.textContent = 'Teeth: ' + sortedTeeth.join(', ');
+                const displayItems = selectedTeeth.map(tooth => {
+                    if (tooth === 'GENERAL_CONSULTATION') {
+                        return 'General Consultation';
+                    }
+                    return tooth;
+                });
+                
+                // Sort numeric teeth, keep general consultation at the end
+                const numericTeeth = displayItems.filter(item => item !== 'General Consultation').sort((a, b) => a - b);
+                const generalConsultation = displayItems.filter(item => item === 'General Consultation');
+                const sortedItems = [...numericTeeth, ...generalConsultation];
+                
+                listElement.textContent = 'Selected: ' + sortedItems.join(', ');
             } else {
                 listElement.textContent = '';
             }

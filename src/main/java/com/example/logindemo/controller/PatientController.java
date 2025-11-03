@@ -707,6 +707,19 @@ public class PatientController {
         }
         return "patient/patientDetails"; // Return the name of the patient details view
     }
+
+    @GetMapping("/details/{id}/receipts")
+    public String showReceiptsPrintPage(@PathVariable Long id, Model model) {
+        Optional<Patient> patientOpt = patientRepository.findById(id);
+        if (!patientOpt.isPresent()) {
+            model.addAttribute("error", "Patient not found");
+            return "error/404";
+        }
+
+        Patient patient = patientOpt.get();
+        model.addAttribute("patient", patient);
+        return "patient/receipts-print";
+    }
     
     @GetMapping("/edit/{id}")
     public String showEditForm(@PathVariable Long id, Model model) {
@@ -2192,12 +2205,28 @@ public class PatientController {
             boolean copyClinicalNotes = Boolean.TRUE.equals(request.get("duplicateClinicalNotes"));
             boolean copyTreatmentAdvice = Boolean.TRUE.equals(request.get("duplicateTreatmentAdvice"));
             
-            // Get target teeth from request
+            // Get target teeth from request, supporting both integers and special tokens like GENERAL_CONSULTATION
             @SuppressWarnings("unchecked")
-            List<Integer> targetTeeth = (List<Integer>) request.get("targetTeeth");
-            
+            List<Object> targetTeethRaw = (List<Object>) request.get("targetTeeth");
+
+            List<String> targetTeethTokens = new ArrayList<>();
+            if (targetTeethRaw != null) {
+                for (Object o : targetTeethRaw) {
+                    if (o == null) continue;
+                    if (o instanceof Number) {
+                        // Normalize numeric tooth values to string form
+                        targetTeethTokens.add(String.valueOf(((Number) o).intValue()));
+                    } else if (o instanceof String) {
+                        targetTeethTokens.add((String) o);
+                    } else {
+                        // Fallback: use toString for unexpected types
+                        targetTeethTokens.add(String.valueOf(o));
+                    }
+                }
+            }
+
             // Validate target teeth
-            if (targetTeeth == null || targetTeeth.isEmpty()) {
+            if (targetTeethTokens.isEmpty()) {
                 return ResponseEntity.badRequest().body(Map.of(
                         "success", false,
                         "message", "At least one tooth must be selected"
@@ -2206,15 +2235,24 @@ public class PatientController {
 
             List<Long> createdExaminationIds = new ArrayList<>();
             
-            // Create examination for each selected tooth
-            for (Integer toothNumber : targetTeeth) {
+            // Create examination for each selected tooth token (number or GENERAL_CONSULTATION)
+            for (String toothToken : targetTeethTokens) {
                 // Create a new examination copying basic clinical details
                 ToothClinicalExamination duplicate = new ToothClinicalExamination();
                 duplicate.setPatient(existing.getPatient());
                 duplicate.setExaminationClinic(existing.getExaminationClinic());
                 
                 // Set the specific tooth number for this duplicate
-                duplicate.setToothNumber(ToothNumber.valueOf("TOOTH_" + toothNumber));
+                if ("GENERAL_CONSULTATION".equalsIgnoreCase(toothToken)) {
+                    duplicate.setToothNumber(ToothNumber.GENERAL_CONSULTATION);
+                } else {
+                    try {
+                        int toothNumber = Integer.parseInt(toothToken);
+                        duplicate.setToothNumber(ToothNumber.valueOf("TOOTH_" + toothNumber));
+                    } catch (Exception parseEx) {
+                        throw new IllegalArgumentException("Invalid tooth selection: " + toothToken);
+                    }
+                }
                 duplicate.setOpdDoctor(null); // Never copy OPD doctor
 
                 // Conditionally copy treating doctor
@@ -2295,8 +2333,8 @@ public class PatientController {
             return ResponseEntity.ok(Map.of(
                     "success", true,
                     "createdExaminationIds", createdExaminationIds,
-                    "teethCount", targetTeeth.size(),
-                    "message", "Successfully created " + targetTeeth.size() + " examinations for teeth: " + targetTeeth
+                    "teethCount", targetTeethTokens.size(),
+                    "message", "Successfully created " + targetTeethTokens.size() + " examinations for teeth: " + targetTeethTokens
             ));
         } catch (Exception e) {
             log.error("Error duplicating examination {}: {}", examinationId, e.getMessage(), e);
