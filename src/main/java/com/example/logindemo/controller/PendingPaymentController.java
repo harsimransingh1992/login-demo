@@ -274,8 +274,12 @@ public class PendingPaymentController {
             
             Patient patient = patientOpt.get();
             
-            // Find all examinations for this patient in the current clinic (show ALL, not just pending)
+            // Find all examinations for this patient in the current clinic
             List<ToothClinicalExamination> allExaminations = examinationService.findByPatient_IdAndExaminationClinic_ClinicId(patient.getId(), clinicId);
+            // Exclude examinations with OPEN status
+            allExaminations = allExaminations.stream()
+                .filter(ex -> ex.getProcedureStatus() != ProcedureStatus.OPEN)
+                .collect(Collectors.toList());
             logger.info("Found {} total examinations for patient {} in clinic {}", allExaminations.size(), registrationCode, clinicId);
             
             // Sort examinations by date (newest first for better UX)

@@ -5588,6 +5588,17 @@ window.openNotesModal = window.openNotesModal || function(examId) {
                 <p class="text-muted">
                     Selected examinations: <strong><span id="bulkAssignProcedureSelectedCount">0</span></strong>
                 </p>
+                <div id="bulkAssignProcedureValidation" style="display:none; background:#fdecea; border:1px solid #f5c6cb; border-radius:6px; padding:10px; margin-bottom:10px;">
+                    <div style="display:flex; align-items:center; gap:8px; margin-bottom:6px; color:#721c24;">
+                        <i class="fas fa-exclamation-triangle"></i>
+                        <strong>Some selected examinations already have a procedure</strong>
+                    </div>
+                    <ul id="bulkAssignProcedureBlockedList" style="margin:0 0 10px 18px; padding:0; color:#721c24;"></ul>
+                    <div style="display:flex; gap:8px;">
+                        <button type="button" class="btn btn-warning" id="bulkAssignRemoveBlockedBtn">Remove Blocked From Selection</button>
+                        <button type="button" class="btn btn-light" id="bulkAssignCopyBlockedBtn">Copy List</button>
+                    </div>
+                </div>
                 <div class="form-group">
                     <label for="bulkProcedureSearchInput">Search Procedure</label>
                     <div class="autocomplete-container">
@@ -7596,6 +7607,42 @@ window.openNotesModal = window.openNotesModal || function(examId) {
             if (selectedIds.length === 0) {
                 showAlertModal('Please select at least one examination to assign a procedure.', 'warning');
                 return;
+            }
+            // Client-side guard: block if any selected examination already has a procedure
+            const blocked = [];
+            selectedIds.forEach(id => {
+                const checkbox = document.querySelector('.examination-checkbox[value="' + id + '"]');
+                const row = checkbox ? checkbox.closest('tr') : null;
+                const procedureCell = row ? row.querySelector('td:nth-child(7)') : null;
+                const hasProcedure = !!(procedureCell && procedureCell.querySelector('.procedure-name'));
+                if (hasProcedure) blocked.push(id);
+            });
+            if (blocked.length > 0) {
+                const box = document.getElementById('bulkAssignProcedureValidation');
+                const list = document.getElementById('bulkAssignProcedureBlockedList');
+                if (box && list) {
+                    list.innerHTML = blocked.map(id => '<li>Examination ' + id + ' will not be changed</li>').join('');
+                    box.style.display = 'block';
+                }
+                const removeBtn = document.getElementById('bulkAssignRemoveBlockedBtn');
+                const copyBtn = document.getElementById('bulkAssignCopyBlockedBtn');
+                if (removeBtn) {
+                    removeBtn.onclick = function(){
+                        blocked.forEach(id => {
+                            const cb = document.querySelector('.examination-checkbox[value="' + id + '"]');
+                            if (cb) cb.checked = false;
+                        });
+                        if (box) box.style.display = 'none';
+                        const countEl = document.getElementById('bulkAssignProcedureSelectedCount');
+                        const selected = getSelectedExaminationIds();
+                        if (countEl) countEl.textContent = selected.length;
+                    };
+                }
+                if (copyBtn && navigator && navigator.clipboard) {
+                    copyBtn.onclick = function(){
+                        navigator.clipboard.writeText(blocked.join(', '));
+                    };
+                }
             }
             const countEl = document.getElementById('bulkAssignProcedureSelectedCount');
             if (countEl) countEl.textContent = selectedIds.length;

@@ -1719,11 +1719,28 @@ public class PatientController {
 
             for (Long examId : examinationIds) {
                 try {
-                    boolean already = toothClinicalExaminationService.isProcedureAlreadyAssociated(examId, procedureId);
-                    if (already) {
-                        duplicateExamIds.add(examId);
+                    Optional<ToothClinicalExamination> examOpt = toothClinicalExaminationRepository.findById(examId);
+                    if (examOpt.isEmpty()) {
+                        Map<String, Object> entry = new HashMap<>();
+                        entry.put("examinationId", examId);
+                        entry.put("error", "Examination not found");
+                        errorExamEntries.add(entry);
                         continue;
                     }
+
+                    ToothClinicalExamination exam = examOpt.get();
+                    if (exam.getProcedure() != null) {
+                        if (exam.getProcedure().getId().equals(procedureId)) {
+                            duplicateExamIds.add(examId);
+                        } else {
+                            Map<String, Object> entry = new HashMap<>();
+                            entry.put("examinationId", examId);
+                            entry.put("error", "Procedure already attached; cannot change");
+                            errorExamEntries.add(entry);
+                        }
+                        continue;
+                    }
+
                     toothClinicalExaminationService.associateProceduresWithExamination(examId, Collections.singletonList(procedureId));
                     assignedExamIds.add(examId);
                 } catch (Exception ex) {
