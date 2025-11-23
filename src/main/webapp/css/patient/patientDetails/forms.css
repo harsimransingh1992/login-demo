@@ -1,0 +1,6 @@
+.doctor-dropdown { width: 100%; padding: 6px 8px; border: 1px solid #ddd; border-radius: 4px; }
+.doctor-assigned { border-color: #3498db; background-color: #f0f7ff; }
+.procedure-name { font-weight: 500; color: #2c3e50; display: block; }
+.procedure-price { color: #27ae60; font-weight: 500; font-size: 0.85rem; }
+.btn-sm { padding: 5px 10px; border-radius: 4px; background: #3498db; color: white; display: inline-flex; align-items: center; justify-content: center; }
+.form-actions { display: flex; gap: 10px; justify-content: flex-end; margin-top: 20px; padding-top: 20px; border-top: 1px solid #eee; }

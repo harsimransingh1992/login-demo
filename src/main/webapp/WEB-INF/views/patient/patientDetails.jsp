@@ -55,35 +55,35 @@ window.openNotesModal = window.openNotesModal || function(examId) {
             modal = document.createElement('div');
             modal.id = 'notesModal';
             modal.className = 'modal';
-            modal.style.cssText = 'display:none; position:fixed; z-index:1000; left:0; top:0; width:100%; height:100%; background-color: rgba(0,0,0,0.5);';
+            // base modal styles come from modals.css
 
             var inner = document.createElement('div');
             inner.className = 'modal-content';
-            inner.style.cssText = 'background:#ffffff; margin:10% auto; padding:20px; border:1px solid #888; width:70%; max-width:720px; border-radius:8px; position:relative;';
+            inner.classList.add('modal-content--notes');
 
             var closeBtn = document.createElement('span');
             closeBtn.className = 'close';
             closeBtn.textContent = '\u00d7';
             closeBtn.setAttribute('aria-label', 'Close');
-            closeBtn.style.cssText = 'position:absolute; right:16px; top:12px; font-size:28px; font-weight:bold; cursor:pointer; color:#2c3e50;';
-            closeBtn.onclick = function() { try { modal.style.display = 'none'; document.body.style.overflow = 'auto'; } catch (err) {} };
+            closeBtn.classList.add('close-abs');
+            closeBtn.onclick = function() { try { modal.classList.remove('is-open'); document.body.style.overflow = 'auto'; } catch (err) {} };
 
             var title = document.createElement('h3');
             title.textContent = 'Clinical Notes';
-            title.style.marginTop = '0';
+            
 
             content = document.createElement('div');
             content.id = 'notesContent';
-            content.style.cssText = 'white-space: pre-wrap; line-height: 1.5; color: #2c3e50;';
+            content.classList.add('notes-content');
 
             var actions = document.createElement('div');
             actions.className = 'modal-actions';
-            actions.style.cssText = 'margin-top:16px; text-align:right;';
+            
             var closeButton = document.createElement('button');
             closeButton.type = 'button';
             closeButton.className = 'btn btn-secondary';
             closeButton.textContent = 'Close';
-            closeButton.onclick = function() { try { modal.style.display = 'none'; document.body.style.overflow = 'auto'; } catch (err) {} };
+            closeButton.onclick = function() { try { modal.classList.remove('is-open'); document.body.style.overflow = 'auto'; } catch (err) {} };
             actions.appendChild(closeButton);
 
             inner.appendChild(closeBtn);
@@ -94,14 +94,14 @@ window.openNotesModal = window.openNotesModal || function(examId) {
             document.body.appendChild(modal);
 
             window.addEventListener('click', function (e) {
-                try { if (e.target === modal) { modal.style.display = 'none'; document.body.style.overflow = 'auto'; } } catch (err) {}
+                try { if (e.target === modal) { modal.classList.remove('is-open'); document.body.style.overflow = 'auto'; } } catch (err) {}
             });
         }
 
         var store = document.querySelector('textarea.exam-notes-data[data-exam-id="' + examId + '"]');
         var notes = store ? (store.value || store.textContent || '') : '';
         content.textContent = notes || '';
-        modal.style.display = 'block';
+        modal.classList.add('is-open');
         document.body.style.overflow = 'hidden';
         var closeBtnEl = modal.querySelector('.close');
         if (closeBtnEl && closeBtnEl.focus) { try { closeBtnEl.focus({ preventScroll: true }); } catch (err) {} }
@@ -149,7 +149,7 @@ window.openNotesModal = window.openNotesModal || function(examId) {
             .then(data => {
                 if (data.success) {
                     // Show the modal first
-                    document.getElementById('duplicateExaminationModal').style.display = 'block';
+                    document.getElementById('duplicateExaminationModal').classList.add('is-open');
                     
                     // Wait a moment for the modal to render, then update content
                     setTimeout(() => {
@@ -263,11 +263,11 @@ window.openNotesModal = window.openNotesModal || function(examId) {
 
         function showCreateFileModal() {
             populateExaminationSelection();
-            document.getElementById('createFileModal').style.display = 'block';
+            document.getElementById('createFileModal').classList.add('is-open');
         }
 
         function closeCreateFileModal() {
-            document.getElementById('createFileModal').style.display = 'none';
+            document.getElementById('createFileModal').classList.remove('is-open');
             document.getElementById('createFileForm').reset();
         }
 
@@ -700,11 +700,11 @@ window.openNotesModal = window.openNotesModal || function(examId) {
             }
 
             messageEl.textContent = message;
-            modal.style.display = 'block';
+            modal.classList.add('is-open');
         }
 
         function closeAlertModal() {
-            document.getElementById('alertModal').style.display = 'none';
+            document.getElementById('alertModal').classList.remove('is-open');
             if (typeof alertOnCloseCallback === 'function') {
                 const cb = alertOnCloseCallback;
                 // Clear before calling to avoid re-entry issues
@@ -733,11 +733,11 @@ window.openNotesModal = window.openNotesModal || function(examId) {
                 if (onConfirm) onConfirm();
             });
 
-            modal.style.display = 'block';
+            modal.classList.add('is-open');
         }
 
         function closeConfirmationModal() {
-            document.getElementById('confirmationModal').style.display = 'none';
+            document.getElementById('confirmationModal').classList.remove('is-open');
         }
 
         // Close modals when clicking outside
@@ -758,8 +758,10 @@ window.openNotesModal = window.openNotesModal || function(examId) {
     
     <!-- Include common menu styles -->
     <jsp:include page="/WEB-INF/views/common/menuStyles.jsp" />
+    <link rel="stylesheet" href="${pageContext.request.contextPath}/css/patient/patientDetails.bundle.css?v=mod1">
 
-    <style>
+    
+    
         /* Enhanced Base Styles */
         body {
             font-family: 'Poppins', sans-serif;
@@ -771,105 +773,9 @@ window.openNotesModal = window.openNotesModal || function(examId) {
         }
 
         /* Blinking Payment Button - Enhanced and Stable */
-        .blinking-payment-btn {
-            animation: blinkPayment 2s ease-in-out infinite;
-            position: relative;
-            padding: 6px 12px !important;
-            font-size: 12px !important;
-            font-weight: 700 !important;
-            border-radius: 5px !important;
-            border: 1px solid #28a745 !important;
-            background: linear-gradient(135deg, #28a745 0%, #20c997 100%) !important;
-            color: white !important;
-            text-transform: uppercase !important;
-            letter-spacing: 0.5px !important;
-            box-shadow: 0 3px 10px rgba(40, 167, 69, 0.4);
-            transition: all 0.3s cubic-bezier(0.4, 0, 0.2, 1);
-            overflow: hidden;
-            white-space: nowrap;
-            margin-left: auto;
-        }
-
-        .blinking-payment-btn:hover {
-            transform: translateY(-1px) scale(1.01);
-            box-shadow: 0 6px 15px rgba(40, 167, 69, 0.5);
-            background: linear-gradient(135deg, #20c997 0%, #17a2b8 100%) !important;
-        }
-
-        .blinking-payment-btn .payment-text {
-            display: inline-block;
-            font-weight: 700;
-            white-space: nowrap;
-            position: relative;
-            z-index: 2;
-        }
-
-        @keyframes blinkPayment {
-            0%, 50% {
-                background: linear-gradient(135deg, #28a745 0%, #20c997 100%) !important;
-                border-color: #28a745 !important;
-                box-shadow: 0 3px 10px rgba(40, 167, 69, 0.4);
-            }
-            25%, 75% {
-                background: linear-gradient(135deg, #ffc107 0%, #fd7e14 100%) !important;
-                border-color: #ffc107 !important;
-                box-shadow: 0 3px 10px rgba(255, 193, 7, 0.5);
-            }
-        }
-
-        .pending-payment-section {
-            background: #fff8e1;
-            border: 1px solid #ffcc02;
-            border-radius: 8px;
-            padding: 15px;
-            margin: 15px 0;
-            box-shadow: 0 1px 5px rgba(255, 193, 7, 0.1);
-        }
-
-        .pending-payment-section h4 {
-            color: #856404;
-            margin-bottom: 10px;
-            font-size: 1rem;
-            display: flex;
-            align-items: center;
-            gap: 8px;
-        }
-
-        .pending-payment-section p {
-            font-size: 0.9rem;
-            margin-bottom: 10px;
-        }
         
-        .welcome-container {
-            display: flex;
-            min-height: 100vh;
-            flex-direction: row;
-            background: #f8fafc;
-        }
         
-        .main-content {
-            flex: 1;
-            padding: 40px;
-            position: relative;
-            overflow-x: auto;
-        }
         
-        .welcome-header {
-            display: flex;
-            justify-content: space-between;
-            align-items: center;
-            padding: 20px;
-            background: white;
-            border-radius: 12px;
-            box-shadow: 0 5px 15px rgba(0, 0, 0, 0.03);
-            margin-bottom: 30px;
-        }
-        
-        .welcome-message {
-            font-size: 1.5rem;
-            color: #2c3e50;
-            margin: 0;
-        }
         
         .btn {
             display: inline-flex;
@@ -910,169 +816,14 @@ window.openNotesModal = window.openNotesModal || function(examId) {
             box-shadow: 0 4px 12px rgba(52, 152, 219, 0.2);
         }
         
-        .footer {
-            margin-top: auto;
-            padding-top: 20px;
-            border-top: 1px solid #e0e0e0;
-            text-align: center;
-            font-size: 12px;
-            color: #999;
-        }
         
-        .copyright {
-            margin: 5px 0;
-        }
         
-        .powered-by {
-            color: #3498db;
-            font-weight: 500;
-        }
         
-        .navtech {
-            color: #2c3e50;
-            font-weight: 600;
-        }
-        
-        /* Customer Ledger Color Coding */
-        .ledger-capture-row {
-            background-color: rgba(40, 167, 69, 0.05);
-            border-left: 3px solid #28a745;
-        }
-        
-        .ledger-refund-row {
-            background-color: rgba(220, 53, 69, 0.05);
-            border-left: 3px solid #dc3545;
-        }
-        
-        .ledger-capture-row:hover {
-            background-color: rgba(40, 167, 69, 0.1);
-        }
-        
-        .ledger-refund-row:hover {
-            background-color: rgba(220, 53, 69, 0.1);
-        }
         
         /* Additional styles for patient details page */
-        .patient-details-container {
-            background: white;
-            border-radius: 8px;
-            box-shadow: 0 2px 6px rgba(0, 0, 0, 0.05);
-            padding: 15px;
-            margin-bottom: 12px;
-        }
         
-        .patient-header {
-            display: flex;
-            justify-content: space-between;
-            align-items: center;
-            margin-bottom: 12px;
-            padding-bottom: 10px;
-            border-bottom: 1px solid #eee;
-        }
         
-        .patient-header h2 {
-            margin: 0;
-            color: #2c3e50;
-            font-size: 1.5rem;
-        }
         
-        .patient-actions {
-            display: flex;
-            gap: 6px;
-            flex-wrap: wrap;
-            align-items: center;
-            justify-content: flex-start;
-            margin-top: 10px;
-            padding: 8px;
-            background: linear-gradient(135deg, #f8fafc 0%, #e2e8f0 100%);
-            border-radius: 6px;
-            border: 1px solid #e2e8f0;
-            box-shadow: 0 1px 4px rgba(0, 0, 0, 0.05);
-        }
-        
-        .patient-actions .btn {
-            font-size: 12px;
-            font-weight: 600;
-            padding: 5px 9px;
-            border-radius: 4px;
-            border: 1px solid transparent;
-            text-decoration: none;
-            display: inline-flex;
-            align-items: center;
-            gap: 3px;
-            transition: all 0.3s cubic-bezier(0.4, 0, 0.2, 1);
-            white-space: nowrap;
-            line-height: 1.2;
-            position: relative;
-            overflow: hidden;
-        }
-        
-        .patient-actions .btn::before {
-            content: '';
-            position: absolute;
-            top: 0;
-            left: -100%;
-            width: 100%;
-            height: 100%;
-            background: linear-gradient(90deg, transparent, rgba(255, 255, 255, 0.2), transparent);
-            transition: left 0.5s;
-        }
-        
-        .patient-actions .btn:hover::before {
-            left: 100%;
-        }
-        
-        .patient-actions .btn:hover {
-            transform: translateY(-1px);
-            box-shadow: 0 4px 12px rgba(0, 0, 0, 0.15);
-        }
-        
-        .patient-actions .btn-sm {
-            font-size: 11px;
-            padding: 4px 8px;
-        }
-        
-        .patient-actions .btn-secondary {
-            background: linear-gradient(135deg, #6c757d 0%, #5a6268 100%);
-            border-color: #6c757d;
-            color: white;
-            box-shadow: 0 2px 6px rgba(108, 117, 125, 0.3);
-        }
-
-        .patient-actions .btn-secondary:hover {
-            background: linear-gradient(135deg, #5a6268 0%, #495057 100%);
-            border-color: #545b62;
-            color: white;
-            box-shadow: 0 4px 12px rgba(108, 117, 125, 0.4);
-        }
-
-        .patient-actions .btn-primary {
-            background: linear-gradient(135deg, #007bff 0%, #0056b3 100%);
-            border-color: #007bff;
-            color: white;
-            box-shadow: 0 2px 6px rgba(0, 123, 255, 0.3);
-        }
-
-        .patient-actions .btn-primary:hover {
-            background: linear-gradient(135deg, #0056b3 0%, #004085 100%);
-            border-color: #004085;
-            color: white;
-            box-shadow: 0 4px 12px rgba(0, 123, 255, 0.4);
-        }
-
-        .patient-actions .btn-info {
-            background: linear-gradient(135deg, #17a2b8 0%, #138496 100%);
-            border-color: #17a2b8;
-            color: white;
-            box-shadow: 0 2px 6px rgba(23, 162, 184, 0.3);
-        }
-
-        .patient-actions .btn-info:hover {
-            background: linear-gradient(135deg, #138496 0%, #117a8b 100%);
-            border-color: #117a8b;
-            color: white;
-            box-shadow: 0 4px 12px rgba(23, 162, 184, 0.4);
-        }
         
         /* Responsive Design for Patient Actions */
         @media (max-width: 768px) {
@@ -1112,40 +863,7 @@ window.openNotesModal = window.openNotesModal || function(examId) {
             }
         }
         
-        .patient-info {
-            grid-template-columns: repeat(auto-fill, minmax(280px, 1fr));
-            gap: 12px;
-        }
         
-        .info-section {
-            margin-bottom: 12px;
-        }
-        
-        .info-section h3 {
-            color: #3498db;
-            font-size: 1rem;
-            margin-bottom: 10px;
-            font-weight: 600;
-            border-bottom: 1px solid #f0f0f0;
-            padding-bottom: 6px;
-        }
-        
-        .info-item {
-            margin-bottom: 8px;
-        }
-        
-        .info-label {
-            color: #7f8c8d;
-            font-size: 0.9rem;
-            display: block;
-            margin-bottom: 4px;
-        }
-        
-        .info-value {
-            color: #2c3e50;
-            font-weight: 500;
-            font-size: 1rem;
-        }
         
         @media (max-width: 768px) {
             .welcome-container {
@@ -1252,30 +970,7 @@ window.openNotesModal = window.openNotesModal || function(examId) {
         }
         
         /* Quick Add Modal Styles */
-        .quick-add-modal {
-            display: none;
-            position: fixed;
-            z-index: 1000;
-            left: 0;
-            top: 0;
-            width: 100%;
-            height: 100%;
-            background-color: rgba(0,0,0,0.5);
-            overflow-y: auto;
-        }
         
-        .quick-add-modal .modal-content {
-            background-color: #fefefe;
-            margin: 2% auto;
-            padding: 30px;
-            border: none;
-            border-radius: 12px;
-            width: 90%;
-            max-width: 800px;
-            max-height: 90vh;
-            overflow-y: auto;
-            box-shadow: 0 10px 30px rgba(0,0,0,0.3);
-        }
         
         .tooth-selection-section .tooth-grid {
             margin: 20px 0;
@@ -1590,11 +1285,6 @@ window.openNotesModal = window.openNotesModal || function(examId) {
         }
         
         @media (max-width: 768px) {
-            .quick-add-modal .modal-content {
-                width: 95%;
-                margin: 5% auto;
-                padding: 20px;
-            }
             
             .teeth-row {
                 gap: 6px;
@@ -1610,169 +1300,19 @@ window.openNotesModal = window.openNotesModal || function(examId) {
             }
         }
         
-        .sort-controls {
-            display: flex;
-            justify-content: space-between;
-            margin-bottom: 12px;
-            padding: 15px;
-            background: #f8f9fa;
-            border-radius: 8px;
-        }
         
-        .filter-group, .sort-group {
-            display: flex;
-            align-items: center;
-            gap: 10px;
-        }
         
-        .custom-select {
-            padding: 8px 12px;
-            border: 1px solid #e0e0e0;
-            border-radius: 6px;
-            font-family: 'Poppins', sans-serif;
-            font-size: 0.9rem;
-        }
         
-        .table-info {
-            text-align: right;
-            margin-bottom: 10px;
-            color: #666;
-            font-size: 0.9rem;
-        }
-        
-        .table-responsive {
-            overflow-x: auto;
-            border-radius: 8px;
-            box-shadow: 0 2px 8px rgba(0, 0, 0, 0.05);
-        }
-        
-        .table {
-            width: 100%;
-            border-collapse: separate;
-            border-spacing: 0;
-        }
-        
-        .table th {
-            background: #f8f9fa;
-            color: #2c3e50;
-            font-weight: 600;
-            padding: 10px 12px;
-            text-align: left;
-            border-bottom: 2px solid #e0e0e0;
-        }
-        
-        .table td {
-            padding: 8px 12px;
-            border-bottom: 1px solid #e0e0e0;
-            color: #4b5563;
-        }
 
         /* Align action buttons neatly */
-        .action-buttons {
-            display: inline-flex;
-            align-items: center;
-            gap: 8px;
-            white-space: nowrap;
-        }
+        
 
         /* Instant tooltips */
-        .has-tooltip {
-            position: relative;
-        }
-        .has-tooltip::after {
-            content: attr(data-tooltip);
-            position: absolute;
-            bottom: 100%;
-            left: 50%;
-            transform: translateX(-50%);
-            background: #2c3e50;
-            color: #fff;
-            padding: 8px 10px;
-            border-radius: 4px;
-            font-size: 12px;
-            white-space: pre-wrap;
-            opacity: 0;
-            pointer-events: none;
-            transition: opacity 0.05s ease;
-            margin-bottom: 6px;
-            z-index: 10;
-            max-width: 520px;
-            text-align: left;
-            box-shadow: 0 6px 16px rgba(0,0,0,0.2);
-        }
-        .has-tooltip::before {
-            content: '';
-            position: absolute;
-            bottom: 100%;
-            left: 50%;
-            transform: translateX(-50%);
-            border-width: 6px;
-            border-style: solid;
-            border-color: transparent transparent #2c3e50 transparent;
-            opacity: 0;
-            transition: opacity 0.05s ease;
-            margin-bottom: -6px;
-            z-index: 10;
-        }
-        .has-tooltip:hover::after,
-        .has-tooltip:hover::before {
-            opacity: 1;
-        }
-
-        /* Avoid overlap: only show parent tooltip when not hovering on a child */
-        .parent-tooltips {
-            position: relative;
-        }
-        .parent-tooltips:hover::after,
-        .parent-tooltips:hover::before {
-            opacity: 1;
-        }
-        /* Hide parent tooltip if any child with tooltip is hovered */
-        .parent-tooltips:hover:has(.has-tooltip:hover)::after,
-        .parent-tooltips:hover:has(.has-tooltip:hover)::before {
-            opacity: 0;
-        }
         
-        .examination-row:hover {
-            background-color: #f0f7ff;
-            cursor: pointer;
-        }
         
-        .doctor-dropdown {
-            width: 100%;
-            padding: 6px 8px;
-            border: 1px solid #ddd;
-            border-radius: 4px;
-        }
         
-        .doctor-assigned {
-            border-color: #3498db;
-            background-color: #f0f7ff;
-        }
         
-        .file-id-badge {
-            background: #3498db;
-            color: white;
-            padding: 4px 8px;
-            border-radius: 12px;
-            font-size: 0.8rem;
-            font-weight: 500;
-        }
-
-        .no-file {
-            color: #6c757d;
-            font-style: italic;
-        }
-
-        .btn-sm {
-            padding: 5px 10px;
-            border-radius: 4px;
-            background: #3498db;
-            color: white;
-            display: inline-flex;
-            align-items: center;
-            justify-content: center;
-        }
+        
         
         .no-records-message {
             padding: 20px;
@@ -1811,123 +1351,16 @@ window.openNotesModal = window.openNotesModal || function(examId) {
             margin-bottom: 30px;
         }
         
-        .consultation-card {
-            display: flex;
-            align-items: center;
-            gap: 20px;
-            padding: 25px;
-            background: linear-gradient(135deg, #667eea 0%, #764ba2 100%);
-            color: white;
-            border-radius: 12px;
-            cursor: pointer;
-            transition: all 0.3s ease;
-            box-shadow: 0 4px 15px rgba(102, 126, 234, 0.2);
-        }
         
-        .consultation-card:hover {
-            transform: translateY(-2px);
-            box-shadow: 0 6px 20px rgba(102, 126, 234, 0.3);
-        }
-        
-        .consultation-icon {
-            font-size: 2.5rem;
-            opacity: 0.9;
-        }
-        
-        .consultation-content h3 {
-            margin: 0 0 8px 0;
-            font-size: 1.3rem;
-            font-weight: 600;
-        }
-        
-        .consultation-content p {
-            margin: 0;
-            opacity: 0.9;
-            font-size: 0.95rem;
-        }
         
 
         
-        .form-actions {
-            display: flex;
-            gap: 10px;
-            justify-content: flex-end;
-            margin-top: 20px;
-            padding-top: 20px;
-            border-top: 1px solid #eee;
-        }
+        
         
         /* Clinic Code Styling */
-        .clinic-code {
-            font-weight: 600;
-            color: #3498db;
-            background-color: #f0f7ff;
-            padding: 2px 6px;
-            border-radius: 4px;
-            display: inline-block;
-        }
         
-        .chart-instructions {
-            text-align: center;
-            margin-bottom: 10px;
-            color: #7f8c8d;
-            font-size: 0.9rem;
-        }
         
-        .dental-chart {
-            display: flex;
-            flex-direction: column;
-            align-items: center;
-            padding: 30px;
-            background: white;
-            border-radius: 12px;
-            min-height: 250px;
-        }
         
-        .teeth-row {
-            display: flex;
-            flex-direction: row;
-            justify-content: center;
-            gap: 12px;
-            margin: 15px 0;
-            width: 100%;
-        }
-        
-        .quadrant {
-            display: flex;
-            flex-wrap: wrap;
-            justify-content: center;
-            gap: 10px;
-            padding: 20px;
-            background: #f8f9fa;
-            border-radius: 12px;
-            margin: 10px;
-        }
-        
-        .upper-right, .upper-left {
-            flex-direction: row;
-        }
-        
-        .lower-right, .lower-left {
-            flex-direction: row;
-        }
-        
-        .jaw-separator {
-            width: 80%;
-            height: 1px;
-            background-color: #e0e0e0;
-            margin: 30px 0;
-        }
-        
-        .chart-legend {
-            display: flex;
-            justify-content: center;
-            gap: 20px;
-            margin-top: 20px;
-            padding: 10px;
-            background: #f8f9fa;
-            border-radius: 8px;
-        }
         
         .legend-item {
             display: flex;
@@ -2617,248 +2050,9 @@ window.openNotesModal = window.openNotesModal || function(examId) {
         
         /* View Notes Link Styles */
 
-        /* Color Code Strip Styles */
-        .color-code-strip {
-            width: 100%;
-            height: 8px;
-            border-radius: 4px 4px 0 0;
-            margin-bottom: 0;
-            position: relative;
-        }
         
-        .color-code-strip.code-blue {
-            background: linear-gradient(90deg, #0066CC, #0052a3);
-        }
         
-        .color-code-strip.code-yellow {
-            background: linear-gradient(90deg, #FFD700, #FFC107);
-        }
         
-        .color-code-strip.no-code {
-            background: linear-gradient(90deg, #E0E0E0, #BDBDBD);
-        }
-        
-        /* Chairside Note Floating Button */
-        .chairside-note-fab {
-            position: fixed;
-            bottom: 30px;
-            right: 30px;
-            width: 60px;
-            height: 60px;
-            background: linear-gradient(135deg, #3498db, #2980b9);
-            border-radius: 50%;
-            display: flex;
-            align-items: center;
-            justify-content: center;
-            cursor: pointer;
-            box-shadow: 0 4px 20px rgba(52, 152, 219, 0.3);
-            transition: all 0.3s ease;
-            z-index: 1000;
-            color: white;
-            font-size: 1.5rem;
-        }
-        
-        .chairside-note-fab:hover {
-            transform: translateY(-2px);
-            box-shadow: 0 6px 25px rgba(52, 152, 219, 0.4);
-        }
-        
-        .chairside-note-fab .fab-tooltip {
-            position: absolute;
-            right: 70px;
-            background: #2c3e50;
-            color: white;
-            padding: 8px 12px;
-            border-radius: 6px;
-            font-size: 0.8rem;
-            white-space: nowrap;
-            opacity: 0;
-            visibility: hidden;
-            transition: all 0.3s ease;
-            pointer-events: none;
-        }
-        
-        .chairside-note-fab:hover .fab-tooltip {
-            opacity: 1;
-            visibility: visible;
-        }
-        
-        /* Chairside Note Modal */
-        .chairside-note-modal {
-            display: none;
-            position: fixed;
-            z-index: 2000;
-            left: 0;
-            top: 0;
-            width: 100%;
-            height: 100%;
-            background-color: rgba(0, 0, 0, 0.5);
-            backdrop-filter: blur(5px);
-        }
-        
-        .chairside-note-modal-content {
-            background-color: white;
-            margin: 5% auto;
-            padding: 0;
-            border-radius: 12px;
-            width: 95%;
-            max-width: 800px;
-            box-shadow: 0 10px 40px rgba(0, 0, 0, 0.2);
-            animation: modalSlideIn 0.3s ease;
-        }
-        
-        @keyframes modalSlideIn {
-            from {
-                opacity: 0;
-                transform: translateY(-50px);
-            }
-            to {
-                opacity: 1;
-                transform: translateY(0);
-            }
-        }
-        
-        .chairside-note-modal-header {
-            display: flex;
-            justify-content: space-between;
-            align-items: center;
-            padding: 20px 25px;
-            border-bottom: 1px solid #e9ecef;
-            background: linear-gradient(135deg, #f8f9fa, #e9ecef);
-            border-radius: 12px 12px 0 0;
-        }
-        
-        .chairside-note-modal-header h3 {
-            margin: 0;
-            color: #2c3e50;
-            font-size: 1.3rem;
-            display: flex;
-            align-items: center;
-            gap: 10px;
-        }
-        
-        .chairside-note-modal-close {
-            color: #6c757d;
-            font-size: 1.5rem;
-            font-weight: bold;
-            cursor: pointer;
-            transition: color 0.3s ease;
-        }
-        
-        .chairside-note-modal-close:hover {
-            color: #dc3545;
-        }
-        
-        .chairside-note-modal-body {
-            padding: 25px;
-        }
-        
-        .chairside-note-modal-body .form-control {
-            width: 100%;
-            min-height: 200px;
-            resize: vertical;
-            font-family: 'Poppins', sans-serif;
-            font-size: 14px;
-            line-height: 1.5;
-        }
-        
-        .chairside-note-modal-footer {
-            display: flex;
-            justify-content: space-between;
-            align-items: center;
-            padding: 24px 32px;
-            border-top: 1px solid #e9ecef;
-            background: linear-gradient(135deg, #f8f9fa, #ffffff);
-            border-radius: 0 0 12px 12px;
-        }
-        
-        .footer-left {
-            display: flex;
-            align-items: center;
-        }
-        
-        .footer-right {
-            display: flex;
-            align-items: center;
-            gap: 12px;
-        }
-        
-        .chairside-note-modal-footer .btn {
-            display: inline-flex;
-            align-items: center;
-            justify-content: center;
-            gap: 8px;
-            padding: 10px 20px;
-            font-weight: 500;
-            font-size: 14px;
-            border-radius: 8px;
-            border: 2px solid transparent;
-            transition: all 0.3s ease;
-            cursor: pointer;
-            text-decoration: none;
-            min-width: 100px;
-            height: 40px;
-        }
-        
-        .chairside-note-modal-footer .btn-outline-danger {
-            background: transparent;
-            color: #dc3545;
-            border-color: #dc3545;
-        }
-        
-        .chairside-note-modal-footer .btn-outline-danger:hover {
-            background: #dc3545;
-            color: white;
-            transform: translateY(-1px);
-            box-shadow: 0 4px 12px rgba(220, 53, 69, 0.3);
-        }
-        
-        .chairside-note-modal-footer .btn-outline-secondary {
-            background: transparent;
-            color: #6c757d;
-            border-color: #6c757d;
-        }
-        
-        .chairside-note-modal-footer .btn-outline-secondary:hover {
-            background: #6c757d;
-            color: white;
-            transform: translateY(-1px);
-            box-shadow: 0 4px 12px rgba(108, 117, 125, 0.3);
-        }
-        
-        .chairside-note-modal-footer .btn-primary {
-            background: linear-gradient(135deg, #007bff, #0056b3);
-            color: white;
-            border-color: #007bff;
-            min-width: 120px;
-            font-weight: 600;
-        }
-        
-        .chairside-note-modal-footer .btn-primary:hover {
-            background: linear-gradient(135deg, #0056b3, #004085);
-            transform: translateY(-1px);
-            box-shadow: 0 4px 12px rgba(0, 123, 255, 0.3);
-        }
-        
-        .btn-danger {
-            background: linear-gradient(135deg, #dc3545, #c82333);
-            color: white;
-        }
-        
-        .btn-danger:hover {
-            background: linear-gradient(135deg, #c82333, #a71e2a);
-            transform: translateY(-1px);
-        }
-        
-        .form-text {
-            margin-top: 8px;
-            font-size: 0.85rem;
-            color: #6c757d;
-        }
-        
-        .form-text i {
-            margin-right: 5px;
-        }
 
                 /* Clinical File Modal Styles */
         .file-actions {
@@ -3100,66 +2294,7 @@ window.openNotesModal = window.openNotesModal || function(examId) {
             margin-bottom: 10px;
         }
 
-        .clinical-file-actions-row {
-            margin-top: 10px;
-            padding: 8px 0;
-            border-top: 1px solid #e9ecef;
-            min-height: 48px; /* keep bar height static to prevent page shift */
-        }
-
-        /* Two-row, evenly distributed buttons using CSS Grid */
-        .clinical-file-actions {
-            display: grid;
-            grid-auto-flow: column; /* fill columns top-to-bottom for even row distribution */
-            grid-template-rows: auto repeat(2, auto); /* selected count + two button rows */
-            grid-auto-columns: minmax(160px, 1fr);
-            gap: 10px 12px;
-            width: 100%;
-            align-items: stretch;
-            justify-items: stretch;
-        }
-        /* Selected count spans full width above the buttons */
-        .clinical-file-actions .selected-count {
-            grid-column: 1 / -1;
-            margin: 0 0 4px 0;
-        }
-        /* Uniform button sizing for visual balance */
-        .clinical-file-actions .btn {
-            width: 100%;
-            padding: 8px 10px;
-            font-size: 0.9rem;
-        }
-
-        /* Remove special widths to keep uniform distribution */
-        @media (min-width: 577px) {
-            .clinical-file-actions .btn {
-                font-size: 0.9rem;
-            }
-        }
-
-        /* Responsive adjustments */
-        @media (max-width: 768px) {
-            .clinical-file-actions {
-                grid-auto-columns: minmax(140px, 1fr);
-                gap: 8px 10px;
-            }
-        }
-        @media (max-width: 576px) {
-            .clinical-file-actions {
-                grid-auto-flow: row;           /* stack naturally on narrow screens */
-                grid-template-rows: auto;      /* no fixed row count on mobile */
-                grid-auto-columns: 1fr;
-                gap: 6px;
-            }
-            .clinical-file-actions .selected-count {
-                margin-bottom: 6px;
-            }
-            .clinical-file-actions .btn {
-                width: 100%;
-                padding: 10px 12px; /* maintain touch target size */
-                font-size: 0.95rem;
-            }
-        }
+        
 
         /* Keep space reserved for selected count to reduce jitter */
         .selected-count {
@@ -3591,7 +2726,7 @@ window.openNotesModal = window.openNotesModal || function(examId) {
         }
 
 
-    </style>
+    
 </head>
 <body>
 <div class="welcome-container">
@@ -3603,9 +2738,9 @@ window.openNotesModal = window.openNotesModal || function(examId) {
                 <a href="${pageContext.request.contextPath}/patients/edit/${patient.id}" class="btn btn-secondary">
                     <i class="fas fa-edit"></i> Edit
                 </a>
-                <a href="${pageContext.request.contextPath}/patients/details/${patient.id}/appointments" class="btn btn-primary">
-                    <i class="fas fa-calendar-alt"></i> View Appointments
-                </a>
+        <a href="${pageContext.request.contextPath}/patients/details/${patient.id}/appointments" class="btn btn-primary" loading="lazy">
+            <i class="fas fa-calendar-alt"></i> View Appointments
+        </a>
                 <a href="${pageContext.request.contextPath}/patients/list" class="btn btn-primary">
                     <i class="fas fa-arrow-left"></i> Back to Patients
                 </a>
@@ -3614,14 +2749,14 @@ window.openNotesModal = window.openNotesModal || function(examId) {
         
         <!-- Check-in Status Notification -->
         <c:if test="${!patient.checkedIn && currentUserRole != 'RECEPTIONIST'}">
-            <div class="alert alert-warning" style="margin: 20px 0; padding: 15px; background-color: #fff3cd; border: 1px solid #ffeaa7; border-radius: 8px; color: #856404;">
-                <div style="display: flex; align-items: center; gap: 10px;">
-                    <i class="fas fa-exclamation-triangle" style="font-size: 1.2em; color: #f39c12;"></i>
+            <div class="alert alert-warning">
+                <div class="alert-row">
+                    <i class="fas fa-exclamation-triangle icon-md"></i>
                     <div>
                         <strong>Patient Not Checked In</strong>
-                        <p style="margin: 5px 0 0 0; font-size: 0.9em;">
+                        <p class="alert-desc">
                             This patient is not currently checked in. New tooth examinations cannot be added until the patient is checked in.
-                            <a href="${pageContext.request.contextPath}/patients/list" style="color: #856404; text-decoration: underline;">
+                            <a href="${pageContext.request.contextPath}/patients/list" class="warn-link">
                                 Go to patient list to check in
                             </a>
                         </p>
@@ -3639,7 +2774,7 @@ window.openNotesModal = window.openNotesModal || function(examId) {
                 <div class="patient-profile-picture">
                     <c:choose>
                         <c:when test="${not empty patient.profilePicturePath}">
-                            <img src="${pageContext.request.contextPath}/uploads/${patient.profilePicturePath}" 
+                            <img src="${pageContext.request.contextPath}/uploads/${patient.profilePicturePath}" loading="lazy" decoding="async"
                                  alt="Patient Profile" 
                                  onerror="this.onerror=null; this.src='${pageContext.request.contextPath}/images/default-profile.png'; this.parentElement.classList.add('profile-error');">
                             <!-- Debug: ${patient.profilePicturePath} -->
@@ -3663,10 +2798,10 @@ window.openNotesModal = window.openNotesModal || function(examId) {
                             <strong>
                                 <c:choose>
                                     <c:when test="${patient.checkedIn}">
-                                        <span style="color: #27ae60;">Checked In</span>
+                                        <span class="status-green">Checked In</span>
                                     </c:when>
                                     <c:otherwise>
-                                        <span style="color: #7f8c8d;">Not Checked In</span>
+                                        <span class="status-gray">Not Checked In</span>
                                     </c:otherwise>
                                 </c:choose>
                             </strong>
@@ -3828,12 +2963,12 @@ window.openNotesModal = window.openNotesModal || function(examId) {
                         <span class="info-value">
                             <c:choose>
                                 <c:when test="${patient.checkedIn}">
-                                    <span style="color: #27ae60; font-weight: 500;">
+                                    <span class="status-green fw-500">
                                         <i class="fas fa-user-check"></i> Checked In
                                     </span>
                                 </c:when>
                                 <c:otherwise>
-                                    <span style="color: #7f8c8d;">
+                                    <span class="status-gray">
                                         <i class="fas fa-user"></i> Not Checked In
                                     </span>
                                 </c:otherwise>
@@ -3848,7 +2983,7 @@ window.openNotesModal = window.openNotesModal || function(examId) {
                                     <i class="fas fa-user-plus"></i> ${patient.createdBy.firstName} ${patient.createdBy.lastName}
                                 </c:when>
                                 <c:otherwise>
-                                    <span style="color: #6c757d; font-style: italic;">Not recorded</span>
+                                    <span class="muted-italic">Not recorded</span>
                                 </c:otherwise>
                             </c:choose>
                         </span>
@@ -3861,7 +2996,7 @@ window.openNotesModal = window.openNotesModal || function(examId) {
                                     <i class="fas fa-hospital"></i> ${patient.registeredClinic.clinicName}
                                 </c:when>
                                 <c:otherwise>
-                                    <span style="color: #6c757d; font-style: italic;">Not recorded</span>
+                                    <span class="muted-italic">Not recorded</span>
                                 </c:otherwise>
                             </c:choose>
                         </span>
@@ -3874,7 +3009,7 @@ window.openNotesModal = window.openNotesModal || function(examId) {
                                     <i class="fas fa-clock"></i> <fmt:formatDate value="${patient.createdAt}" pattern="dd/MM/yyyy HH:mm"/>
                                 </c:when>
                                 <c:otherwise>
-                                    <span style="color: #6c757d; font-style: italic;">Not recorded</span>
+                                    <span class="muted-italic">Not recorded</span>
                                 </c:otherwise>
                             </c:choose>
                         </span>
@@ -3911,7 +3046,7 @@ window.openNotesModal = window.openNotesModal || function(examId) {
             <h2>Dental Chart</h2>
                 <c:choose>
                     <c:when test="${currentUserRole == 'RECEPTIONIST'}">
-                        <p class="chart-instructions" style="color: #e74c3c; font-weight: 500;">
+                        <p class="chart-instructions chart-instructions--attention">
                             <i class="fas fa-info-circle"></i> 
                             Receptionists cannot add or edit tooth examinations. Please contact a doctor or staff member for clinical procedures.
                         </p>
@@ -3919,7 +3054,7 @@ window.openNotesModal = window.openNotesModal || function(examId) {
                     <c:otherwise>
                         <c:choose>
                             <c:when test="${!patient.checkedIn}">
-                                <p class="chart-instructions" style="color: #e74c3c; font-weight: 500;">
+                                <p class="chart-instructions chart-instructions--attention">
                                     <i class="fas fa-exclamation-triangle"></i> 
                                     Patient must be checked in before adding new tooth examinations. Please check in the patient first.
                                 </p>
@@ -3933,8 +3068,7 @@ window.openNotesModal = window.openNotesModal || function(examId) {
             </div>
             
             <!-- General Consultation Section -->
-            <div class="general-consultation-section" 
-                 <c:if test="${currentUserRole == 'RECEPTIONIST' || !patient.checkedIn}">style="opacity: 0.6; pointer-events: none;"</c:if>>
+            <div class="general-consultation-section <c:if test='${currentUserRole == "RECEPTIONIST" || !patient.checkedIn}'>is-disabled</c:if>">
                 <div class="consultation-card" onclick="openGeneralConsultation()">
                     <div class="consultation-icon">
                         <i class="fas fa-stethoscope"></i>
@@ -3946,64 +3080,63 @@ window.openNotesModal = window.openNotesModal || function(examId) {
                 </div>
             </div>
             
-            <div class="dental-chart" 
-                 <c:if test="${currentUserRole == 'RECEPTIONIST' || !patient.checkedIn}">style="opacity: 0.6; pointer-events: none;"</c:if>>
+            <div class="dental-chart <c:if test='${currentUserRole == "RECEPTIONIST" || !patient.checkedIn}'>is-disabled</c:if>">
                 <!-- Upper Teeth (Maxillary) -->
             <div class="teeth-row upper-teeth">
                     <!-- Upper Right (Q1) -->
                     <div class="quadrant upper-right">
                         <div class="tooth" data-tooth-number="18">
                             <div class="tooth-graphic">
-                                <img src="${pageContext.request.contextPath}/images/teeth/upper-molar.svg" alt="Tooth 18">
+                                <img src="${pageContext.request.contextPath}/images/teeth/upper-molar.svg" alt="Tooth 18" loading="lazy" decoding="async">
                                 <span class="tooth-number-bottom">18</span>
                             </div>
                             <div class="tooth-number">UR8</div>
                     </div>
                         <div class="tooth" data-tooth-number="17">
                             <div class="tooth-graphic">
-                                <img src="${pageContext.request.contextPath}/images/teeth/upper-molar.svg" alt="Tooth 17">
+                                <img src="${pageContext.request.contextPath}/images/teeth/upper-molar.svg" alt="Tooth 17" loading="lazy" decoding="async">
                                 <span class="tooth-number-bottom">17</span>
                             </div>
                             <div class="tooth-number">UR7</div>
                     </div>
                         <div class="tooth" data-tooth-number="16">
                             <div class="tooth-graphic">
-                                <img src="${pageContext.request.contextPath}/images/teeth/upper-molar.svg" alt="Tooth 16">
+                                <img src="${pageContext.request.contextPath}/images/teeth/upper-molar.svg" alt="Tooth 16" loading="lazy" decoding="async">
                                 <span class="tooth-number-bottom">16</span>
                     </div>
                             <div class="tooth-number">UR6</div>
                         </div>
                         <div class="tooth" data-tooth-number="15">
                             <div class="tooth-graphic">
-                                <img src="${pageContext.request.contextPath}/images/teeth/upper-premolar.svg" alt="Tooth 15">
+                                <img src="${pageContext.request.contextPath}/images/teeth/upper-premolar.svg" alt="Tooth 15" loading="lazy" decoding="async">
                                 <span class="tooth-number-bottom">15</span>
                             </div>
                             <div class="tooth-number">UR5</div>
                     </div>
                         <div class="tooth" data-tooth-number="14">
                             <div class="tooth-graphic">
-                                <img src="${pageContext.request.contextPath}/images/teeth/upper-premolar.svg" alt="Tooth 14">
+                                <img src="${pageContext.request.contextPath}/images/teeth/upper-premolar.svg" alt="Tooth 14" loading="lazy" decoding="async">
                                 <span class="tooth-number-bottom">14</span>
                             </div>
                             <div class="tooth-number">UR4</div>
                         </div>
                         <div class="tooth" data-tooth-number="13">
                             <div class="tooth-graphic">
-                                <img src="${pageContext.request.contextPath}/images/teeth/upper-canine.svg" alt="Tooth 13">
+                                <img src="${pageContext.request.contextPath}/images/teeth/upper-canine.svg" alt="Tooth 13" loading="lazy" decoding="async">
                                 <span class="tooth-number-bottom">13</span>
                             </div>
                             <div class="tooth-number">UR3</div>
                         </div>
                         <div class="tooth" data-tooth-number="12">
                             <div class="tooth-graphic">
-                                <img src="${pageContext.request.contextPath}/images/teeth/upper-incisor.svg" alt="Tooth 12">
+                                <img src="${pageContext.request.contextPath}/images/teeth/upper-incisor.svg" alt="Tooth 12" loading="lazy" decoding="async">
                                 <span class="tooth-number-bottom">12</span>
                             </div>
                             <div class="tooth-number">UR2</div>
                     </div>
                         <div class="tooth" data-tooth-number="11">
                             <div class="tooth-graphic">
-                                <img src="${pageContext.request.contextPath}/images/teeth/upper-incisor.svg" alt="Tooth 11">
+                                <img src="${pageContext.request.contextPath}/images/teeth/upper-incisor.svg" alt="Tooth 11" loading="lazy" decoding="async">
                                 <span class="tooth-number-bottom">11</span>
                             </div>
                             <div class="tooth-number">UR1</div>
@@ -4012,56 +3145,56 @@ window.openNotesModal = window.openNotesModal || function(examId) {
                     <div class="quadrant upper-left">
                     <div class="tooth" data-tooth-number="21">
                             <div class="tooth-graphic">
-                                <img src="${pageContext.request.contextPath}/images/teeth/upper-incisor.svg" alt="Tooth 21">
+                                <img src="${pageContext.request.contextPath}/images/teeth/upper-incisor.svg" alt="Tooth 21" loading="lazy" decoding="async">
                                 <span class="tooth-number-bottom">21</span>
                             </div>
                             <div class="tooth-number">UL1</div>
                     </div>
                     <div class="tooth" data-tooth-number="22">
                             <div class="tooth-graphic">
-                                <img src="${pageContext.request.contextPath}/images/teeth/upper-incisor.svg" alt="Tooth 22">
+                                <img src="${pageContext.request.contextPath}/images/teeth/upper-incisor.svg" alt="Tooth 22" loading="lazy" decoding="async">
                                 <span class="tooth-number-bottom">22</span>
                     </div>
                             <div class="tooth-number">UL2</div>
                         </div>
                     <div class="tooth" data-tooth-number="23">
                             <div class="tooth-graphic">
-                                <img src="${pageContext.request.contextPath}/images/teeth/upper-canine.svg" alt="Tooth 23">
+                                <img src="${pageContext.request.contextPath}/images/teeth/upper-canine.svg" alt="Tooth 23" loading="lazy" decoding="async">
                                 <span class="tooth-number-bottom">23</span>
                     </div>
                             <div class="tooth-number">UL3</div>
                         </div>
                     <div class="tooth" data-tooth-number="24">
                             <div class="tooth-graphic">
-                                <img src="${pageContext.request.contextPath}/images/teeth/upper-premolar.svg" alt="Tooth 24">
+                                <img src="${pageContext.request.contextPath}/images/teeth/upper-premolar.svg" alt="Tooth 24" loading="lazy" decoding="async">
                                 <span class="tooth-number-bottom">24</span>
                             </div>
                             <div class="tooth-number">UL4</div>
                     </div>
                     <div class="tooth" data-tooth-number="25">
                             <div class="tooth-graphic">
-                                <img src="${pageContext.request.contextPath}/images/teeth/upper-premolar.svg" alt="Tooth 25">
+                                <img src="${pageContext.request.contextPath}/images/teeth/upper-premolar.svg" alt="Tooth 25" loading="lazy" decoding="async">
                                 <span class="tooth-number-bottom">25</span>
                             </div>
                             <div class="tooth-number">UL5</div>
                         </div>
                     <div class="tooth" data-tooth-number="26">
                             <div class="tooth-graphic">
-                                <img src="${pageContext.request.contextPath}/images/teeth/upper-molar.svg" alt="Tooth 26">
+                                <img src="${pageContext.request.contextPath}/images/teeth/upper-molar.svg" alt="Tooth 26" loading="lazy" decoding="async">
                                 <span class="tooth-number-bottom">26</span>
                             </div>
                             <div class="tooth-number">UL6</div>
                     </div>
                     <div class="tooth" data-tooth-number="27">
                             <div class="tooth-graphic">
-                                <img src="${pageContext.request.contextPath}/images/teeth/upper-molar.svg" alt="Tooth 27">
+                                <img src="${pageContext.request.contextPath}/images/teeth/upper-molar.svg" alt="Tooth 27" loading="lazy" decoding="async">
                                 <span class="tooth-number-bottom">27</span>
                             </div>
                             <div class="tooth-number">UL7</div>
                     </div>
                     <div class="tooth" data-tooth-number="28">
                             <div class="tooth-graphic">
-                                <img src="${pageContext.request.contextPath}/images/teeth/upper-molar.svg" alt="Tooth 28">
+                                <img src="${pageContext.request.contextPath}/images/teeth/upper-molar.svg" alt="Tooth 28" loading="lazy" decoding="async">
                                 <span class="tooth-number-bottom">28</span>
                             </div>
                             <div class="tooth-number">UL8</div>
@@ -4077,56 +3210,56 @@ window.openNotesModal = window.openNotesModal || function(examId) {
                     <div class="quadrant lower-right">
                     <div class="tooth" data-tooth-number="48">
                             <div class="tooth-graphic">
-                                <img src="${pageContext.request.contextPath}/images/teeth/lower-molar.svg" alt="Tooth 48">
+                                <img src="${pageContext.request.contextPath}/images/teeth/lower-molar.svg" alt="Tooth 48" loading="lazy" decoding="async">
                                 <span class="tooth-number-bottom">48</span>
                             </div>
                             <div class="tooth-number">LR8</div>
                     </div>
                     <div class="tooth" data-tooth-number="47">
                             <div class="tooth-graphic">
-                                <img src="${pageContext.request.contextPath}/images/teeth/lower-molar.svg" alt="Tooth 47">
+                                <img src="${pageContext.request.contextPath}/images/teeth/lower-molar.svg" alt="Tooth 47" loading="lazy" decoding="async">
                                 <span class="tooth-number-bottom">47</span>
                             </div>
                             <div class="tooth-number">LR7</div>
                     </div>
                     <div class="tooth" data-tooth-number="46">
                             <div class="tooth-graphic">
-                                <img src="${pageContext.request.contextPath}/images/teeth/lower-molar.svg" alt="Tooth 46">
+                                <img src="${pageContext.request.contextPath}/images/teeth/lower-molar.svg" alt="Tooth 46" loading="lazy" decoding="async">
                                 <span class="tooth-number-bottom">46</span>
                     </div>
                             <div class="tooth-number">LR6</div>
                         </div>
                     <div class="tooth" data-tooth-number="45">
                             <div class="tooth-graphic">
-                                <img src="${pageContext.request.contextPath}/images/teeth/lower-premolar.svg" alt="Tooth 45">
+                                <img src="${pageContext.request.contextPath}/images/teeth/lower-premolar.svg" alt="Tooth 45" loading="lazy" decoding="async">
                                 <span class="tooth-number-bottom">45</span>
                             </div>
                             <div class="tooth-number">LR5</div>
                     </div>
                     <div class="tooth" data-tooth-number="44">
                             <div class="tooth-graphic">
-                                <img src="${pageContext.request.contextPath}/images/teeth/lower-premolar.svg" alt="Tooth 44">
+                                <img src="${pageContext.request.contextPath}/images/teeth/lower-premolar.svg" alt="Tooth 44" loading="lazy" decoding="async">
                                 <span class="tooth-number-bottom">44</span>
                     </div>
                             <div class="tooth-number">LR4</div>
                         </div>
                     <div class="tooth" data-tooth-number="43">
                             <div class="tooth-graphic">
-                                <img src="${pageContext.request.contextPath}/images/teeth/lower-canine.svg" alt="Tooth 43">
+                                <img src="${pageContext.request.contextPath}/images/teeth/lower-canine.svg" alt="Tooth 43" loading="lazy" decoding="async">
                                 <span class="tooth-number-bottom">43</span>
                     </div>
                             <div class="tooth-number">LR3</div>
                         </div>
                     <div class="tooth" data-tooth-number="42">
                             <div class="tooth-graphic">
-                                <img src="${pageContext.request.contextPath}/images/teeth/lower-incisor.svg" alt="Tooth 42">
+                                <img src="${pageContext.request.contextPath}/images/teeth/lower-incisor.svg" alt="Tooth 42" loading="lazy" decoding="async">
                                 <span class="tooth-number-bottom">42</span>
                             </div>
                             <div class="tooth-number">LR2</div>
                     </div>
                     <div class="tooth" data-tooth-number="41">
                             <div class="tooth-graphic">
-                                <img src="${pageContext.request.contextPath}/images/teeth/lower-incisor.svg" alt="Tooth 41">
+                                <img src="${pageContext.request.contextPath}/images/teeth/lower-incisor.svg" alt="Tooth 41" loading="lazy" decoding="async">
                                 <span class="tooth-number-bottom">41</span>
                             </div>
                             <div class="tooth-number">LR1</div>
@@ -4137,56 +3270,56 @@ window.openNotesModal = window.openNotesModal || function(examId) {
                     <div class="quadrant lower-left">
                     <div class="tooth" data-tooth-number="31">
                             <div class="tooth-graphic">
-                                <img src="${pageContext.request.contextPath}/images/teeth/lower-incisor.svg" alt="Tooth 31">
+                                <img src="${pageContext.request.contextPath}/images/teeth/lower-incisor.svg" alt="Tooth 31" loading="lazy" decoding="async">
                                 <span class="tooth-number-bottom">31</span>
                             </div>
                             <div class="tooth-number">LL1</div>
                     </div>
                     <div class="tooth" data-tooth-number="32">
                             <div class="tooth-graphic">
-                                <img src="${pageContext.request.contextPath}/images/teeth/lower-incisor.svg" alt="Tooth 32">
+                                <img src="${pageContext.request.contextPath}/images/teeth/lower-incisor.svg" alt="Tooth 32" loading="lazy" decoding="async">
                                 <span class="tooth-number-bottom">32</span>
                     </div>
                             <div class="tooth-number">LL2</div>
                         </div>
                     <div class="tooth" onclick="openToothDetails(33)">
                             <div class="tooth-graphic">
-                                <img src="${pageContext.request.contextPath}/images/teeth/lower-canine.svg" alt="Tooth 33">
+                                <img src="${pageContext.request.contextPath}/images/teeth/lower-canine.svg" alt="Tooth 33" loading="lazy" decoding="async">
                                 <span class="tooth-number-bottom">33</span>
                     </div>
                             <div class="tooth-number">LL3</div>
                         </div>
                     <div class="tooth" onclick="openToothDetails(34)">
                             <div class="tooth-graphic">
-                                <img src="${pageContext.request.contextPath}/images/teeth/lower-premolar.svg" alt="Tooth 34">
+                                <img src="${pageContext.request.contextPath}/images/teeth/lower-premolar.svg" alt="Tooth 34" loading="lazy" decoding="async">
                                 <span class="tooth-number-overlay">34</span>
                             </div>
                             <div class="tooth-number">LL4</div>
                     </div>
                     <div class="tooth" onclick="openToothDetails(35)">
                             <div class="tooth-graphic">
-                                <img src="${pageContext.request.contextPath}/images/teeth/lower-premolar.svg" alt="Tooth 35">
+                                <img src="${pageContext.request.contextPath}/images/teeth/lower-premolar.svg" alt="Tooth 35" loading="lazy" decoding="async">
                                 <span class="tooth-number-overlay">35</span>
                     </div>
                             <div class="tooth-number">LL5</div>
                         </div>
                     <div class="tooth" onclick="openToothDetails(36)">
                             <div class="tooth-graphic">
-                                <img src="${pageContext.request.contextPath}/images/teeth/lower-molar.svg" alt="Tooth 36">
+                                <img src="${pageContext.request.contextPath}/images/teeth/lower-molar.svg" alt="Tooth 36" loading="lazy" decoding="async">
                                 <span class="tooth-number-overlay">36</span>
                             </div>
                             <div class="tooth-number">LL6</div>
                     </div>
                     <div class="tooth" onclick="openToothDetails(37)">
                             <div class="tooth-graphic">
-                                <img src="${pageContext.request.contextPath}/images/teeth/lower-molar.svg" alt="Tooth 37">
+                                <img src="${pageContext.request.contextPath}/images/teeth/lower-molar.svg" alt="Tooth 37" loading="lazy" decoding="async">
                                 <span class="tooth-number-overlay">37</span>
                             </div>
                             <div class="tooth-number">LL7</div>
                     </div>
                     <div class="tooth" onclick="openToothDetails(38)">
                             <div class="tooth-graphic">
-                                <img src="${pageContext.request.contextPath}/images/teeth/lower-molar.svg" alt="Tooth 38">
+                                <img src="${pageContext.request.contextPath}/images/teeth/lower-molar.svg" alt="Tooth 38" loading="lazy" decoding="async">
                                 <span class="tooth-number-overlay">38</span>
                             </div>
                             <div class="tooth-number">LL8</div>
@@ -4212,7 +3345,7 @@ window.openNotesModal = window.openNotesModal || function(examId) {
                 </h2>
             </div>
             
-            <div class="clinical-files-container" id="clinicalFilesContainer" style="display: none;">
+            <div class="clinical-files-container hidden" id="clinicalFilesContainer">
                 <c:choose>
                     <c:when test="${not empty clinicalFiles}">
                         <div class="clinical-files-list">
@@ -4386,7 +3519,7 @@ window.openNotesModal = window.openNotesModal || function(examId) {
                         <sec:authorize access="hasAnyRole('DOCTOR','OPD_DOCTOR','ADMIN','CLINIC_OWNER','RECEPTIONIST')">
                             <div class="clinical-file-actions-row">
                                 <div class="clinical-file-actions">
-                                    <span id="selectedCountDisplay" class="selected-count" style="visibility: hidden;">
+                                    <span id="selectedCountDisplay" class="selected-count vis-hidden">
                                          <span id="selectedExaminationCount">0</span> examinations selected
                                      </span>
                                     
@@ -4421,47 +3554,9 @@ window.openNotesModal = window.openNotesModal || function(examId) {
                                     <button type="button" id="bulkApplyDiscountBtn" class="btn btn-secondary btn-sm" onclick="openBulkDiscountModal()" title="Apply or remove discount for selected examinations" disabled>
                                         <i class="fas fa-percent"></i> Discount
                                     </button>
-                                    <input type="file" id="bulkSelectedInput" multiple accept="image/*,application/pdf" style="display: none;" />
+                                    <input type="file" id="bulkSelectedInput" multiple accept="image/*,application/pdf" class="hidden" />
                                 </div>
-                                <style>
-                                     .tooltip-container { position: relative; display: inline-block; }
-                                     .tooltip-container .tooltip-text {
-                                         visibility: hidden; opacity: 0; transition: opacity 0.2s;
-                                         position: absolute; z-index: 10; bottom: 125%; left: 50%; transform: translateX(-50%);
-                                         background: #2c3e50; color: #fff; padding: 6px 8px; border-radius: 4px; width: 220px; text-align: center; font-size: 0.8rem;
-                                     }
-                                     .tooltip-container:hover .tooltip-text { visibility: visible; opacity: 1; }
-                                     
-                                     /* Custom disabled states for bulk buttons */
-                                     .btn-disabled-permission {
-                                         background-color: #f8d7da !important;
-                                         border-color: #f5c6cb !important;
-                                         color: #721c24 !important;
-                                         opacity: 0.8 !important;
-                                         cursor: not-allowed !important;
-                                     }
-                                     
-                                     .btn-disabled-selection {
-                                         background-color: #e2e3e5 !important;
-                                         border-color: #d6d8db !important;
-                                         color: #6c757d !important;
-                                         opacity: 0.65 !important;
-                                         cursor: not-allowed !important;
-                                     }
-                                     
-                                     .btn-enabled {
-                                         background-color: #6c757d !important;
-                                         border-color: #6c757d !important;
-                                         color: #fff !important;
-                                         opacity: 1 !important;
-                                         cursor: pointer !important;
-                                     }
-                                     
-                                     .btn-enabled:hover {
-                                         background-color: #5a6268 !important;
-                                         border-color: #545b62 !important;
-                                     }
-                                 </style>
+                                
                                  <script>
                                      document.addEventListener('DOMContentLoaded', function() {
                                          console.log('[PD] DOMContentLoaded: initializing table selection count');
@@ -4611,7 +3706,7 @@ window.openNotesModal = window.openNotesModal || function(examId) {
                                     <c:choose>
                                         <c:when test="${not empty exam.examinationNotes}">
                                             <button type="button" class="view-notes-link" data-exam-id="${exam.id}" onclick="openNotesModal('${exam.id}')">VIEW</button>
-<textarea class="exam-notes-data" data-exam-id="${exam.id}" style="display:none;">${fn:escapeXml(exam.examinationNotes)}</textarea>
+<textarea class="exam-notes-data hidden" data-exam-id="${exam.id}">${fn:escapeXml(exam.examinationNotes)}</textarea>
                                         </c:when>
                                         <c:otherwise>
                                             <span class="no-data">No notes</span>
@@ -4663,7 +3758,7 @@ window.openNotesModal = window.openNotesModal || function(examId) {
                                                 data-tooltip="${dupTooltip}" 
                                                 data-exam-id="${exam.id}"
                                                 onclick="event.stopPropagation(); duplicateExaminationFromEl(this)"
-                                                <c:if test="${!canDupAndCheckedIn}">disabled style="opacity:0.6; cursor:not-allowed;"</c:if>>
+                                                <c:if test="${!canDupAndCheckedIn}">disabled class="disabled-action"</c:if>>
                                             <i class="fas fa-clone"></i>
                                         </button>
                                         
@@ -4676,7 +3771,7 @@ window.openNotesModal = window.openNotesModal || function(examId) {
                                                     data-tooth="${fn:escapeXml(exam.toothNumber)}"
                                                     data-exam-date="${fn:escapeXml(exam.examinationDate)}"
                                                     onclick="onDeleteExamClick(event, this)"
-                                                    <c:if test="${!canDelete}">disabled style="opacity:0.6; cursor:not-allowed;"</c:if>>
+                                                    <c:if test="${!canDelete}">disabled class="disabled-action"</c:if>>
                                                 <i class="fas fa-trash"></i>
                                             </button>
                                         </c:if>
@@ -4784,7 +3879,7 @@ window.openNotesModal = window.openNotesModal || function(examId) {
     <div id="consultationModal" class="modal consultation-modal">
         <div class="modal-content">
             <span class="close" onclick="closeConsultationModal()">&times;</span>
-            <h2 style="margin: 0 0 15px 0; font-size: 1.2rem; color: #2c3e50;">General Consultation</h2>
+            <h2 class="modal-title">General Consultation</h2>
             <form id="consultationForm" method="post" action="${pageContext.request.contextPath}/patients/tooth-examination/save">
                 <input type="hidden" id="consultationExaminationId" name="id" value="">
                 <input type="hidden" id="consultationPatientId" name="patientId" value="${patient.id}">
@@ -4825,7 +3920,7 @@ window.openNotesModal = window.openNotesModal || function(examId) {
     <div id="toothModal" class="modal tooth-examination-modal">
         <div class="modal-content">
             <span class="close">&times;</span>
-            <h2 style="margin: 0 0 15px 0; font-size: 1.2rem; color: #2c3e50;">Clinical Examination for Tooth <span id="selectedToothNumber"></span></h2>
+            <h2 class="modal-title">Clinical Examination for Tooth <span id="selectedToothNumber"></span></h2>
             <form id="toothExaminationForm" method="post" action="${pageContext.request.contextPath}/patients/tooth-examination/save">
                 <input type="hidden" id="examinationId" name="id" value="">
                 <input type="hidden" id="patientId" name="patientId" value="${patient.id}">
@@ -4991,12 +4086,12 @@ window.openNotesModal = window.openNotesModal || function(examId) {
 
 
 <!-- Notes Modal: reinstated for viewing examination notes -->
-<div id="notesModal" class="modal" style="display: none; position: fixed; z-index: 1000; left: 0; top: 0; width: 100%; height: 100%; background-color: rgba(0,0,0,0.5);">
-  <div class="modal-content" style="background: #ffffff; margin: 10% auto; padding: 20px; border: 1px solid #888; width: 70%; max-width: 720px; border-radius: 8px; position: relative;">
-    <span class="close" onclick="closeNotesModal()" aria-label="Close" style="position: absolute; right: 16px; top: 12px; font-size: 28px; font-weight: bold; cursor: pointer; color: #2c3e50;">&times;</span>
-    <h3 id="notesModalTitle" style="margin-top: 0;">Clinical Notes</h3>
-    <div id="notesContent" style="white-space: pre-wrap; line-height: 1.5; color: #2c3e50;"></div>
-    <div class="modal-actions" style="margin-top: 16px; text-align: right;">
+<div id="notesModal" class="modal">
+  <div class="modal-content">
+    <span class="close" onclick="closeNotesModal()" aria-label="Close">&times;</span>
+    <h3 id="notesModalTitle" class="modal-title">Clinical Notes</h3>
+    <div id="notesContent" class="notes-content"></div>
+    <div class="modal-actions">
       <button type="button" class="btn btn-secondary" onclick="closeNotesModal()">Close</button>
     </div>
   </div>
@@ -5312,7 +4407,7 @@ window.openNotesModal = window.openNotesModal || function(examId) {
                 <button type="button" class="btn btn-primary" id="confirmDuplicateBtn" onclick="confirmDuplicateExamination()">
                     <i class="fas fa-copy"></i>
                     <span class="btn-text">Duplicate Examination</span>
-                    <span class="btn-loader" style="display: none;">
+                    <span class="btn-loader hidden">
                         <i class="fas fa-spinner fa-spin"></i>
                         Duplicating...
                     </span>
@@ -5340,7 +4435,7 @@ window.openNotesModal = window.openNotesModal || function(examId) {
                         </button>
                         <span class="help-text">You can upload images (JPG/PNG) or PDFs. Images will be compressed automatically.</span>
                     </div>
-                    <div class="form-group" style="margin-top: 12px;">
+                    <div class="form-group mt-12">
                         <label for="bulkSelectedTreatmentPhase">Treatment Phase</label>
                         <select id="bulkSelectedTreatmentPhase" class="form-control" required>
                             <option value="pre">Pre-Treatment</option>
@@ -5373,31 +4468,31 @@ window.openNotesModal = window.openNotesModal || function(examId) {
                 <p class="text-muted">
                     Selected examinations: <strong><span id="bulkSendSelectedCount">0</span></strong>
                 </p>
-                <div class="validation-summary" id="bulkPaymentValidation" style="display: none; background: #fff3cd; border: 1px solid #ffe08a; border-radius: 6px; padding: 12px; margin-bottom: 12px;">
-                    <div style="display:flex; align-items:center; gap:8px; margin-bottom:6px;">
-                        <i class="fas fa-exclamation-triangle" style="color:#856404;"></i>
-                        <strong style="color:#856404;">Some selected records cannot be sent for payment</strong>
+                <div class="validation-summary hidden" id="bulkPaymentValidation">
+                    <div class="alert-row mb-6">
+                        <i class="fas fa-exclamation-triangle"></i>
+                        <strong class="warn-link">Some selected records cannot be sent for payment</strong>
                     </div>
-                    <ul id="bulkPaymentValidationList" style="margin:0 0 6px 18px; padding:0;">
+                    <ul id="bulkPaymentValidationList" class="list-tight">
                     </ul>
-                    <small style="color:#856404;">Only examinations with an attached procedure and status <strong>OPEN</strong> can be sent for payment.</small>
+                    <small class="warn-link">Only examinations with an attached procedure and status <strong>OPEN</strong> can be sent for payment.</small>
                 </div>
-                <div class="progress-section" id="bulkPaymentProgress" style="display:none;">
-                    <div style="margin-bottom:8px; color:#2c3e50;">
+                <div class="progress-section hidden" id="bulkPaymentProgress">
+                    <div class="progress-info">
                         <i class="fas fa-spinner fa-spin"></i> Processing bulk update...
                     </div>
-                    <div style="background:#ecf0f1; border-radius:4px; height:10px; overflow:hidden;">
-                        <div id="bulkPaymentProgressBar" style="background:#3498db; width:0%; height:10px; transition: width 0.3s ease;"></div>
+                    <div class="progress-track">
+                        <div id="bulkPaymentProgressBar" class="progress-bar"></div>
                     </div>
                 </div>
-                <div class="result-section" id="bulkPaymentResult" style="display:none; margin-top:12px;">
-                    <div id="bulkPaymentResultSummary" style="margin-bottom:8px; color:#2c3e50;"></div>
-                    <div id="bulkPaymentErrorContainer" style="display:none; background:#fdecea; border:1px solid #f5c6cb; border-radius:6px; padding:10px;">
-                        <div style="display:flex; align-items:center; gap:8px; margin-bottom:6px; color:#721c24;">
+                <div class="result-section hidden" id="bulkPaymentResult">
+                    <div id="bulkPaymentResultSummary" class="progress-info"></div>
+                    <div id="bulkPaymentErrorContainer" class="error-box hidden">
+                        <div class="error-title">
                             <i class="fas fa-times-circle"></i>
                             <strong>Errors</strong>
                         </div>
-                        <ul id="bulkPaymentErrorList" style="margin:0 0 6px 18px; padding:0; color:#721c24;"></ul>
+                        <ul id="bulkPaymentErrorList" class="error-list"></ul>
                     </div>
                 </div>
             </div>
@@ -5421,30 +4516,30 @@ window.openNotesModal = window.openNotesModal || function(examId) {
                 <p class="text-muted">
                     Selected examinations: <strong><span id="bulkMarkPaymentCompletedSelectedCount">0</span></strong>
                 </p>
-                <div class="validation-summary" id="bulkPaymentCompletedValidation" style="display: none; background: #fff3cd; border: 1px solid #ffe08a; border-radius: 6px; padding: 12px; margin-bottom: 12px;">
-                    <div style="display:flex; align-items:center; gap:8px; margin-bottom:6px;">
-                        <i class="fas fa-exclamation-triangle" style="color:#856404;"></i>
-                        <strong style="color:#856404;">Some selected records cannot be marked in progress</strong>
+                <div class="validation-summary hidden" id="bulkPaymentCompletedValidation">
+                    <div class="alert-row mb-6">
+                        <i class="fas fa-exclamation-triangle"></i>
+                        <strong class="warn-link">Some selected records cannot be marked in progress</strong>
                     </div>
-                    <ul id="bulkPaymentCompletedValidationList" style="margin:0 0 6px 18px; padding:0;"></ul>
-                    <small style="color:#856404;">Only examinations with status <strong>PAYMENT_COMPLETED</strong> can be marked in progress.</small>
+                    <ul id="bulkPaymentCompletedValidationList" class="list-tight"></ul>
+                    <small class="warn-link">Only examinations with status <strong>PAYMENT_COMPLETED</strong> can be marked in progress.</small>
                 </div>
-                <div class="progress-section" id="bulkPaymentCompletedProgress" style="display:none;">
-                    <div style="margin-bottom:8px; color:#2c3e50;">
+                <div class="progress-section hidden" id="bulkPaymentCompletedProgress">
+                    <div class="progress-info">
                         <i class="fas fa-spinner fa-spin"></i> Processing bulk update...
                     </div>
-                    <div style="background:#ecf0f1; border-radius:4px; height:10px; overflow:hidden;">
-                        <div id="bulkPaymentCompletedProgressBar" style="background:#28a745; width:0%; height:10px; transition: width 0.3s ease;"></div>
+                    <div class="progress-track">
+                        <div id="bulkPaymentCompletedProgressBar" class="progress-bar"></div>
                     </div>
                 </div>
-                <div class="result-section" id="bulkPaymentCompletedResult" style="display:none; margin-top:12px;">
-                    <div id="bulkPaymentCompletedResultSummary" style="margin-bottom:8px; color:#2c3e50;"></div>
-                    <div id="bulkPaymentCompletedErrorContainer" style="display:none; background:#fdecea; border:1px solid #f5c6cb; border-radius:6px; padding:10px;">
-                        <div style="display:flex; align-items:center; gap:8px; margin-bottom:6px; color:#721c24;">
+                <div class="result-section hidden" id="bulkPaymentCompletedResult">
+                    <div id="bulkPaymentCompletedResultSummary" class="progress-info"></div>
+                    <div id="bulkPaymentCompletedErrorContainer" class="error-box hidden">
+                        <div class="error-title">
                             <i class="fas fa-times-circle"></i>
                             <strong>Errors</strong>
                         </div>
-                        <ul id="bulkPaymentCompletedErrorList" style="margin:0 0 6px 18px; padding:0; color:#721c24;"></ul>
+                        <ul id="bulkPaymentCompletedErrorList" class="error-list"></ul>
                     </div>
                 </div>
             </div>
@@ -5468,30 +4563,30 @@ window.openNotesModal = window.openNotesModal || function(examId) {
                 <p class="text-muted">
                     Selected examinations: <strong><span id="bulkMarkCompletedSelectedCount">0</span></strong>
                 </p>
-                <div class="validation-summary" id="bulkCompletedValidation" style="display: none; background: #fff3cd; border: 1px solid #ffe08a; border-radius: 6px; padding: 12px; margin-bottom: 12px;">
-                    <div style="display:flex; align-items:center; gap:8px; margin-bottom:6px;">
-                        <i class="fas fa-exclamation-triangle" style="color:#856404;"></i>
-                        <strong style="color:#856404;">Some selected records cannot be marked completed</strong>
+                <div class="validation-summary hidden" id="bulkCompletedValidation">
+                    <div class="alert-row mb-6">
+                        <i class="fas fa-exclamation-triangle"></i>
+                        <strong class="warn-link">Some selected records cannot be marked completed</strong>
                     </div>
-                    <ul id="bulkCompletedValidationList" style="margin:0 0 6px 18px; padding:0;"></ul>
-                    <small style="color:#856404;">Only examinations with status <strong>IN_PROGRESS</strong> can be marked completed.</small>
+                    <ul id="bulkCompletedValidationList" class="list-tight"></ul>
+                    <small class="warn-link">Only examinations with status <strong>IN_PROGRESS</strong> can be marked completed.</small>
                 </div>
-                <div class="progress-section" id="bulkCompletedProgress" style="display:none;">
-                    <div style="margin-bottom:8px; color:#2c3e50;">
+                <div class="progress-section hidden" id="bulkCompletedProgress">
+                    <div class="progress-info">
                         <i class="fas fa-spinner fa-spin"></i> Processing bulk update...
                     </div>
-                    <div style="background:#ecf0f1; border-radius:4px; height:10px; overflow:hidden;">
-                        <div id="bulkCompletedProgressBar" style="background:#28a745; width:0%; height:10px; transition: width 0.3s ease;"></div>
+                    <div class="progress-track">
+                        <div id="bulkCompletedProgressBar" class="progress-bar"></div>
                     </div>
                 </div>
-                <div class="result-section" id="bulkCompletedResult" style="display:none; margin-top:12px;">
-                    <div id="bulkCompletedResultSummary" style="margin-bottom:8px; color:#2c3e50;"></div>
-                    <div id="bulkCompletedErrorContainer" style="display:none; background:#fdecea; border:1px solid #f5c6cb; border-radius:6px; padding:10px;">
-                        <div style="display:flex; align-items:center; gap:8px; margin-bottom:6px; color:#721c24;">
+                <div class="result-section hidden" id="bulkCompletedResult">
+                    <div id="bulkCompletedResultSummary" class="progress-info"></div>
+                    <div id="bulkCompletedErrorContainer" class="error-box hidden">
+                        <div class="error-title">
                             <i class="fas fa-times-circle"></i>
                             <strong>Errors</strong>
                         </div>
-                        <ul id="bulkCompletedErrorList" style="margin:0 0 6px 18px; padding:0; color:#721c24;"></ul>
+                        <ul id="bulkCompletedErrorList" class="error-list"></ul>
                     </div>
                 </div>
             </div>
@@ -5515,30 +4610,30 @@ window.openNotesModal = window.openNotesModal || function(examId) {
                 <p class="text-muted">
                     Selected examinations: <strong><span id="bulkMarkClosedSelectedCount">0</span></strong>
                 </p>
-                <div class="validation-summary" id="bulkClosedValidation" style="display: none; background: #fff3cd; border: 1px solid #ffe08a; border-radius: 6px; padding: 12px; margin-bottom: 12px;">
-                    <div style="display:flex; align-items:center; gap:8px; margin-bottom:6px;">
-                        <i class="fas fa-exclamation-triangle" style="color:#856404;"></i>
-                        <strong style="color:#856404;">Some selected records cannot be closed</strong>
+                <div class="validation-summary hidden" id="bulkClosedValidation">
+                    <div class="alert-row mb-6">
+                        <i class="fas fa-exclamation-triangle"></i>
+                        <strong class="warn-link">Some selected records cannot be closed</strong>
                     </div>
-                    <ul id="bulkClosedValidationList" style="margin:0 0 6px 18px; padding:0;"></ul>
-                    <small style="color:#856404;">Only examinations with status <strong>COMPLETED</strong> can be closed.</small>
+                    <ul id="bulkClosedValidationList" class="list-tight"></ul>
+                    <small class="warn-link">Only examinations with status <strong>COMPLETED</strong> can be closed.</small>
                 </div>
-                <div class="progress-section" id="bulkClosedProgress" style="display:none;">
-                    <div style="margin-bottom:8px; color:#2c3e50;">
+                <div class="progress-section hidden" id="bulkClosedProgress">
+                    <div class="progress-info">
                         <i class="fas fa-spinner fa-spin"></i> Processing bulk update...
                     </div>
-                    <div style="background:#ecf0f1; border-radius:4px; height:10px; overflow:hidden;">
-                        <div id="bulkClosedProgressBar" style="background:#28a745; width:0%; height:10px; transition: width 0.3s ease;"></div>
+                    <div class="progress-track">
+                        <div id="bulkClosedProgressBar" class="progress-bar"></div>
                     </div>
                 </div>
-                <div class="result-section" id="bulkClosedResult" style="display:none; margin-top:12px;">
-                    <div id="bulkClosedResultSummary" style="margin-bottom:8px; color:#2c3e50;"></div>
-                    <div id="bulkClosedErrorContainer" style="display:none; background:#fdecea; border:1px solid #f5c6cb; border-radius:6px; padding:10px;">
-                        <div style="display:flex; align-items:center; gap:8px; margin-bottom:6px; color:#721c24;">
+                <div class="result-section hidden" id="bulkClosedResult">
+                    <div id="bulkClosedResultSummary" class="progress-info"></div>
+                    <div id="bulkClosedErrorContainer" class="error-box hidden">
+                        <div class="error-title">
                             <i class="fas fa-times-circle"></i>
                             <strong>Errors</strong>
                         </div>
-                        <ul id="bulkClosedErrorList" style="margin:0 0 6px 18px; padding:0; color:#721c24;"></ul>
+                        <ul id="bulkClosedErrorList" class="error-list"></ul>
                     </div>
                 </div>
             </div>
@@ -5564,7 +4659,7 @@ window.openNotesModal = window.openNotesModal || function(examId) {
                 </p>
                 <div class="form-group">
                     <label for="bulkNotesInput">Notes</label>
-                    <textarea id="bulkNotesInput" class="form-control" placeholder="Type notes to add to each selected examination" style="min-height: 120px;"></textarea>
+                    <textarea id="bulkNotesInput" class="form-control minh-120" placeholder="Type notes to add to each selected examination"></textarea>
                     <small class="form-text text-muted">Notes are appended with timestamp, doctor, and clinic information.</small>
                 </div>
             </div>
@@ -5592,19 +4687,19 @@ window.openNotesModal = window.openNotesModal || function(examId) {
                     <label for="bulkProcedureSearchInput">Search Procedure</label>
                     <div class="autocomplete-container">
                         <input type="text" id="bulkProcedureSearchInput" class="form-control" placeholder="Type to search procedure by name..." autocomplete="off">
-                        <div id="bulkProcedureAutocomplete" class="autocomplete-dropdown" style="display:none;"></div>
+                        <div id="bulkProcedureAutocomplete" class="autocomplete-dropdown hidden"></div>
                     </div>
                 </div>
-                <div id="selectedProcedureSummary" style="display:none; margin-top: 10px;">
+                <div id="selectedProcedureSummary" class="hidden mt-10">
                     <strong>Selected:</strong> <span id="selectedProcedureName"></span>
-                    <span id="selectedProcedurePrice" style="margin-left:8px; color:#2c3e50;"></span>
+                    <span id="selectedProcedurePrice" class="progress-info ml-8"></span>
                 </div>
             </div>
             <div class="modal-footer">
                 <button type="button" class="btn btn-primary" id="confirmBulkAssignProcedureBtn" onclick="confirmBulkAssignProcedure()" disabled>
                     <i class="fas fa-tooth"></i>
                     <span class="btn-text">Assign Procedure</span>
-                    <span class="btn-loader" style="display:none;"><i class="fas fa-spinner fa-spin"></i> Assigning...</span>
+                    <span class="btn-loader hidden"><i class="fas fa-spinner fa-spin"></i> Assigning...</span>
                 </button>
                 <button type="button" class="btn btn-secondary" onclick="closeBulkAssignProcedureModal()">Cancel</button>
             </div>
@@ -5628,33 +4723,33 @@ window.openNotesModal = window.openNotesModal || function(examId) {
                         <option value="">Select reason</option>
                         <!-- Options populated dynamically from /discounts/reasons; 'Other' appended -->
                     </select>
-                    <small style="color: #6c757d; font-size: 0.85rem;">Choose a standardized reason or Other to specify percentage</small>
+                    <small class="text-muted fs-085">Choose a standardized reason or Other to specify percentage</small>
                 </div>
                 <div class="form-group">
                     <label for="bulkDiscountPercentage">Percentage</label>
                     <input type="number" id="bulkDiscountPercentage" class="form-control" min="0" max="100" step="0.01" placeholder="e.g., 10">
-                    <small style="color: #6c757d; font-size: 0.85rem;">Required when reason is Other or no reason selected</small>
+                    <small class="text-muted fs-085">Required when reason is Other or no reason selected</small>
                 </div>
                 <div class="form-group">
                     <label for="bulkDiscountNote">Reason Note</label>
                     <textarea id="bulkDiscountNote" class="form-control" placeholder="Optional note (auto label if blank)" rows="2"></textarea>
                 </div>
-                <div class="progress-section" id="bulkDiscountProgress" style="display:none; margin-top:8px;">
-                    <div style="margin-bottom:8px; color:#2c3e50;">
+                <div class="progress-section hidden" id="bulkDiscountProgress">
+                    <div class="progress-info">
                         <i class="fas fa-spinner fa-spin"></i> Applying discount to selected...
                     </div>
-                    <div style="background:#ecf0f1; border-radius:4px; height:10px; overflow:hidden;">
-                        <div id="bulkDiscountProgressBar" style="background:#3498db; width:0%; height:10px; transition: width 0.3s ease;"></div>
+                    <div class="progress-track">
+                        <div id="bulkDiscountProgressBar" class="progress-bar"></div>
                     </div>
                 </div>
-                <div class="result-section" id="bulkDiscountResult" style="display:none; margin-top:12px;">
-                    <div id="bulkDiscountResultSummary" style="margin-bottom:8px; color:#2c3e50;"></div>
-                    <div id="bulkDiscountErrorContainer" style="display:none; background:#fdecea; border:1px solid #f5c6cb; border-radius:6px; padding:10px;">
-                        <div style="display:flex; align-items:center; gap:8px; margin-bottom:6px; color:#721c24;">
+                <div class="result-section hidden" id="bulkDiscountResult">
+                    <div id="bulkDiscountResultSummary" class="progress-info"></div>
+                    <div id="bulkDiscountErrorContainer" class="error-box hidden">
+                        <div class="error-title">
                             <i class="fas fa-times-circle"></i>
                             <strong>Errors</strong>
                         </div>
-                        <ul id="bulkDiscountErrorList" style="margin:0 0 6px 18px; padding:0; color:#721c24;"></ul>
+                        <ul id="bulkDiscountErrorList" class="error-list"></ul>
                     </div>
                 </div>
             </div>
@@ -5677,10 +4772,10 @@ window.openNotesModal = window.openNotesModal || function(examId) {
             const icon = document.getElementById('clinicalFilesToggleIcon');
             
             if (container.style.display === 'none') {
-                container.style.display = 'block';
+                container.classList.remove('hidden');
                 icon.classList.add('rotated');
             } else {
-                container.style.display = 'none';
+                container.classList.add('hidden');
                 icon.classList.remove('rotated');
             }
         }
@@ -5756,7 +4851,7 @@ window.openNotesModal = window.openNotesModal || function(examId) {
                         (doctorId === 'unassigned' && (!rowDoctorId || rowDoctorId === ''))) {
                         row.style.display = '';
                     } else {
-                        row.style.display = 'none';
+                        row.classList.add('hidden');
                     }
                 }
             });
@@ -5771,7 +4866,7 @@ window.openNotesModal = window.openNotesModal || function(examId) {
                     if (clinicId === 'all' || rowClinicId === clinicId) {
                         row.style.display = '';
                     } else {
-                        row.style.display = 'none';
+                        row.classList.add('hidden');
                     }
                 }
             });
@@ -5788,7 +4883,7 @@ window.openNotesModal = window.openNotesModal || function(examId) {
                         rowFileId === fileId) {
                         row.style.display = '';
                     } else {
-                        row.style.display = 'none';
+                        row.classList.add('hidden');
                     }
                 }
             });
@@ -5819,11 +4914,11 @@ window.openNotesModal = window.openNotesModal || function(examId) {
             }
             const select = document.getElementById('bulkAssignDoctorSelect');
             if (select) select.value = '';
-            document.getElementById('bulkAssignDoctorModal').style.display = 'block';
+            document.getElementById('bulkAssignDoctorModal').classList.add('is-open');
         }
 
         function closeBulkAssignDoctorModal() {
-            document.getElementById('bulkAssignDoctorModal').style.display = 'none';
+            document.getElementById('bulkAssignDoctorModal').classList.remove('is-open');
             const select = document.getElementById('bulkAssignDoctorSelect');
             if (select) select.value = '';
         }
@@ -5961,7 +5056,7 @@ window.openNotesModal = window.openNotesModal || function(examId) {
         }
         
         function closeDuplicateExaminationModal() {
-            document.getElementById('duplicateExaminationModal').style.display = 'none';
+            document.getElementById('duplicateExaminationModal').classList.remove('is-open');
             
             // Reset checkboxes to unchecked and enable them
             document.getElementById('duplicateAttachments').checked = false;
@@ -6001,7 +5096,7 @@ window.openNotesModal = window.openNotesModal || function(examId) {
             
             // Show loader and disable button
             confirmBtn.disabled = true;
-            confirmBtn.querySelector('.btn-text').style.display = 'none';
+            confirmBtn.querySelector('.btn-text').classList.add('hidden');
             confirmBtn.querySelector('.btn-loader').style.display = 'inline';
             
             const modal = document.getElementById('duplicateExaminationModal');
@@ -6054,7 +5149,7 @@ window.openNotesModal = window.openNotesModal || function(examId) {
             const confirmBtn = document.getElementById('confirmDuplicateBtn');
             confirmBtn.disabled = false;
             confirmBtn.querySelector('.btn-text').style.display = 'inline';
-            confirmBtn.querySelector('.btn-loader').style.display = 'none';
+            confirmBtn.querySelector('.btn-loader').classList.add('hidden');
         }
         
         // Delete examination functionality
@@ -6223,13 +5318,13 @@ window.openNotesModal = window.openNotesModal || function(examId) {
         // Customer Ledger functionality
         function openCustomerLedger() {
             const modal = document.getElementById('customerLedgerModal');
-            modal.style.display = 'block';
+            modal.classList.add('is-open');
             loadCustomerLedger();
         }
         
         function closeCustomerLedger() {
             const modal = document.getElementById('customerLedgerModal');
-            modal.style.display = 'none';
+            modal.classList.remove('is-open');
         }
         
         function loadCustomerLedger() {
@@ -6244,9 +5339,9 @@ window.openNotesModal = window.openNotesModal || function(examId) {
             console.log('Loading customer ledger for patient ID:', patientId);
             
             // Show loading state
-            loadingDiv.style.display = 'block';
-            contentDiv.style.display = 'none';
-            errorDiv.style.display = 'none';
+            loadingDiv.classList.remove('hidden');
+            contentDiv.classList.add('hidden');
+            errorDiv.classList.add('hidden');
             
             fetch(url, { headers: { 'Accept': 'application/json' }})
                 .then(async response => {
@@ -6278,21 +5373,21 @@ window.openNotesModal = window.openNotesModal || function(examId) {
                     console.log('Data is array:', Array.isArray(data));
                     console.log('Data length:', Array.isArray(data) ? data.length : 'n/a');
                     
-                    loadingDiv.style.display = 'none';
+                    loadingDiv.classList.add('hidden');
                     if (Array.isArray(data) && data.length > 0) {
                         console.log('Processing', data.length, 'transactions');
                         displayLedgerData(data);
-                        contentDiv.style.display = 'block';
+                        contentDiv.classList.remove('hidden');
                     } else {
                         errorDiv.innerHTML = '<p>No payment transactions found for this patient.</p>';
-                        errorDiv.style.display = 'block';
+                        errorDiv.classList.remove('hidden');
                     }
                 })
                 .catch(error => {
                     console.error('Fetch error:', error);
-                    loadingDiv.style.display = 'none';
+                    loadingDiv.classList.add('hidden');
                     errorDiv.innerHTML = '<p>Error loading payment transactions. Please try again.</p>';
-                    errorDiv.style.display = 'block';
+                    errorDiv.classList.remove('hidden');
                 });
         }
         
@@ -6350,7 +5445,7 @@ window.openNotesModal = window.openNotesModal || function(examId) {
                 row.innerHTML = '' +
                     '<td>' + formattedDate + '</td>' +
                     '<td>' + (transaction.procedureName || 'N/A') + '</td>' +
-                    '<td class="' + amountClass + '" style="font-weight: 600;">' +
+                    '<td class="' + amountClass + ' fw-600">' +
                         amountDisplay +
                     '</td>' +
                     '<td><span class="badge badge-' + badgeClass + '">' + displayTransactionType + '</span></td>' +
@@ -6498,11 +5593,11 @@ window.openNotesModal = window.openNotesModal || function(examId) {
             if (input) input.value = '';
             const list = document.getElementById('bulkSelectedFileList');
             if (list) list.innerHTML = '';
-            document.getElementById('bulkUploadSelectedModal').style.display = 'block';
+            document.getElementById('bulkUploadSelectedModal').classList.add('is-open');
         }
 
         function closeBulkUploadSelectedModal() {
-            document.getElementById('bulkUploadSelectedModal').style.display = 'none';
+            document.getElementById('bulkUploadSelectedModal').classList.remove('is-open');
             bulkSelectedFiles = [];
             const input = document.getElementById('bulkSelectedInput');
             if (input) input.value = '';
@@ -6671,18 +5766,18 @@ window.openNotesModal = window.openNotesModal || function(examId) {
             const errorContainer = document.getElementById('bulkPaymentErrorContainer');
             const errorList = document.getElementById('bulkPaymentErrorList');
             const resultSummary = document.getElementById('bulkPaymentResultSummary');
-            if (progressBox) progressBox.style.display = 'none';
+            if (progressBox) progressBox.classList.add('hidden');
             if (progressBar) progressBar.style.width = '0%';
-            if (resultBox) resultBox.style.display = 'none';
-            if (errorContainer) errorContainer.style.display = 'none';
+            if (resultBox) resultBox.classList.add('hidden');
+            if (errorContainer) errorContainer.classList.add('hidden');
             if (errorList) errorList.innerHTML = '';
             if (resultSummary) resultSummary.textContent = '';
 
-            document.getElementById('bulkSendForPaymentModal').style.display = 'block';
+            document.getElementById('bulkSendForPaymentModal').classList.add('is-open');
         }
 
         function closeBulkSendForPaymentModal() {
-            document.getElementById('bulkSendForPaymentModal').style.display = 'none';
+            document.getElementById('bulkSendForPaymentModal').classList.remove('is-open');
         }
 
         async function sendSelectedForPayment() {
@@ -6705,7 +5800,7 @@ window.openNotesModal = window.openNotesModal || function(examId) {
             const errorList = document.getElementById('bulkPaymentErrorList');
             const resultSummary = document.getElementById('bulkPaymentResultSummary');
             const confirmBtn = document.getElementById('confirmBulkSendForPaymentBtn');
-            if (progressBox) progressBox.style.display = 'block';
+            if (progressBox) progressBox.classList.remove('hidden');
             if (progressBar) progressBar.style.width = '25%';
             if (confirmBtn) {
                 confirmBtn.disabled = true;
@@ -6737,10 +5832,10 @@ window.openNotesModal = window.openNotesModal || function(examId) {
 
                 if (!resp.ok) {
                     const errMsg = (json && json.message) ? json.message : 'Failed to update procedure status';
-                    if (resultBox) resultBox.style.display = 'block';
+                    if (resultBox) resultBox.classList.remove('hidden');
                     if (resultSummary) resultSummary.textContent = errMsg;
-                    if (errorContainer) errorContainer.style.display = 'none';
-                    if (progressBox) progressBox.style.display = 'none';
+                    if (errorContainer) errorContainer.classList.add('hidden');
+                    if (progressBox) progressBox.classList.add('hidden');
                     if (confirmBtn) {
                         confirmBtn.disabled = false;
                         confirmBtn.classList.remove('btn-success','btn-warning');
@@ -6769,8 +5864,8 @@ window.openNotesModal = window.openNotesModal || function(examId) {
                 });
 
                 if (progressBar) progressBar.style.width = '100%';
-                if (resultBox) resultBox.style.display = 'block';
-                if (progressBox) progressBox.style.display = 'none';
+                if (resultBox) resultBox.classList.remove('hidden');
+                if (progressBox) progressBox.classList.add('hidden');
                 if (resultSummary) {
                     const baseMsg = (json && json.message) ? json.message : (json && json.success ? 'Updated successfully' : 'Partial update completed');
                     resultSummary.textContent = baseMsg + ' (' + updatedCount + '/' + totalCount + ' updated, ' + failedCount + ' failed)';
@@ -6778,7 +5873,7 @@ window.openNotesModal = window.openNotesModal || function(examId) {
 
                 // Show errors if present
                 if (errors && errors.length > 0 && errorContainer && errorList) {
-                    errorContainer.style.display = 'block';
+                    errorContainer.classList.remove('hidden');
                     errorList.innerHTML = '';
                     errors.forEach(err => {
                         const li = document.createElement('li');
@@ -6786,7 +5881,7 @@ window.openNotesModal = window.openNotesModal || function(examId) {
                         errorList.appendChild(li);
                     });
                 } else if (errorContainer) {
-                    errorContainer.style.display = 'none';
+                    errorContainer.classList.add('hidden');
                 }
 
                 // Show success notification and optionally close modal after short delay
@@ -6832,10 +5927,10 @@ window.openNotesModal = window.openNotesModal || function(examId) {
                     showAlertModal('Partial update completed. Some records could not be updated.', 'warning');
                 }
             } catch (e) {
-                if (resultBox) resultBox.style.display = 'block';
+                if (resultBox) resultBox.classList.remove('hidden');
                 if (resultSummary) resultSummary.textContent = 'Network error while updating statuses: ' + e.message;
-                if (errorContainer) errorContainer.style.display = 'none';
-                if (progressBox) progressBox.style.display = 'none';
+                if (errorContainer) errorContainer.classList.add('hidden');
+                if (progressBox) progressBox.classList.add('hidden');
                 // Allow retry on network error
                 if (confirmBtn) {
                     confirmBtn.disabled = false;
@@ -6904,18 +5999,18 @@ window.openNotesModal = window.openNotesModal || function(examId) {
             const errorContainer = document.getElementById('bulkPaymentCompletedErrorContainer');
             const errorList = document.getElementById('bulkPaymentCompletedErrorList');
             const resultSummary = document.getElementById('bulkPaymentCompletedResultSummary');
-            if (progressBox) progressBox.style.display = 'none';
+            if (progressBox) progressBox.classList.add('hidden');
             if (progressBar) progressBar.style.width = '0%';
-            if (resultBox) resultBox.style.display = 'none';
-            if (errorContainer) errorContainer.style.display = 'none';
+            if (resultBox) resultBox.classList.add('hidden');
+            if (errorContainer) errorContainer.classList.add('hidden');
             if (errorList) errorList.innerHTML = '';
             if (resultSummary) resultSummary.textContent = '';
 
-            document.getElementById('bulkMarkPaymentCompletedModal').style.display = 'block';
+            document.getElementById('bulkMarkPaymentCompletedModal').classList.add('is-open');
         }
 
         function closeBulkMarkPaymentCompletedModal() {
-            document.getElementById('bulkMarkPaymentCompletedModal').style.display = 'none';
+            document.getElementById('bulkMarkPaymentCompletedModal').classList.remove('is-open');
         }
 
         async function markSelectedPaymentCompleted() {
@@ -6936,7 +6031,7 @@ window.openNotesModal = window.openNotesModal || function(examId) {
             const errorList = document.getElementById('bulkPaymentCompletedErrorList');
             const resultSummary = document.getElementById('bulkPaymentCompletedResultSummary');
             const confirmBtn = document.getElementById('confirmBulkMarkPaymentCompletedBtn');
-            if (progressBox) progressBox.style.display = 'block';
+            if (progressBox) progressBox.classList.remove('hidden');
             if (progressBar) progressBar.style.width = '25%';
             if (confirmBtn) {
                 confirmBtn.disabled = true;
@@ -6965,10 +6060,10 @@ window.openNotesModal = window.openNotesModal || function(examId) {
 
                 if (!resp.ok) {
                     const errMsg = (json && json.message) ? json.message : 'Failed to mark in progress';
-                    if (resultBox) resultBox.style.display = 'block';
+                    if (resultBox) resultBox.classList.remove('hidden');
                     if (resultSummary) resultSummary.textContent = errMsg;
-                    if (errorContainer) errorContainer.style.display = 'none';
-                    if (progressBox) progressBox.style.display = 'none';
+                    if (errorContainer) errorContainer.classList.add('hidden');
+                    if (progressBox) progressBox.classList.add('hidden');
                     if (confirmBtn) {
                         confirmBtn.disabled = false;
                         confirmBtn.classList.remove('btn-success','btn-warning');
@@ -6995,15 +6090,15 @@ window.openNotesModal = window.openNotesModal || function(examId) {
                 });
 
                 if (progressBar) progressBar.style.width = '100%';
-                if (resultBox) resultBox.style.display = 'block';
-                if (progressBox) progressBox.style.display = 'none';
+                if (resultBox) resultBox.classList.remove('hidden');
+                if (progressBox) progressBox.classList.add('hidden');
                 if (resultSummary) {
                     const baseMsg = (json && json.message) ? json.message : (json && json.success ? 'Updated successfully' : 'Partial update completed');
                     resultSummary.textContent = baseMsg + ' (' + updatedCount + '/' + totalCount + ' updated, ' + failedCount + ' failed)';
                 }
 
                 if (errors && errors.length > 0 && errorContainer && errorList) {
-                    errorContainer.style.display = 'block';
+                    errorContainer.classList.remove('hidden');
                     errorList.innerHTML = '';
                     errors.forEach(err => {
                         const li = document.createElement('li');
@@ -7011,7 +6106,7 @@ window.openNotesModal = window.openNotesModal || function(examId) {
                         errorList.appendChild(li);
                     });
                 } else if (errorContainer) {
-                    errorContainer.style.display = 'none';
+                    errorContainer.classList.add('hidden');
                 }
 
                 if (json && json.success) {
@@ -7051,10 +6146,10 @@ window.openNotesModal = window.openNotesModal || function(examId) {
                     showAlertModal('Partial update completed. Some records could not be updated.', 'warning');
                 }
             } catch (e) {
-                if (resultBox) resultBox.style.display = 'block';
+                if (resultBox) resultBox.classList.remove('hidden');
                 if (resultSummary) resultSummary.textContent = 'Network error while updating statuses: ' + e.message;
-                if (errorContainer) errorContainer.style.display = 'none';
-                if (progressBox) progressBox.style.display = 'none';
+                if (errorContainer) errorContainer.classList.add('hidden');
+                if (progressBox) progressBox.classList.add('hidden');
                 if (confirmBtn) {
                     confirmBtn.disabled = false;
                     confirmBtn.classList.remove('btn-success','btn-warning');
@@ -7122,18 +6217,18 @@ window.openNotesModal = window.openNotesModal || function(examId) {
             const errorContainer = document.getElementById('bulkCompletedErrorContainer');
             const errorList = document.getElementById('bulkCompletedErrorList');
             const resultSummary = document.getElementById('bulkCompletedResultSummary');
-            if (progressBox) progressBox.style.display = 'none';
+            if (progressBox) progressBox.classList.add('hidden');
             if (progressBar) progressBar.style.width = '0%';
-            if (resultBox) resultBox.style.display = 'none';
-            if (errorContainer) errorContainer.style.display = 'none';
+            if (resultBox) resultBox.classList.add('hidden');
+            if (errorContainer) errorContainer.classList.add('hidden');
             if (errorList) errorList.innerHTML = '';
             if (resultSummary) resultSummary.textContent = '';
 
-            document.getElementById('bulkMarkCompletedModal').style.display = 'block';
+            document.getElementById('bulkMarkCompletedModal').classList.add('is-open');
         }
 
         function closeBulkMarkCompletedModal() {
-            document.getElementById('bulkMarkCompletedModal').style.display = 'none';
+            document.getElementById('bulkMarkCompletedModal').classList.remove('is-open');
         }
 
         async function markSelectedCompleted() {
@@ -7154,7 +6249,7 @@ window.openNotesModal = window.openNotesModal || function(examId) {
             const errorList = document.getElementById('bulkCompletedErrorList');
             const resultSummary = document.getElementById('bulkCompletedResultSummary');
             const confirmBtn = document.getElementById('confirmBulkMarkCompletedBtn');
-            if (progressBox) progressBox.style.display = 'block';
+            if (progressBox) progressBox.classList.remove('hidden');
             if (progressBar) progressBar.style.width = '25%';
             if (confirmBtn) {
                 confirmBtn.disabled = true;
@@ -7183,10 +6278,10 @@ window.openNotesModal = window.openNotesModal || function(examId) {
 
                 if (!resp.ok) {
                     const errMsg = (json && json.message) ? json.message : 'Failed to mark completed';
-                    if (resultBox) resultBox.style.display = 'block';
+                    if (resultBox) resultBox.classList.remove('hidden');
                     if (resultSummary) resultSummary.textContent = errMsg;
-                    if (errorContainer) errorContainer.style.display = 'none';
-                    if (progressBox) progressBox.style.display = 'none';
+                    if (errorContainer) errorContainer.classList.add('hidden');
+                    if (progressBox) progressBox.classList.add('hidden');
                     if (confirmBtn) {
                         confirmBtn.disabled = false;
                         confirmBtn.classList.remove('btn-success','btn-warning');
@@ -7213,15 +6308,15 @@ window.openNotesModal = window.openNotesModal || function(examId) {
                 });
 
                 if (progressBar) progressBar.style.width = '100%';
-                if (resultBox) resultBox.style.display = 'block';
-                if (progressBox) progressBox.style.display = 'none';
+                if (resultBox) resultBox.classList.remove('hidden');
+                if (progressBox) progressBox.classList.add('hidden');
                 if (resultSummary) {
                     const baseMsg = (json && json.message) ? json.message : (json && json.success ? 'Updated successfully' : 'Partial update completed');
                     resultSummary.textContent = baseMsg + ' (' + updatedCount + '/' + totalCount + ' updated, ' + failedCount + ' failed)';
                 }
 
                 if (errors && errors.length > 0 && errorContainer && errorList) {
-                    errorContainer.style.display = 'block';
+                    errorContainer.classList.remove('hidden');
                     errorList.innerHTML = '';
                     errors.forEach(err => {
                         const li = document.createElement('li');
@@ -7229,7 +6324,7 @@ window.openNotesModal = window.openNotesModal || function(examId) {
                         errorList.appendChild(li);
                     });
                 } else if (errorContainer) {
-                    errorContainer.style.display = 'none';
+                    errorContainer.classList.add('hidden');
                 }
 
                 if (json && json.success) {
@@ -7269,10 +6364,10 @@ window.openNotesModal = window.openNotesModal || function(examId) {
                     showAlertModal('Partial update completed. Some records could not be updated.', 'warning');
                 }
             } catch (e) {
-                if (resultBox) resultBox.style.display = 'block';
+                if (resultBox) resultBox.classList.remove('hidden');
                 if (resultSummary) resultSummary.textContent = 'Network error while updating statuses: ' + e.message;
-                if (errorContainer) errorContainer.style.display = 'none';
-                if (progressBox) progressBox.style.display = 'none';
+                if (errorContainer) errorContainer.classList.add('hidden');
+                if (progressBox) progressBox.classList.add('hidden');
                 if (confirmBtn) {
                     confirmBtn.disabled = false;
                     confirmBtn.classList.remove('btn-success','btn-warning');
@@ -7340,18 +6435,18 @@ window.openNotesModal = window.openNotesModal || function(examId) {
             const errorContainer = document.getElementById('bulkClosedErrorContainer');
             const errorList = document.getElementById('bulkClosedErrorList');
             const resultSummary = document.getElementById('bulkClosedResultSummary');
-            if (progressBox) progressBox.style.display = 'none';
+            if (progressBox) progressBox.classList.add('hidden');
             if (progressBar) progressBar.style.width = '0%';
-            if (resultBox) resultBox.style.display = 'none';
-            if (errorContainer) errorContainer.style.display = 'none';
+            if (resultBox) resultBox.classList.add('hidden');
+            if (errorContainer) errorContainer.classList.add('hidden');
             if (errorList) errorList.innerHTML = '';
             if (resultSummary) resultSummary.textContent = '';
 
-            document.getElementById('bulkMarkClosedModal').style.display = 'block';
+            document.getElementById('bulkMarkClosedModal').classList.add('is-open');
         }
 
         function closeBulkMarkClosedModal() {
-            document.getElementById('bulkMarkClosedModal').style.display = 'none';
+            document.getElementById('bulkMarkClosedModal').classList.remove('is-open');
         }
 
         async function markSelectedClosed() {
@@ -7372,7 +6467,7 @@ window.openNotesModal = window.openNotesModal || function(examId) {
             const errorList = document.getElementById('bulkClosedErrorList');
             const resultSummary = document.getElementById('bulkClosedResultSummary');
             const confirmBtn = document.getElementById('confirmBulkMarkClosedBtn');
-            if (progressBox) progressBox.style.display = 'block';
+            if (progressBox) progressBox.classList.remove('hidden');
             if (progressBar) progressBar.style.width = '25%';
             if (confirmBtn) {
                 confirmBtn.disabled = true;
@@ -7401,10 +6496,10 @@ window.openNotesModal = window.openNotesModal || function(examId) {
 
                 if (!resp.ok) {
                     const errMsg = (json && json.message) ? json.message : 'Failed to close examinations';
-                    if (resultBox) resultBox.style.display = 'block';
+                    if (resultBox) resultBox.classList.remove('hidden');
                     if (resultSummary) resultSummary.textContent = errMsg;
-                    if (errorContainer) errorContainer.style.display = 'none';
-                    if (progressBox) progressBox.style.display = 'none';
+                    if (errorContainer) errorContainer.classList.add('hidden');
+                    if (progressBox) progressBox.classList.add('hidden');
                     if (confirmBtn) {
                         confirmBtn.disabled = false;
                         confirmBtn.classList.remove('btn-success','btn-warning');
@@ -7431,15 +6526,15 @@ window.openNotesModal = window.openNotesModal || function(examId) {
                 });
 
                 if (progressBar) progressBar.style.width = '100%';
-                if (resultBox) resultBox.style.display = 'block';
-                if (progressBox) progressBox.style.display = 'none';
+                if (resultBox) resultBox.classList.remove('hidden');
+                if (progressBox) progressBox.classList.add('hidden');
                 if (resultSummary) {
                     const baseMsg = (json && json.message) ? json.message : (json && json.success ? 'Updated successfully' : 'Partial update completed');
                     resultSummary.textContent = baseMsg + ' (' + updatedCount + '/' + totalCount + ' updated, ' + failedCount + ' failed)';
                 }
 
                 if (errors && errors.length > 0 && errorContainer && errorList) {
-                    errorContainer.style.display = 'block';
+                    errorContainer.classList.remove('hidden');
                     errorList.innerHTML = '';
                     errors.forEach(err => {
                         const li = document.createElement('li');
@@ -7447,7 +6542,7 @@ window.openNotesModal = window.openNotesModal || function(examId) {
                         errorList.appendChild(li);
                     });
                 } else if (errorContainer) {
-                    errorContainer.style.display = 'none';
+                    errorContainer.classList.add('hidden');
                 }
 
                 if (json && json.success) {
@@ -7487,10 +6582,10 @@ window.openNotesModal = window.openNotesModal || function(examId) {
                     showAlertModal('Partial update completed. Some records could not be updated.', 'warning');
                 }
             } catch (e) {
-                if (resultBox) resultBox.style.display = 'block';
+                if (resultBox) resultBox.classList.remove('hidden');
                 if (resultSummary) resultSummary.textContent = 'Network error while updating statuses: ' + e.message;
-                if (errorContainer) errorContainer.style.display = 'none';
-                if (progressBox) progressBox.style.display = 'none';
+                if (errorContainer) errorContainer.classList.add('hidden');
+                if (progressBox) progressBox.classList.add('hidden');
                 if (confirmBtn) {
                     confirmBtn.disabled = false;
                     confirmBtn.classList.remove('btn-success','btn-warning');
@@ -7514,11 +6609,11 @@ window.openNotesModal = window.openNotesModal || function(examId) {
             if (countEl) countEl.textContent = selectedIds.length;
             const notesEl = document.getElementById('bulkNotesInput');
             if (notesEl) notesEl.value = '';
-            document.getElementById('bulkAddNotesModal').style.display = 'block';
+            document.getElementById('bulkAddNotesModal').classList.add('is-open');
         }
 
         function closeBulkAddNotesModal() {
-            document.getElementById('bulkAddNotesModal').style.display = 'none';
+            document.getElementById('bulkAddNotesModal').classList.remove('is-open');
             const notesEl = document.getElementById('bulkNotesInput');
             if (notesEl) notesEl.value = '';
         }
@@ -7609,17 +6704,17 @@ window.openNotesModal = window.openNotesModal || function(examId) {
             const confirmBtn = document.getElementById('confirmBulkAssignProcedureBtn');
 
             if (input) input.value = '';
-            if (dropdown) { dropdown.style.display = 'none'; dropdown.innerHTML = ''; }
-            if (summary) summary.style.display = 'none';
+            if (dropdown) { dropdown.classList.add('hidden'); dropdown.innerHTML = ''; }
+            if (summary) summary.classList.add('hidden');
             if (nameEl) nameEl.textContent = '';
             if (priceEl) priceEl.textContent = '';
             if (confirmBtn) confirmBtn.disabled = true;
 
-            document.getElementById('bulkAssignProcedureModal').style.display = 'block';
+            document.getElementById('bulkAssignProcedureModal').classList.add('is-open');
         }
 
         function closeBulkAssignProcedureModal() {
-            document.getElementById('bulkAssignProcedureModal').style.display = 'none';
+            document.getElementById('bulkAssignProcedureModal').classList.remove('is-open');
             _bulkSelectedProcedure = null;
         }
 
@@ -7633,7 +6728,7 @@ window.openNotesModal = window.openNotesModal || function(examId) {
                 const q = e.target.value.trim();
                 if (debounceTimer) clearTimeout(debounceTimer);
                 debounceTimer = setTimeout(async () => {
-                    if (!q) { dropdown.style.display = 'none'; dropdown.innerHTML = ''; return; }
+                    if (!q) { dropdown.classList.add('hidden'); dropdown.innerHTML = ''; return; }
                     try {
                         const url = joinUrl(contextPath, '/patients/procedures/search?q=' + encodeURIComponent(q));
                         const resp = await fetch(url);
@@ -7641,11 +6736,11 @@ window.openNotesModal = window.openNotesModal || function(examId) {
                         if (resp.ok && json.success && Array.isArray(json.results)) {
                             renderProcedureSuggestions(json.results);
                         } else {
-                            dropdown.style.display = 'none';
+                            dropdown.classList.add('hidden');
                             dropdown.innerHTML = '';
                         }
                     } catch (err) {
-                        dropdown.style.display = 'none';
+                        dropdown.classList.add('hidden');
                         dropdown.innerHTML = '';
                     }
                 }, 250);
@@ -7653,26 +6748,26 @@ window.openNotesModal = window.openNotesModal || function(examId) {
 
             function renderProcedureSuggestions(results) {
                 dropdown.innerHTML = '';
-                if (!results || results.length === 0) { dropdown.style.display = 'none'; return; }
+                if (!results || results.length === 0) { dropdown.classList.add('hidden'); return; }
                 results.forEach(item => {
                     const div = document.createElement('div');
                     div.className = 'autocomplete-item';
                     div.innerHTML = '<span>' + (item.name || 'Unnamed Procedure') + '</span>' +
-                        '<span style="float:right; color:#2c3e50;">' + (item.price != null ? ('₹' + item.price) : '') + '</span>';
+                        '<span class="float-right progress-info">' + (item.price != null ? ('₹' + item.price) : '') + '</span>';
                     div.addEventListener('click', function(){ selectBulkProcedureItem(item); });
                     dropdown.appendChild(div);
                 });
-                dropdown.style.display = 'block';
+                dropdown.classList.remove('hidden');
             }
 
             window.selectBulkProcedureItem = function(item) {
                 _bulkSelectedProcedure = { id: item.id, name: item.name, price: item.price };
-                dropdown.style.display = 'none';
+                dropdown.classList.add('hidden');
                 const summary = document.getElementById('selectedProcedureSummary');
                 const nameEl = document.getElementById('selectedProcedureName');
                 const priceEl = document.getElementById('selectedProcedurePrice');
                 const confirmBtn = document.getElementById('confirmBulkAssignProcedureBtn');
-                if (summary) summary.style.display = 'block';
+                if (summary) summary.classList.remove('hidden');
                 if (nameEl) nameEl.textContent = item.name || 'Unnamed Procedure';
                 if (priceEl) priceEl.textContent = (item.price != null ? ('₹' + item.price) : '');
                 if (confirmBtn) confirmBtn.disabled = false;
@@ -7696,7 +6791,7 @@ window.openNotesModal = window.openNotesModal || function(examId) {
             const btn = document.getElementById('confirmBulkAssignProcedureBtn');
             const loader = btn ? btn.querySelector('.btn-loader') : null;
             const text = btn ? btn.querySelector('.btn-text') : null;
-            if (btn && loader && text) { btn.disabled = true; loader.style.display = 'inline'; text.style.display = 'none'; }
+            if (btn && loader && text) { btn.disabled = true; loader.classList.remove('hidden'); text.classList.add('hidden'); }
             try {
                 const resp = await fetch(joinUrl(contextPath, '/patients/examination/assign-procedure-bulk'), {
                     method: 'POST',
@@ -7736,7 +6831,7 @@ window.openNotesModal = window.openNotesModal || function(examId) {
             } catch (e) {
                 showAlertModal('An error occurred while assigning the procedure.', 'error');
             } finally {
-                if (btn && loader && text) { btn.disabled = false; loader.style.display = 'none'; text.style.display = 'inline'; }
+                if (btn && loader && text) { btn.disabled = false; loader.classList.add('hidden'); text.classList.remove('hidden'); }
             }
         }
 
@@ -7821,10 +6916,10 @@ window.openNotesModal = window.openNotesModal || function(examId) {
             const errorContainer = document.getElementById('bulkDiscountErrorContainer');
             const errorList = document.getElementById('bulkDiscountErrorList');
             const resultSummary = document.getElementById('bulkDiscountResultSummary');
-            if (progressBox) progressBox.style.display = 'none';
+            if (progressBox) progressBox.classList.add('hidden');
             if (progressBar) progressBar.style.width = '0%';
-            if (resultBox) resultBox.style.display = 'none';
-            if (errorContainer) errorContainer.style.display = 'none';
+            if (resultBox) resultBox.classList.add('hidden');
+            if (errorContainer) errorContainer.classList.add('hidden');
             if (errorList) errorList.innerHTML = '';
             if (resultSummary) resultSummary.textContent = '';
 
@@ -7838,12 +6933,12 @@ window.openNotesModal = window.openNotesModal || function(examId) {
 
             // Load reasons and show modal
             loadBulkDiscountReasons().then(() => {
-                document.getElementById('bulkDiscountModal').style.display = 'block';
+                document.getElementById('bulkDiscountModal').classList.add('is-open');
             });
         }
 
         function closeBulkDiscountModal() {
-            document.getElementById('bulkDiscountModal').style.display = 'none';
+            document.getElementById('bulkDiscountModal').classList.remove('is-open');
         }
 
         async function loadBulkDiscountReasons() {
@@ -7930,7 +7025,7 @@ window.openNotesModal = window.openNotesModal || function(examId) {
             const resultSummary = document.getElementById('bulkDiscountResultSummary');
             const applyBtn = document.getElementById('confirmBulkApplyDiscountBtn');
 
-            if (progressBox) progressBox.style.display = 'block';
+            if (progressBox) progressBox.classList.remove('hidden');
             if (progressBar) progressBar.style.width = '15%';
             if (applyBtn) { applyBtn.disabled = true; applyBtn.innerHTML = '<i class="fas fa-spinner fa-spin"></i> Applying...'; }
 
@@ -7968,10 +7063,10 @@ window.openNotesModal = window.openNotesModal || function(examId) {
             }
 
             if (progressBar) progressBar.style.width = '100%';
-            if (resultBox) resultBox.style.display = 'block';
+            if (resultBox) resultBox.classList.remove('hidden');
             if (resultSummary) resultSummary.textContent = 'Applied discount to ' + successCount + ' of ' + selectedIds.length + ' examinations.';
             if (errors.length > 0 && errorContainer && errorList) {
-                errorContainer.style.display = 'block';
+                errorContainer.classList.remove('hidden');
                 errorList.innerHTML = '';
                 errors.forEach(err => {
                     const li = document.createElement('li');
@@ -8038,7 +7133,7 @@ window.openNotesModal = window.openNotesModal || function(examId) {
             const errorContainer = document.getElementById('bulkDiscountErrorContainer');
             const errorList = document.getElementById('bulkDiscountErrorList');
             const resultSummary = document.getElementById('bulkDiscountResultSummary');
-            if (progressBox) progressBox.style.display = 'block';
+            if (progressBox) progressBox.classList.remove('hidden');
             if (progressBar) progressBar.style.width = '15%';
             if (removeBtn) { removeBtn.disabled = true; removeBtn.innerHTML = '<i class="fas fa-spinner fa-spin"></i> Removing...'; }
 
@@ -8068,10 +7163,10 @@ window.openNotesModal = window.openNotesModal || function(examId) {
             }
 
             if (progressBar) progressBar.style.width = '100%';
-            if (resultBox) resultBox.style.display = 'block';
+            if (resultBox) resultBox.classList.remove('hidden');
             if (resultSummary) resultSummary.textContent = 'Removed discount for ' + successCount + ' of ' + allowedIds.length + ' examinations.';
             if (errors.length > 0 && errorContainer && errorList) {
-                errorContainer.style.display = 'block';
+                errorContainer.classList.remove('hidden');
                 errorList.innerHTML = '';
                 errors.forEach(err => {
                     const li = document.createElement('li');
@@ -8098,34 +7193,34 @@ window.openNotesModal = window.openNotesModal || function(examId) {
      
      <!-- Hidden Print Content -->
      <div class="print-content" id="printContent">
-         <div class="registration-details" style="text-align: center; display: block;">
-             <div class="detail-item" style="display: block; text-align: center; margin-bottom: 5px; font-size: 7pt;">
+         <div class="registration-details text-center d-block">
+             <div class="detail-item print-detail">
                  <strong>Full Name:</strong> ${patient.firstName} ${patient.lastName}
              </div>
-             <div class="detail-item" style="display: block; text-align: center; margin-bottom: 5px; font-size: 7pt;">
+             <div class="detail-item print-detail">
                  <strong>Age:</strong> ${patient.age} years
              </div>
-             <div class="detail-item" style="display: block; text-align: center; margin-bottom: 5px; font-size: 7pt;">
+             <div class="detail-item print-detail">
                  <strong>Gender:</strong> ${patient.gender}
              </div>
-             <div class="detail-item" style="display: block; text-align: center; margin-bottom: 5px; font-size: 7pt;">
+             <div class="detail-item print-detail">
                  <strong>Phone Number:</strong> ${patient.phoneNumber}
              </div>
-             <div class="detail-item" style="display: block; text-align: center; margin-bottom: 5px; font-size: 7pt;">
+             <div class="detail-item print-detail">
                 <strong>Medical History:</strong>
                 <c:choose>
                     <c:when test="${not empty patient.medicalHistory}">${fn:escapeXml(patient.medicalHistory)}</c:when>
                     <c:otherwise>None reported</c:otherwise>
                 </c:choose>
              </div>
-             <div class="detail-item" style="display: block; text-align: center; margin-bottom: 5px; font-size: 7pt;">
+             <div class="detail-item print-detail">
                 <strong>Branch:</strong>
                 <c:choose>
                     <c:when test="${not empty patient.registeredClinic}">${fn:escapeXml(patient.registeredClinic.clinicName)}</c:when>
                     <c:otherwise>Not specified</c:otherwise>
                 </c:choose>
              </div>
-             <div class="detail-item" style="display: block; text-align: center; margin-bottom: 5px; font-size: 7pt;    ">
+             <div class="detail-item print-detail">
                  <strong>Registration Code:</strong> ${patient.registrationCode}
              </div>
          </div>
@@ -8133,101 +7228,41 @@ window.openNotesModal = window.openNotesModal || function(examId) {
      </div>
 
      <!-- Customer Ledger Modal -->
-     <div id="customerLedgerModal" class="modal" style="display: none;">
-         <div class="modal-content" style="max-width: 1000px; width: 90%;">
-             <div class="modal-header">
-                 <h2><i class="fas fa-file-invoice-dollar"></i> Customer Ledger - ${patient.firstName} ${patient.lastName}</h2>
-                 <span class="close" onclick="closeCustomerLedger()">&times;</span>
-             </div>
-             
-             <div class="modal-body">
-                 <!-- Loading State -->
-                 <div id="ledgerLoading" style="display: none; text-align: center; padding: 20px;">
-                     <i class="fas fa-spinner fa-spin fa-2x"></i>
-                     <p>Loading payment transactions...</p>
-                 </div>
-                 
-                 <!-- Error State -->
-                 <div id="ledgerError" style="display: none; text-align: center; padding: 20px; color: #dc3545;">
-                     <!-- Error message will be inserted here -->
-                 </div>
-                 
-                 <!-- Content -->
-                 <div id="ledgerContent" style="display: none;">
-                     <!-- Summary Cards -->
-                     <div class="ledger-summary" style="display: flex; gap: 20px; margin-bottom: 20px;">
-                         <div class="summary-card" style="flex: 1; background: #e8f5e8; padding: 15px; border-radius: 8px; text-align: center;">
-                             <h4 style="margin: 0; color: #27ae60;">Total Paid</h4>
-                             <p id="totalPaid" style="font-size: 1.5em; font-weight: bold; margin: 5px 0; color: #27ae60;">₹0.00</p>
-                         </div>
-                         <div class="summary-card" style="flex: 1; background: #fff3cd; padding: 15px; border-radius: 8px; text-align: center;">
-                             <h4 style="margin: 0; color: #856404;">Total Refunded</h4>
-                             <p id="totalRefunded" style="font-size: 1.5em; font-weight: bold; margin: 5px 0; color: #856404;">₹0.00</p>
-                         </div>
-                         <div class="summary-card" style="flex: 1; background: #d1ecf1; padding: 15px; border-radius: 8px; text-align: center;">
-                             <h4 style="margin: 0; color: #0c5460;">Net Amount</h4>
-                             <p id="netAmount" style="font-size: 1.5em; font-weight: bold; margin: 5px 0; color: #0c5460;">₹0.00</p>
-                         </div>
-                     </div>
-                     
-                     <!-- Download Button -->
-                     <div style="text-align: right; margin-bottom: 15px;">
-                         <button onclick="downloadLedgerCSV()" class="btn btn-success">
-                             <i class="fas fa-download"></i> Download CSV
-                         </button>
-                     </div>
-                     
-                     <!-- Transactions Table -->
-                     <div class="table-responsive">
-                         <table class="table" style="margin-bottom: 0;">
-                             <thead>
-                                 <tr>
-                                     <th>Date</th>
-                                     <th>Procedure</th>
-                                     <th>Amount</th>
-                                     <th>Transaction Type</th>
-                                     <th>Payment Mode</th>
-                                     <th>Refund Reason</th>
-                                     <th>Remarks</th>
-                                 </tr>
-                             </thead>
-                             <tbody id="ledgerTableBody">
-                                 <!-- Transaction rows will be inserted here -->
-                             </tbody>
-                         </table>
-                     </div>
-                 </div>
-             </div>
-         </div>
-     </div>
+    <jsp:include page="/WEB-INF/views/patient/fragments/patientLedgerModal.jspf" />
 
-     <style>
-         .transaction-type {
-             padding: 3px 8px;
-             border-radius: 12px;
-             font-size: 0.8em;
-             font-weight: 500;
-             text-transform: uppercase;
-         }
-         
-         .transaction-type.capture {
-             background: #e8f5e8;
-             color: #27ae60;
-         }
-         
-         .transaction-type.refund {
-             background: #fff3cd;
-             color: #856404;
-         }
-         
-         .ledger-summary .summary-card h4 {
-             font-size: 0.9em;
-             text-transform: uppercase;
-             letter-spacing: 0.5px;
-         }
-     </style>
+    
 
-     <!-- Appointments Link -->
+    <script>
+        (function(){
+            function paginateTable(tableId, pageSize){
+                var table = document.getElementById(tableId);
+                if (!table) return;
+                var tbody = table.querySelector('tbody');
+                if (!tbody) return;
+                var rows = Array.prototype.slice.call(tbody.querySelectorAll('tr'));
+                if (rows.length <= pageSize) return;
+                var current = 1; var total = Math.ceil(rows.length / pageSize);
+                function render(){
+                    rows.forEach(function(r,i){ r.style.display = (i >= (current-1)*pageSize && i < current*pageSize) ? '' : 'none'; });
+                    var info = table.parentElement.querySelector('.table-info');
+                    if (info) info.textContent = 'Page ' + current + ' of ' + total + ' (' + rows.length + ' items)';
+                }
+                function controls(){
+                    var container = document.createElement('div'); container.className = 'pagination-controls';
+                    var prev = document.createElement('button'); prev.className = 'btn btn-secondary btn-sm'; prev.textContent = 'Prev';
+                    var next = document.createElement('button'); next.className = 'btn btn-secondary btn-sm'; next.textContent = 'Next';
+                    prev.onclick = function(){ if (current > 1){ current--; render(); } };
+                    next.onclick = function(){ if (current < total){ current++; render(); } };
+                    container.appendChild(prev); container.appendChild(next);
+                    table.parentElement.insertBefore(container, table);
+                }
+                controls(); render();
+            }
+            if (document.readyState === 'loading') document.addEventListener('DOMContentLoaded', function(){ paginateTable('examinationHistoryTable', 25); }); else paginateTable('examinationHistoryTable', 25);
+        })();
+    </script>
+
+    <!-- Appointments Link -->
      <div class="container mt-4" id="appointments-link">
          <a href="${pageContext.request.contextPath}/patients/details/${patient.id}/appointments" class="btn btn-primary">
              <i class="fas fa-calendar-alt"></i> View Appointments

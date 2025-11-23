@@ -1,0 +1,30 @@
+/* Dental chart and tooth selection */
+.dental-chart-section { margin-top: 30px; }
+.teeth-row { display: flex; flex-wrap: wrap; gap: 8px; justify-content: center; margin-bottom: 15px; }
+.tooth-selector { width: 45px; height: 45px; border: 2px solid #e0e0e0; border-radius: 8px; display: flex; align-items: center; justify-content: center; cursor: pointer; transition: all 0.3s ease; background: white; font-weight: 600; color: #666; }
+.tooth-selector:hover { border-color: #3498db; background: #f8f9fa; transform: translateY(-2px); }
+.tooth-selector.selected { background: linear-gradient(135deg, #3498db, #2980b9); border-color: #2980b9; color: white; transform: translateY(-2px); box-shadow: 0 4px 12px rgba(52, 152, 219, 0.3); }
+.selected-teeth-info { margin-top: 15px; padding: 15px; background: #f8f9fa; border-radius: 8px; text-align: center; }
+.selected-teeth-list { margin-top: 10px; font-size: 0.9rem; color: #666; }
+.compact-dental-chart { display: flex; flex-direction: column; align-items: center; gap: 10px; }
+.compact-teeth-row { display: flex; gap: 5px; justify-content: center; }
+.compact-tooth { width: 35px; height: 35px; border: 2px solid #ddd; border-radius: 6px; display: flex; align-items: center; justify-content: center; font-size: 11px; font-weight: 600; cursor: pointer; background: white; transition: all 0.2s ease; color: #666; }
+.compact-tooth:hover { border-color: #3498db; background: #e3f2fd; transform: translateY(-1px); }
+.compact-tooth.selected { background: #3498db; border-color: #2980b9; color: white; transform: translateY(-1px); box-shadow: 0 2px 4px rgba(52, 152, 219, 0.3); }
+@media (max-width: 768px) { .tooth-selector { width: 40px; height: 40px; } }
+.tooth-selection-section .tooth-grid { margin: 20px 0; }
+.jaw-section { margin-bottom: 25px; }
+.jaw-section h4 { color: #2c3e50; margin-bottom: 10px; font-size: 1.1rem; }
+.tooth-number { font-size: 0.9rem; }
+.general-consultation-section { margin-bottom: 30px; }
+.general-consultation-option { margin-top: 15px; padding-top: 15px; border-top: 1px solid #dee2e6; display: flex; justify-content: center; align-items: center; flex-wrap: wrap; }
+.compact-tooth.general-consultation { background-color: #e8f5e8; border: 2px solid #28a745; color: #155724; font-weight: 600; padding: 8px 12px; border-radius: 6px; cursor: pointer; display: inline-flex; align-items: center; justify-content: center; margin: 5px; transition: all 0.3s ease; box-sizing: border-box; max-width: 100%; text-align: center; white-space: nowrap; word-break: normal; overflow: hidden; text-overflow: ellipsis; min-width: 180px; }
+.compact-tooth.general-consultation:hover { background-color: #d4edda; border-color: #1e7e34; transform: translateY(-1px); }
+.compact-tooth.general-consultation.selected { background-color: #28a745; border-color: #1e7e34; color: white; transform: translateY(-1px); box-shadow: 0 2px 4px rgba(40, 167, 69, 0.3); }
+.tooth-graphic { width: 40px; height: 40px; display: flex; flex-direction: column; justify-content: center; align-items: center; position: relative; margin-bottom: 20px; }
+.tooth-number-bottom { margin-top: 5px; font-size: 0.85rem; color: #2c3e50; font-weight: 600; background-color: rgba(255, 255, 255, 0.9); border-radius: 8px; padding: 1px 4px; box-shadow: 0 1px 2px rgba(0, 0, 0, 0.1); }
+.quadrant { display: flex; flex-wrap: wrap; justify-content: center; gap: 10px; padding: 20px; background: #f8f9fa; border-radius: 12px; margin: 10px; }
+.upper-right, .upper-left { flex-direction: row; }
+.lower-right, .lower-left { flex-direction: row; }
+.jaw-separator { width: 80%; height: 1px; background-color: #e0e0e0; margin: 30px 0; }
+.chart-legend { display: flex; justify-content: center; gap: 20px; margin-top: 20px; padding: 10px; background: #f8f9fa; border-radius: 8px; }

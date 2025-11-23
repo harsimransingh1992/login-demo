@@ -1,0 +1,11 @@
+.action-buttons { display: inline-flex; align-items: center; gap: 8px; white-space: nowrap; }
+.has-tooltip { position: relative; }
+.has-tooltip::after { content: attr(data-tooltip); position: absolute; bottom: 100%; left: 50%; transform: translateX(-50%); background: #2c3e50; color: #fff; padding: 8px 10px; border-radius: 4px; font-size: 12px; white-space: pre-wrap; opacity: 0; pointer-events: none; transition: opacity 0.05s ease; margin-bottom: 6px; z-index: 10; max-width: 520px; text-align: left; box-shadow: 0 6px 16px rgba(0,0,0,0.2); }
+.has-tooltip::before { content: ''; position: absolute; bottom: 100%; left: 50%; transform: translateX(-50%); border-width: 6px; border-style: solid; border-color: transparent transparent #2c3e50 transparent; opacity: 0; transition: opacity 0.05s ease; margin-bottom: -6px; z-index: 10; }
+.has-tooltip:hover::after, .has-tooltip:hover::before { opacity: 1; }
+.parent-tooltips { position: relative; }
+.parent-tooltips:hover::after, .parent-tooltips:hover::before { opacity: 1; }
+.parent-tooltips:hover:has(.has-tooltip:hover)::after, .parent-tooltips:hover:has(.has-tooltip:hover)::before { opacity: 0; }
+.tooltip-container { position: relative; display: inline-block; }
+.tooltip-container .tooltip-text { visibility: hidden; opacity: 0; transition: opacity 0.2s; position: absolute; z-index: 10; bottom: 125%; left: 50%; transform: translateX(-50%); background: #2c3e50; color: #fff; padding: 6px 8px; border-radius: 4px; width: 220px; text-align: center; font-size: 0.8rem; }
+.tooltip-container:hover .tooltip-text { visibility: visible; opacity: 1; }

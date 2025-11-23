@@ -1,0 +1,13 @@
+/* Table styles */
+.table-info { text-align: right; margin-bottom: 10px; color: #666; font-size: 0.9rem; }
+.table-responsive { overflow-x: auto; border-radius: 8px; box-shadow: 0 2px 8px rgba(0, 0, 0, 0.05); }
+.table { width: 100%; border-collapse: separate; border-spacing: 0; }
+.table th { background: #f8f9fa; color: #2c3e50; font-weight: 600; padding: 10px 12px; text-align: left; border-bottom: 2px solid #e0e0e0; }
+.table td { padding: 8px 12px; border-bottom: 1px solid #e0e0e0; color: #4b5563; }
+.sort-controls { display: flex; justify-content: space-between; margin-bottom: 12px; padding: 15px; background: #f8f9fa; border-radius: 8px; }
+.filter-group, .sort-group { display: flex; align-items: center; gap: 10px; }
+.custom-select { padding: 8px 12px; border: 1px solid #e0e0e0; border-radius: 6px; font-family: 'Poppins', sans-serif; font-size: 0.9rem; }
+.no-records-message { padding: 20px; text-align: center; color: #666; background: #f8f9fa; border-radius: 8px; margin-top: 15px; }
+.no-data { color: #999; font-style: italic; }
+.action-buttons { display: inline-flex; align-items: center; gap: 8px; white-space: nowrap; }
+.examination-row:hover { background-color: #f0f7ff; cursor: pointer; }

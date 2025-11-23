@@ -1,0 +1,32 @@
+/* Clinical file actions grid and buttons */
+.clinical-file-actions-row { margin-top: 10px; padding: 8px 0; border-top: 1px solid #e9ecef; min-height: 48px; }
+.clinical-file-actions { display: grid; grid-auto-flow: column; grid-template-rows: auto repeat(2, auto); grid-auto-columns: minmax(160px, 1fr); gap: 10px 12px; width: 100%; align-items: stretch; justify-items: stretch; }
+.clinical-file-actions .selected-count { grid-column: 1 / -1; margin: 0 0 4px 0; }
+.clinical-file-actions .btn { width: 100%; padding: 8px 12px; font-size: 0.9rem; min-height: 36px; display: inline-flex; align-items: center; justify-content: center; gap: 6px; white-space: nowrap; line-height: 1.2; }
+.btn-disabled-permission { background-color: #f8d7da !important; border-color: #f5c6cb !important; color: #721c24 !important; opacity: 0.8 !important; cursor: not-allowed !important; }
+.btn-disabled-selection { background-color: #e2e3e5 !important; border-color: #d6d8db !important; color: #6c757d !important; opacity: 0.65 !important; cursor: not-allowed !important; }
+.btn-enabled { background-color: #6c757d !important; border-color: #6c757d !important; color: #fff !important; opacity: 1 !important; cursor: pointer !important; }
+.btn-enabled:hover { background-color: #5a6268 !important; border-color: #545b62 !important; }
+.disabled-action { opacity: 0.6; cursor: not-allowed; }
+.validation-summary { background: #fff3cd; border: 1px solid #ffe08a; border-radius: 6px; padding: 12px; margin-bottom: 12px; }
+.progress-section { margin-top: 8px; }
+.result-section { margin-top: 12px; }
+.progress-info { margin-bottom: 8px; color: #2c3e50; }
+.progress-track { background: #ecf0f1; border-radius: 4px; height: 10px; overflow: hidden; }
+#bulkPaymentProgressBar { background: #3498db; height: 10px; transition: width 0.3s ease; }
+#bulkPaymentCompletedProgressBar { background: #28a745; height: 10px; transition: width 0.3s ease; }
+#bulkCompletedProgressBar { background: #28a745; height: 10px; transition: width 0.3s ease; }
+#bulkClosedProgressBar { background: #28a745; height: 10px; transition: width 0.3s ease; }
+#bulkDiscountProgressBar { background: #3498db; height: 10px; transition: width 0.3s ease; }
+/* Utilities for lists and bars */
+.list-tight { margin: 0 0 6px 18px; padding: 0; }
+.progress-bar { width: 0%; }
+/* Error containers */
+.error-box { background: #fdecea; border: 1px solid #f5c6cb; border-radius: 6px; padding: 10px; }
+.error-title { display: flex; align-items: center; gap: 8px; margin-bottom: 6px; color: #721c24; }
+.error-list { margin: 0 0 6px 18px; padding: 0; color: #721c24; }
+/* Form utilities */
+.minh-120 { min-height: 120px; }
+@media (min-width: 577px) { .clinical-file-actions .btn { font-size: 0.9rem; } }
+@media (max-width: 768px) { .clinical-file-actions { grid-auto-columns: minmax(140px, 1fr); gap: 8px 10px; } }
+@media (max-width: 576px) { .clinical-file-actions { grid-auto-flow: row; grid-template-rows: auto; grid-auto-columns: 1fr; gap: 6px; } .clinical-file-actions .selected-count { margin-bottom: 6px; } .clinical-file-actions .btn { width: 100%; padding: 10px 12px; font-size: 0.95rem; } }
