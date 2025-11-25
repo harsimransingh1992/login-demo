@@ -442,6 +442,7 @@ window.openNotesModal = window.openNotesModal || function(examId) {
             const bulkAssignProcedureBtn = document.getElementById('bulkAssignProcedureBtn');
             const bulkAddNotesBtn = document.getElementById('bulkAddNotesBtn');
             const bulkApplyDiscountBtn = document.getElementById('bulkApplyDiscountBtn');
+            const bulkCancelExaminationsBtn = document.getElementById('bulkCancelExaminationsBtn');
             const selectedCountSpan = document.getElementById('selectedExaminationCount');
 
             selectedCountSpan.textContent = selectedCount;
@@ -496,6 +497,7 @@ window.openNotesModal = window.openNotesModal || function(examId) {
                 }
                 
                 setButtonState(bulkAddNotesBtn, true);
+                setButtonState(bulkCancelExaminationsBtn, true);
                 
                 if (bulkApplyDiscountBtn) {
                     const hasPermission = CURRENT_USER_CAN_APPLY_DISCOUNT;
@@ -527,6 +529,7 @@ window.openNotesModal = window.openNotesModal || function(examId) {
                 setButtonState(bulkMarkCompletedBtn, false, true);
                 setButtonState(bulkMarkClosedBtn, false, true);
                 setButtonState(bulkAddNotesBtn, false, true);
+                setButtonState(bulkCancelExaminationsBtn, false, true);
                 
                 if (bulkAssignProcedureBtn) {
                     const hasPermission = window.CURRENT_USER_CAN_ASSIGN_PROCEDURE;
@@ -4421,6 +4424,9 @@ window.openNotesModal = window.openNotesModal || function(examId) {
                                     <button type="button" id="bulkApplyDiscountBtn" class="btn btn-secondary btn-sm" onclick="openBulkDiscountModal()" title="Apply or remove discount for selected examinations" disabled>
                                         <i class="fas fa-percent"></i> Discount
                                     </button>
+                                    <button type="button" id="bulkCancelExaminationsBtn" class="btn btn-danger btn-sm" onclick="openBulkCancelModal()" title="Cancel selected examinations" disabled>
+                                        <i class="fas fa-ban"></i> Cancel
+                                    </button>
                                     <input type="file" id="bulkSelectedInput" multiple accept="image/*,application/pdf" style="display: none;" />
                                 </div>
                                 <style>
@@ -4529,7 +4535,7 @@ window.openNotesModal = window.openNotesModal || function(examId) {
                             </thead>
                             <tbody>
                         <c:forEach items="${examinationHistory}" var="exam" varStatus="status">
-                            <tr class="examination-row" data-exam-id="${exam.id}" data-total-paid="${exam.totalPaidAmount != null ? exam.totalPaidAmount : 0}">
+                            <tr class="examination-row" data-exam-id="${exam.id}" data-total-paid="${exam.totalPaidAmount != null ? exam.totalPaidAmount : 0}" data-total-refunded="${exam.totalRefundedAmount != null ? exam.totalRefundedAmount : 0}" data-net-paid="${exam.netPaidAmount != null ? exam.netPaidAmount : 0}">
                                 <td>
                                     <sec:authorize access="hasAnyRole('DOCTOR','OPD_DOCTOR','ADMIN')">
                                         <input type="checkbox" class="examination-checkbox" value="${exam.id}" onclick="event.stopPropagation();">
@@ -5677,6 +5683,32 @@ window.openNotesModal = window.openNotesModal || function(examId) {
                     <i class="fas fa-ban"></i> Remove Discount
                 </button>
                 <button type="button" class="btn btn-secondary" onclick="closeBulkDiscountModal()">Cancel</button>
+            </div>
+        </div>
+    </div>
+
+    <div id="bulkCancelModal" class="modal">
+        <div class="modal-content">
+            <div class="modal-header">
+                <h2>Cancel Selected Examinations</h2>
+                <span class="close" onclick="closeBulkCancelModal()">&times;</span>
+            </div>
+            <div class="modal-body">
+                <p class="text-muted">Selected examinations: <strong><span id="bulkCancelSelectedCount">0</span></strong></p>
+                <div id="bulkCancelValidation" style="display:none; background:#fff3cd; border:1px solid #ffe08a; border-radius:6px; padding:12px; margin-bottom:12px;">
+                    <div style="display:flex; align-items:center; gap:8px; margin-bottom:6px; color:#856404;">
+                        <i class="fas fa-exclamation-circle"></i>
+                        <strong>Some selected examinations cannot be cancelled</strong>
+                    </div>
+                    <ul id="bulkCancelValidationList" style="margin:0 0 6px 18px; padding:0;"></ul>
+                    <small style="color:#856404;">Only examinations with no net payment can be cancelled.</small>
+                </div>
+            </div>
+            <div class="modal-footer">
+                <button type="button" class="btn btn-danger" id="confirmBulkCancelBtn" onclick="cancelSelectedExaminations()">
+                    <i class="fas fa-ban"></i> Cancel Selected
+                </button>
+                <button type="button" class="btn btn-secondary" onclick="closeBulkCancelModal()">Close</button>
             </div>
         </div>
     </div>
@@ -7665,6 +7697,100 @@ window.openNotesModal = window.openNotesModal || function(examId) {
             document.getElementById('bulkAssignProcedureModal').style.display = 'block';
         }
 
+        function openBulkCancelModal() {
+            const selectedIds = getSelectedExaminationIds();
+            if (selectedIds.length === 0) {
+                showAlertModal('Please select at least one examination to cancel.', 'warning');
+                return;
+            }
+            const countEl = document.getElementById('bulkCancelSelectedCount');
+            if (countEl) countEl.textContent = selectedIds.length;
+            const validationList = document.getElementById('bulkCancelValidationList');
+            const validationBox = document.getElementById('bulkCancelValidation');
+            if (validationList && validationBox) {
+                validationList.innerHTML = '';
+                let invalidCount = 0;
+                selectedIds.forEach(id => {
+                    const checkbox = document.querySelector('.examination-checkbox[value="' + id + '"]');
+                    const row = checkbox ? checkbox.closest('tr') : null;
+                    const paidAttr = row && row.dataset ? row.dataset.totalPaid : '0';
+                    const refundedAttr = row && row.dataset ? row.dataset.totalRefunded : '0';
+                    const netAttr = row && row.dataset ? row.dataset.netPaid : null;
+                    const paid = parseFloat(paidAttr || '0');
+                    const refunded = parseFloat(refundedAttr || '0');
+                    const net = netAttr != null ? parseFloat(netAttr) : (paid - refunded);
+                    if (!isNaN(net) && net > 0) {
+                        invalidCount++;
+                        const li = document.createElement('li');
+                        li.textContent = 'Examination ' + id + ' has net payment > 0';
+                        validationList.appendChild(li);
+                    }
+                });
+                validationBox.style.display = invalidCount > 0 ? 'block' : 'none';
+                const confirmBtn = document.getElementById('confirmBulkCancelBtn');
+                if (confirmBtn) confirmBtn.disabled = invalidCount > 0;
+            }
+            document.getElementById('bulkCancelModal').style.display = 'block';
+        }
+
+        function closeBulkCancelModal() {
+            document.getElementById('bulkCancelModal').style.display = 'none';
+        }
+
+        async function cancelSelectedExaminations() {
+            const selectedIds = getSelectedExaminationIds();
+            if (selectedIds.length === 0) {
+                showAlertModal('Please select at least one examination to cancel.', 'warning');
+                return;
+            }
+            const token = document.querySelector('meta[name="_csrf"]').content;
+            const payload = { examinationIds: selectedIds };
+            const btn = document.getElementById('confirmBulkCancelBtn');
+            if (btn) btn.disabled = true;
+            try {
+                const resp = await fetch(joinUrl(contextPath, '/patients/examinations/status/cancelled/bulk'), {
+                    method: 'POST',
+                    headers: {
+                        'Content-Type': 'application/json',
+                        'X-CSRF-TOKEN': token
+                    },
+                    body: JSON.stringify(payload)
+                });
+                const json = await resp.json();
+                if (resp.ok && json.success) {
+                    const updatedIds = Array.isArray(json.updatedIds) ? json.updatedIds : [];
+                    const errors = Array.isArray(json.errors) ? json.errors : [];
+                    updatedIds.forEach(id => {
+                        const checkbox = document.querySelector('.examination-checkbox[value="' + id + '"]');
+                        const row = checkbox ? checkbox.closest('tr') : null;
+                        const statusCell = row ? row.querySelector('td:nth-child(8)') : null;
+                        if (statusCell) statusCell.textContent = 'CANCELLED';
+                    });
+                    const parts = [];
+                    parts.push('Cancelled ' + updatedIds.length);
+                    if (errors.length > 0) parts.push('Errors ' + errors.length);
+                    let msg = parts.join(', ') + '.';
+                    if (errors.length > 0) {
+                        const details = errors.slice(0, 5).map(e => {
+                            const id = (e && e.examinationId != null) ? e.examinationId : '?';
+                            const err = (e && e.message) ? e.message : 'Unknown error';
+                            return '#' + id + ': ' + err;
+                        }).join('\n');
+                        msg += '\n' + details + (errors.length > 5 ? '\n…and ' + (errors.length - 5) + ' more.' : '');
+                        showAlertModal(msg, 'warning', () => { window.location.reload(); });
+                    } else {
+                        showAlertModal(msg, 'success', () => { window.location.reload(); });
+                    }
+                    closeBulkCancelModal();
+                } else {
+                    showAlertModal('Error: ' + (json.message || 'Failed to cancel examinations'), 'error');
+                }
+            } catch (e) {
+                showAlertModal('An error occurred while cancelling examinations.', 'error');
+            } finally {
+                if (btn) btn.disabled = false;
+            }
+        }
         function closeBulkAssignProcedureModal() {
             document.getElementById('bulkAssignProcedureModal').style.display = 'none';
             _bulkSelectedProcedure = null;

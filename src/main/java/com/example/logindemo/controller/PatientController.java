@@ -1777,6 +1777,127 @@ public class PatientController {
         }
     }
 
+    @PostMapping("/examinations/status/cancelled/bulk")
+    @ResponseBody
+    @Transactional
+    public ResponseEntity<?> bulkMarkCancelled(@RequestBody Map<String, Object> request) {
+        try {
+            Object idsObj = request.get("examinationIds");
+            if (idsObj == null) {
+                return ResponseEntity.badRequest().body(Map.of(
+                    "success", false,
+                    "message", "Missing examinationIds"
+                ));
+            }
+
+            List<Long> examinationIds = new ArrayList<>();
+            if (idsObj instanceof List<?>) {
+                for (Object o : (List<?>) idsObj) {
+                    if (o instanceof Number) {
+                        examinationIds.add(((Number) o).longValue());
+                    } else if (o instanceof String) {
+                        try {
+                            examinationIds.add(Long.parseLong((String) o));
+                        } catch (NumberFormatException nfe) {
+                        }
+                    }
+                }
+            }
+            if (examinationIds.isEmpty()) {
+                return ResponseEntity.badRequest().body(Map.of(
+                    "success", false,
+                    "message", "No valid examinationIds provided"
+                ));
+            }
+
+            String currentUsername = com.example.logindemo.utils.PeriDeskUtils.getCurrentClinicUserName();
+            User currentUser = userService.findByUsername(currentUsername).orElse(null);
+
+            List<Long> updatedIds = new ArrayList<>();
+            List<Map<String, Object>> errors = new ArrayList<>();
+
+            for (Long examId : examinationIds) {
+                try {
+                    Optional<ToothClinicalExamination> examOpt = toothClinicalExaminationRepository.findById(examId);
+                    if (examOpt.isEmpty()) {
+                        errors.add(Map.of(
+                            "examinationId", examId,
+                            "message", "Examination not found"
+                        ));
+                        continue;
+                    }
+                    ToothClinicalExamination exam = examOpt.get();
+
+                    if (currentUser != null && exam.getExaminationClinic() != null && currentUser.getClinic() != null) {
+                        String userClinicId = currentUser.getClinic().getClinicId();
+                        String examClinicId = exam.getExaminationClinic().getClinicId();
+                        if (userClinicId != null && examClinicId != null && !userClinicId.equals(examClinicId)) {
+                            errors.add(Map.of(
+                                "examinationId", examId,
+                                "message", "You don't have permission to cancel this examination"
+                            ));
+                            continue;
+                        }
+                    }
+
+                    if (exam.getProcedureStatus() == ProcedureStatus.CANCELLED) {
+                        errors.add(Map.of(
+                            "examinationId", examId,
+                            "message", "Already CANCELLED"
+                        ));
+                        continue;
+                    }
+
+                    double totalPaid = 0.0;
+                    double totalRefunded = 0.0;
+                    if (exam.getPaymentEntries() != null) {
+                        for (PaymentEntry entry : exam.getPaymentEntries()) {
+                            if (entry.getAmount() != null) {
+                                if (entry.getTransactionType() != null && entry.getTransactionType().toString().equals("REFUND")) {
+                                    totalRefunded += entry.getAmount();
+                                } else {
+                                    totalPaid += entry.getAmount();
+                                }
+                            }
+                        }
+                    }
+                    double netPaid = totalPaid - totalRefunded;
+                    if (netPaid > 0.0) {
+                        errors.add(Map.of(
+                            "examinationId", examId,
+                            "message", "Cannot cancel: payment captured (net > 0)"
+                        ));
+                        continue;
+                    }
+
+                    exam.setProcedureStatus(ProcedureStatus.CANCELLED);
+                    toothClinicalExaminationRepository.save(exam);
+                    updatedIds.add(examId);
+                } catch (Exception ex) {
+                    errors.add(Map.of(
+                        "examinationId", examId,
+                        "message", ex.getMessage()
+                    ));
+                }
+            }
+
+            boolean allSucceeded = errors.isEmpty();
+            Map<String, Object> response = new HashMap<>();
+            response.put("success", true);
+            response.put("updatedIds", updatedIds);
+            response.put("errorCount", errors.size());
+            response.put("errors", errors);
+            response.put("totalCount", examinationIds.size());
+            response.put("message", allSucceeded ? "Cancelled successfully" : "Partial cancel completed");
+            return ResponseEntity.ok(response);
+        } catch (Exception e) {
+            return ResponseEntity.badRequest().body(Map.of(
+                "success", false,
+                "message", e.getMessage()
+            ));
+        }
+    }
+
     @GetMapping("/examination/{id}/procedures-json")
     @ResponseBody
     public ResponseEntity<?> getExaminationProceduresAsJson(@PathVariable Long id) {
