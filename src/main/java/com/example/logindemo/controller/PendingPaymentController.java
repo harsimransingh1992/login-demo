@@ -425,6 +425,7 @@ public class PendingPaymentController {
             
             response.put("success", true);
             response.put("message", "Payment collected successfully");
+            response.put("examinationId", examinationId);
             
         } catch (Exception e) {
             response.put("success", false);
@@ -675,6 +676,7 @@ public class PendingPaymentController {
             
             int successCount = 0;
             List<String> errors = new ArrayList<>();
+            List<Long> successfulExaminationIds = new ArrayList<>();
             
             for (Long examinationId : examinationIds) {
                 try {
@@ -683,6 +685,7 @@ public class PendingPaymentController {
                     
                     examinationService.collectPayment(examinationId, paymentMode, notes, paymentDetails);
                     successCount++;
+                    successfulExaminationIds.add(examinationId);
                 } catch (Exception e) {
                     errors.add("Examination " + examinationId + ": " + e.getMessage());
                 }
@@ -692,6 +695,7 @@ public class PendingPaymentController {
             response.put("successCount", successCount);
             response.put("totalCount", examinationIds.size());
             response.put("errors", errors);
+            response.put("successfulExaminationIds", successfulExaminationIds);
             response.put("message", "Bulk payment collection completed. " + successCount + " out of " + examinationIds.size() + " payments collected successfully.");
             
         } catch (Exception e) {

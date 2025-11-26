@@ -13,4 +13,5 @@ public class ProcedurePriceDTO {
     private String procedureName;
     private Double price;
     private DentalDepartment dentalDepartment;
-} 
+    private boolean active;
+}

@@ -1615,9 +1615,9 @@ public class PatientController {
         try {
             List<ProcedurePrice> procedures;
             if (query != null && !query.trim().isEmpty()) {
-                procedures = procedurePriceRepository.findByProcedureNameContainingIgnoreCase(query.trim());
+                procedures = procedurePriceRepository.findByProcedureNameContainingIgnoreCaseAndActiveTrue(query.trim());
             } else {
-                procedures = procedurePriceRepository.findAll();
+                procedures = procedurePriceRepository.findAllByActiveTrue();
             }
 
             if (limit > 0 && procedures.size() > limit) {
@@ -3152,6 +3152,15 @@ public class PatientController {
                         errors.add(Map.of(
                             "examinationId", examId,
                             "message", "Only PAYMENT_COMPLETED can be marked IN_PROGRESS"
+                        ));
+                        continue;
+                    }
+
+                    // Require treating doctor assignment before moving to IN_PROGRESS
+                    if (exam.getAssignedDoctor() == null) {
+                        errors.add(Map.of(
+                            "examinationId", examId,
+                            "message", "Treating doctor not assigned"
                         ));
                         continue;
                     }
@@ -5141,25 +5150,22 @@ public class PatientController {
 
             ToothClinicalExamination examination = examinationOpt.get();
 
-            // Check if examination has any payments collected using the correct method
-            Double totalPaid = examination.getTotalPaidAmount();
-            boolean hasPayments = totalPaid != null && totalPaid > 0;
-            
-            if (hasPayments) {
+            // Enforce deletion only when net payment <= 0 and status allowed
+            double totalPaid = examination.getTotalPaidAmount() != null ? examination.getTotalPaidAmount() : 0.0;
+            double totalRefunded = examination.getTotalRefundedAmount() != null ? examination.getTotalRefundedAmount() : 0.0;
+            double netPaid = examination.getNetPaidAmount() != null ? examination.getNetPaidAmount() : (totalPaid - totalRefunded);
+
+            ProcedureStatus status = examination.getProcedureStatus();
+            boolean statusAllowed = status == ProcedureStatus.CANCELLED || status == ProcedureStatus.OPEN || status == ProcedureStatus.PAYMENT_PENDING;
+            if (!(statusAllowed && netPaid <= 0.0)) {
+                String statusName = status != null ? status.name() : "UNKNOWN";
                 return ResponseEntity.badRequest().body(Map.of(
                     "success", false,
-                    "message", "Cannot delete examination with collected payments. Amount paid: ₹" + totalPaid
+                    "message", "Cannot delete: net payment must be 0 and status must be CANCELLED, OPEN or PAYMENT_PENDING (status=" + statusName + ", netPaid=" + netPaid + ")"
                 ));
             }
 
-            // Check if examination has any procedure lifecycle transitions (started procedures)
-            List<ProcedureLifecycleTransition> transitions = procedureLifecycleTransitionRepository.findByExaminationOrderByTransitionTimeAsc(examination);
-            if (!transitions.isEmpty()) {
-                return ResponseEntity.badRequest().body(Map.of(
-                    "success", false,
-                    "message", "Cannot delete examination with started procedures. Please complete or cancel procedures first."
-                ));
-            }
+            // Allow deletion regardless of existing lifecycle transitions when above conditions are met
 
             // Delete associated media files first
             List<MediaFile> mediaFiles = mediaFileRepository.findByExamination_Id(examinationId);

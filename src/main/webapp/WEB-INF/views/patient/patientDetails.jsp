@@ -501,7 +501,13 @@ window.openNotesModal = window.openNotesModal || function(examId) {
                 
                 if (bulkApplyDiscountBtn) {
                     const hasPermission = CURRENT_USER_CAN_APPLY_DISCOUNT;
-                    setButtonState(bulkApplyDiscountBtn, hasPermission, hasPermission);
+                    bulkApplyDiscountBtn.disabled = !hasPermission;
+                    bulkApplyDiscountBtn.classList.remove('btn-disabled-permission', 'btn-disabled-selection', 'btn-enabled', 'btn-discount-enabled');
+                    if (hasPermission) {
+                        bulkApplyDiscountBtn.classList.add('btn-discount-enabled');
+                    } else {
+                        bulkApplyDiscountBtn.classList.add('btn-disabled-permission');
+                    }
                     bulkApplyDiscountBtn.title = hasPermission ? 'Apply or remove discount for selected examinations' : 'You do not have permission to apply discounts';
                 }
             } else {
@@ -543,7 +549,13 @@ window.openNotesModal = window.openNotesModal || function(examId) {
                 
                 if (bulkApplyDiscountBtn) {
                     const hasPermission = CURRENT_USER_CAN_APPLY_DISCOUNT;
-                    setButtonState(bulkApplyDiscountBtn, false, hasPermission);
+                    bulkApplyDiscountBtn.disabled = true;
+                    bulkApplyDiscountBtn.classList.remove('btn-disabled-permission', 'btn-disabled-selection', 'btn-enabled', 'btn-discount-enabled');
+                    if (!hasPermission) {
+                        bulkApplyDiscountBtn.classList.add('btn-disabled-permission');
+                    } else {
+                        bulkApplyDiscountBtn.classList.add('btn-disabled-selection');
+                    }
                     bulkApplyDiscountBtn.title = !hasPermission ? 'You do not have permission to apply discounts' : 'Select at least one examination';
                 }
             }
@@ -4467,6 +4479,19 @@ window.openNotesModal = window.openNotesModal || function(examId) {
                                          background-color: #5a6268 !important;
                                          border-color: #545b62 !important;
                                      }
+                                     
+                                     /* Discount button enabled (green) */
+                                     #bulkApplyDiscountBtn.btn-discount-enabled {
+                                         background-color: #28a745 !important;
+                                         border-color: #28a745 !important;
+                                         color: #fff !important;
+                                         opacity: 1 !important;
+                                         cursor: pointer !important;
+                                     }
+                                     #bulkApplyDiscountBtn.btn-discount-enabled:hover {
+                                         background-color: #218838 !important;
+                                         border-color: #1e7e34 !important;
+                                     }
                                  </style>
                                  <script>
                                      document.addEventListener('DOMContentLoaded', function() {
@@ -4675,12 +4700,17 @@ window.openNotesModal = window.openNotesModal || function(examId) {
                                         
                                         <!-- Delete button - only show if user has canDeleteExamination permission -->
                                         <c:if test="${currentUser.canDeleteExamination}">
-                                            <c:set var="canDelete" value="${exam.totalPaidAmount == 0}"/>
+                                            <c:set var="netAmount" value="${exam.netPaidAmount != null ? exam.netPaidAmount : (exam.totalPaidAmount != null ? (exam.totalPaidAmount - (exam.totalRefundedAmount != null ? exam.totalRefundedAmount : 0)) : 0)}"/>
+                                            <c:set var="statusName" value="${exam.procedureStatus != null ? exam.procedureStatus.name() : ''}"/>
+                                            <c:set var="statusAllowed" value="${statusName == 'CANCELLED' or statusName == 'OPEN' or statusName == 'PAYMENT_PENDING'}"/>
+                                            <c:set var="canDelete" value="${netAmount <= 0 and statusAllowed}"/>
                                             <button class="btn btn-sm btn-danger has-tooltip" 
-                                                    data-tooltip="${canDelete ? 'Delete Examination' : 'Cannot delete - payment collected'}" 
+                                                    data-tooltip="${canDelete ? 'Delete Examination' : 'Cannot delete - payment captured or status not allowed'}" 
                                                     data-exam-id="${exam.id}"
                                                     data-tooth="${fn:escapeXml(exam.toothNumber)}"
                                                     data-exam-date="${fn:escapeXml(exam.examinationDate)}"
+                                                    data-net-paid="${netAmount}"
+                                                    data-status="${statusName}"
                                                     onclick="onDeleteExamClick(event, this)"
                                                     <c:if test="${!canDelete}">disabled style="opacity:0.6; cursor:not-allowed;"</c:if>>
                                                 <i class="fas fa-trash"></i>
@@ -6108,6 +6138,17 @@ window.openNotesModal = window.openNotesModal || function(examId) {
                 const examId = parseInt(button.dataset.examId, 10);
                 const toothNumber = button.dataset.tooth || '';
                 const examinationDate = button.dataset.examDate || '';
+
+                // Client-side guard: only allow delete when net payment <= 0 and status allowed
+                const netPaidAttr = button.dataset.netPaid;
+                const statusAttr = (button.dataset.status || '').toUpperCase();
+                const netPaid = parseFloat(netPaidAttr || '0');
+                const statusAllowed = statusAttr === 'CANCELLED' || statusAttr === 'OPEN' || statusAttr === 'PAYMENT_PENDING';
+                if (!(statusAllowed && !isNaN(netPaid) && netPaid <= 0)) {
+                    showAlertModal('Cannot delete: payment captured (net > 0) or status not allowed.', 'warning');
+                    return false;
+                }
+
                 confirmDeleteExamination(examId, toothNumber, examinationDate);
             } catch (e) {
                 console.error('Delete click handler error:', e);
@@ -6390,8 +6431,14 @@ window.openNotesModal = window.openNotesModal || function(examId) {
                 
                 const amountClass = isRefund ? 'text-danger' : 'text-success';
                 const badgeClass = isRefund ? 'danger' : 'success';
+                const examId = transaction.examinationId;
+                const toothNumber = transaction.toothNumber || '';
+                const toothDisplay = toothNumber ? (toothNumber === 'GENERAL_CONSULTATION' ? 'Consultation' : toothNumber.replace('TOOTH_', '')) : '-';
+                const contextPath = '${pageContext.request.contextPath}';
+                const examLink = examId ? ('<a href="' + contextPath + '/patients/examination/' + examId + '" target="_blank">#' + examId + '</a>') : '-';
                 row.innerHTML = '' +
                     '<td>' + formattedDate + '</td>' +
+                    '<td>' + examLink + '<br/><small>' + toothDisplay + '</small></td>' +
                     '<td>' + (transaction.procedureName || 'N/A') + '</td>' +
                     '<td class="' + amountClass + '" style="font-weight: 600;">' +
                         amountDisplay +
@@ -6892,441 +6939,6 @@ window.openNotesModal = window.openNotesModal || function(examId) {
             }
         }
 
-        // Bulk Mark Payment Completed to Selected
-        function openBulkMarkPaymentCompletedModal() {
-            const selectedIds = getSelectedExaminationIds();
-            if (selectedIds.length === 0) {
-                showAlertModal('Please select at least one examination to mark in progress.', 'warning');
-                return;
-            }
-            window._markingBulkPaymentCompleted = false;
-
-            const countEl = document.getElementById('bulkMarkPaymentCompletedSelectedCount');
-            if (countEl) countEl.textContent = selectedIds.length;
-
-            const validationList = document.getElementById('bulkPaymentCompletedValidationList');
-            const validationBox = document.getElementById('bulkPaymentCompletedValidation');
-            if (validationList && validationBox) {
-                validationList.innerHTML = '';
-                let invalidCount = 0;
-                selectedIds.forEach(id => {
-                    const checkbox = document.querySelector('.examination-checkbox[value="' + id + '"]');
-                    if (checkbox) {
-                        const row = checkbox.closest('tr');
-                        const statusCell = row ? row.querySelector('td:nth-child(8)') : null;
-                        const statusText = statusCell ? statusCell.textContent.trim().toUpperCase() : '';
-                        if (statusText !== 'PAYMENT_COMPLETED') {
-                            invalidCount++;
-                            const li = document.createElement('li');
-                            li.textContent = 'Examination ' + id + ' is ' + (statusText || 'UNKNOWN') + ' and cannot be marked in progress';
-                            validationList.appendChild(li);
-                        }
-                    }
-                });
-                validationBox.style.display = invalidCount > 0 ? 'block' : 'none';
-
-                const confirmBtn = document.getElementById('confirmBulkMarkPaymentCompletedBtn');
-                if (confirmBtn) {
-                    if (invalidCount > 0) {
-                        confirmBtn.disabled = true;
-                        confirmBtn.classList.remove('btn-primary','btn-success');
-                        confirmBtn.classList.add('btn-warning');
-                        confirmBtn.innerHTML = '<i class="fas fa-exclamation-circle"></i> Review Issues';
-                    } else {
-                        confirmBtn.disabled = false;
-                        confirmBtn.classList.remove('btn-warning','btn-success');
-                        confirmBtn.classList.add('btn-primary');
-                        confirmBtn.innerHTML = '<i class="fas fa-check"></i> Mark In Progress';
-                    }
-                }
-            }
-
-            const progressBox = document.getElementById('bulkPaymentCompletedProgress');
-            const progressBar = document.getElementById('bulkPaymentCompletedProgressBar');
-            const resultBox = document.getElementById('bulkPaymentCompletedResult');
-            const errorContainer = document.getElementById('bulkPaymentCompletedErrorContainer');
-            const errorList = document.getElementById('bulkPaymentCompletedErrorList');
-            const resultSummary = document.getElementById('bulkPaymentCompletedResultSummary');
-            if (progressBox) progressBox.style.display = 'none';
-            if (progressBar) progressBar.style.width = '0%';
-            if (resultBox) resultBox.style.display = 'none';
-            if (errorContainer) errorContainer.style.display = 'none';
-            if (errorList) errorList.innerHTML = '';
-            if (resultSummary) resultSummary.textContent = '';
-
-            document.getElementById('bulkMarkPaymentCompletedModal').style.display = 'block';
-        }
-
-        function closeBulkMarkPaymentCompletedModal() {
-            document.getElementById('bulkMarkPaymentCompletedModal').style.display = 'none';
-        }
-
-        async function markSelectedPaymentCompleted() {
-            if (window._markingBulkPaymentCompleted) {
-                return;
-            }
-
-            const selectedIds = getSelectedExaminationIds();
-            if (selectedIds.length === 0) {
-                showAlertModal('Please select at least one examination to mark in progress.', 'warning');
-                return;
-            }
-
-            const progressBox = document.getElementById('bulkPaymentCompletedProgress');
-            const progressBar = document.getElementById('bulkPaymentCompletedProgressBar');
-            const resultBox = document.getElementById('bulkPaymentCompletedResult');
-            const errorContainer = document.getElementById('bulkPaymentCompletedErrorContainer');
-            const errorList = document.getElementById('bulkPaymentCompletedErrorList');
-            const resultSummary = document.getElementById('bulkPaymentCompletedResultSummary');
-            const confirmBtn = document.getElementById('confirmBulkMarkPaymentCompletedBtn');
-            if (progressBox) progressBox.style.display = 'block';
-            if (progressBar) progressBar.style.width = '25%';
-            if (confirmBtn) {
-                confirmBtn.disabled = true;
-                confirmBtn.innerHTML = '<i class="fas fa-spinner fa-spin"></i> Processing...';
-            }
-
-            window._markingBulkPaymentCompleted = true;
-
-            const token = document.querySelector('meta[name="_csrf"]').content;
-            const payload = { examinationIds: selectedIds };
-
-            try {
-                const resp = await fetch(joinUrl(contextPath, '/patients/examinations/status/in-progress/bulk'), {
-                    method: 'POST',
-                    headers: {
-                        'Content-Type': 'application/json',
-                        'X-CSRF-TOKEN': token
-                    },
-                    body: JSON.stringify(payload)
-                });
-
-                let json = {};
-                try { json = await resp.json(); } catch (e) {}
-
-                if (progressBar) progressBar.style.width = '60%';
-
-                if (!resp.ok) {
-                    const errMsg = (json && json.message) ? json.message : 'Failed to mark in progress';
-                    if (resultBox) resultBox.style.display = 'block';
-                    if (resultSummary) resultSummary.textContent = errMsg;
-                    if (errorContainer) errorContainer.style.display = 'none';
-                    if (progressBox) progressBox.style.display = 'none';
-                    if (confirmBtn) {
-                        confirmBtn.disabled = false;
-                        confirmBtn.classList.remove('btn-success','btn-warning');
-                        confirmBtn.classList.add('btn-primary');
-                        confirmBtn.innerHTML = '<i class="fas fa-redo"></i> Retry';
-                    }
-                    window._markingBulkPaymentCompleted = false;
-                    return;
-                }
-
-                const updatedIds = (json && json.updatedIds) ? json.updatedIds : [];
-                const errors = (json && json.errors) ? json.errors : [];
-                const updatedCount = (json && typeof json.updatedCount === 'number') ? json.updatedCount : updatedIds.length;
-                const failedCount = (json && typeof json.failedCount === 'number') ? json.failedCount : errors.length;
-                const totalCount = (json && typeof json.totalCount === 'number') ? json.totalCount : selectedIds.length;
-
-                updatedIds.forEach(id => {
-                    const checkbox = document.querySelector('.examination-checkbox[value="' + id + '"]');
-                    if (checkbox) {
-                        const row = checkbox.closest('tr');
-                        const statusCell = row ? row.querySelector('td:nth-child(8)') : null;
-                        if (statusCell) statusCell.textContent = 'IN_PROGRESS';
-                    }
-                });
-
-                if (progressBar) progressBar.style.width = '100%';
-                if (resultBox) resultBox.style.display = 'block';
-                if (progressBox) progressBox.style.display = 'none';
-                if (resultSummary) {
-                    const baseMsg = (json && json.message) ? json.message : (json && json.success ? 'Updated successfully' : 'Partial update completed');
-                    resultSummary.textContent = baseMsg + ' (' + updatedCount + '/' + totalCount + ' updated, ' + failedCount + ' failed)';
-                }
-
-                if (errors && errors.length > 0 && errorContainer && errorList) {
-                    errorContainer.style.display = 'block';
-                    errorList.innerHTML = '';
-                    errors.forEach(err => {
-                        const li = document.createElement('li');
-                        li.textContent = 'Examination ' + (err.examinationId || '-') + ': ' + (err.message || 'Unknown error');
-                        errorList.appendChild(li);
-                    });
-                } else if (errorContainer) {
-                    errorContainer.style.display = 'none';
-                }
-
-                if (json && json.success) {
-                    if (confirmBtn) {
-                        confirmBtn.disabled = true;
-                        confirmBtn.classList.remove('btn-primary','btn-warning');
-                        confirmBtn.classList.add('btn-success');
-                        confirmBtn.innerHTML = '<i class="fas fa-check"></i> Marked';
-                    }
-
-                    updatedIds.forEach(id => {
-                        const checkbox = document.querySelector('.examination-checkbox[value="' + id + '"]');
-                        if (checkbox) { checkbox.checked = false; }
-                    });
-                    if (typeof updateTableSelectionCount === 'function') {
-                        updateTableSelectionCount();
-                    }
-
-                    showAlertModal('Successfully marked selected examinations as in progress.', 'success', () => { window.location.reload(); });
-                    setTimeout(() => { closeBulkMarkPaymentCompletedModal(); }, 1200);
-                } else {
-                    if (confirmBtn) {
-                        confirmBtn.disabled = true;
-                        confirmBtn.classList.remove('btn-primary','btn-success');
-                        confirmBtn.classList.add('btn-warning');
-                        confirmBtn.innerHTML = '<i class="fas fa-exclamation-circle"></i> Review Issues';
-                    }
-
-                    updatedIds.forEach(id => {
-                        const checkbox = document.querySelector('.examination-checkbox[value="' + id + '"]');
-                        if (checkbox) { checkbox.checked = false; }
-                    });
-                    if (typeof updateTableSelectionCount === 'function') {
-                        updateTableSelectionCount();
-                    }
-
-                    showAlertModal('Partial update completed. Some records could not be updated.', 'warning');
-                }
-            } catch (e) {
-                if (resultBox) resultBox.style.display = 'block';
-                if (resultSummary) resultSummary.textContent = 'Network error while updating statuses: ' + e.message;
-                if (errorContainer) errorContainer.style.display = 'none';
-                if (progressBox) progressBox.style.display = 'none';
-                if (confirmBtn) {
-                    confirmBtn.disabled = false;
-                    confirmBtn.classList.remove('btn-success','btn-warning');
-                    confirmBtn.classList.add('btn-primary');
-                    confirmBtn.innerHTML = '<i class="fas fa-redo"></i> Retry';
-                }
-                window._markingBulkPaymentCompleted = false;
-            } finally {
-                // handled above
-            }
-        }
-
-        // Bulk Mark Completed to Selected
-        function openBulkMarkCompletedModal() {
-            const selectedIds = getSelectedExaminationIds();
-            if (selectedIds.length === 0) {
-                showAlertModal('Please select at least one examination to mark completed.', 'warning');
-                return;
-            }
-            window._markingBulkCompleted = false;
-
-            const countEl = document.getElementById('bulkMarkCompletedSelectedCount');
-            if (countEl) countEl.textContent = selectedIds.length;
-
-            const validationList = document.getElementById('bulkCompletedValidationList');
-            const validationBox = document.getElementById('bulkCompletedValidation');
-            if (validationList && validationBox) {
-                validationList.innerHTML = '';
-                let invalidCount = 0;
-                selectedIds.forEach(id => {
-                    const checkbox = document.querySelector('.examination-checkbox[value="' + id + '"]');
-                    if (checkbox) {
-                        const row = checkbox.closest('tr');
-                        const statusCell = row ? row.querySelector('td:nth-child(8)') : null;
-                        const statusText = statusCell ? statusCell.textContent.trim().toUpperCase() : '';
-                        if (statusText !== 'IN_PROGRESS') {
-                            invalidCount++;
-                            const li = document.createElement('li');
-                            li.textContent = 'Examination ' + id + ' is ' + (statusText || 'UNKNOWN') + ' and cannot be marked completed';
-                            validationList.appendChild(li);
-                        }
-                    }
-                });
-                validationBox.style.display = invalidCount > 0 ? 'block' : 'none';
-
-                const confirmBtn = document.getElementById('confirmBulkMarkCompletedBtn');
-                if (confirmBtn) {
-                    if (invalidCount > 0) {
-                        confirmBtn.disabled = true;
-                        confirmBtn.classList.remove('btn-primary','btn-success');
-                        confirmBtn.classList.add('btn-warning');
-                        confirmBtn.innerHTML = '<i class="fas fa-exclamation-circle"></i> Review Issues';
-                    } else {
-                        confirmBtn.disabled = false;
-                        confirmBtn.classList.remove('btn-warning','btn-success');
-                        confirmBtn.classList.add('btn-primary');
-                        confirmBtn.innerHTML = '<i class="fas fa-check"></i> Mark Completed';
-                    }
-                }
-            }
-
-            const progressBox = document.getElementById('bulkCompletedProgress');
-            const progressBar = document.getElementById('bulkCompletedProgressBar');
-            const resultBox = document.getElementById('bulkCompletedResult');
-            const errorContainer = document.getElementById('bulkCompletedErrorContainer');
-            const errorList = document.getElementById('bulkCompletedErrorList');
-            const resultSummary = document.getElementById('bulkCompletedResultSummary');
-            if (progressBox) progressBox.style.display = 'none';
-            if (progressBar) progressBar.style.width = '0%';
-            if (resultBox) resultBox.style.display = 'none';
-            if (errorContainer) errorContainer.style.display = 'none';
-            if (errorList) errorList.innerHTML = '';
-            if (resultSummary) resultSummary.textContent = '';
-
-            document.getElementById('bulkMarkCompletedModal').style.display = 'block';
-        }
-
-        function closeBulkMarkCompletedModal() {
-            document.getElementById('bulkMarkCompletedModal').style.display = 'none';
-        }
-
-        async function markSelectedCompleted() {
-            if (window._markingBulkCompleted) {
-                return;
-            }
-
-            const selectedIds = getSelectedExaminationIds();
-            if (selectedIds.length === 0) {
-                showAlertModal('Please select at least one examination to mark completed.', 'warning');
-                return;
-            }
-
-            const progressBox = document.getElementById('bulkCompletedProgress');
-            const progressBar = document.getElementById('bulkCompletedProgressBar');
-            const resultBox = document.getElementById('bulkCompletedResult');
-            const errorContainer = document.getElementById('bulkCompletedErrorContainer');
-            const errorList = document.getElementById('bulkCompletedErrorList');
-            const resultSummary = document.getElementById('bulkCompletedResultSummary');
-            const confirmBtn = document.getElementById('confirmBulkMarkCompletedBtn');
-            if (progressBox) progressBox.style.display = 'block';
-            if (progressBar) progressBar.style.width = '25%';
-            if (confirmBtn) {
-                confirmBtn.disabled = true;
-                confirmBtn.innerHTML = '<i class="fas fa-spinner fa-spin"></i> Processing...';
-            }
-
-            window._markingBulkCompleted = true;
-
-            const token = document.querySelector('meta[name="_csrf"]').content;
-            const payload = { examinationIds: selectedIds };
-
-            try {
-                const resp = await fetch(joinUrl(contextPath, '/patients/examinations/status/completed/bulk'), {
-                    method: 'POST',
-                    headers: {
-                        'Content-Type': 'application/json',
-                        'X-CSRF-TOKEN': token
-                    },
-                    body: JSON.stringify(payload)
-                });
-
-                let json = {};
-                try { json = await resp.json(); } catch (e) {}
-
-                if (progressBar) progressBar.style.width = '60%';
-
-                if (!resp.ok) {
-                    const errMsg = (json && json.message) ? json.message : 'Failed to mark completed';
-                    if (resultBox) resultBox.style.display = 'block';
-                    if (resultSummary) resultSummary.textContent = errMsg;
-                    if (errorContainer) errorContainer.style.display = 'none';
-                    if (progressBox) progressBox.style.display = 'none';
-                    if (confirmBtn) {
-                        confirmBtn.disabled = false;
-                        confirmBtn.classList.remove('btn-success','btn-warning');
-                        confirmBtn.classList.add('btn-primary');
-                        confirmBtn.innerHTML = '<i class="fas fa-redo"></i> Retry';
-                    }
-                    window._markingBulkCompleted = false;
-                    return;
-                }
-
-                const updatedIds = (json && json.updatedIds) ? json.updatedIds : [];
-                const errors = (json && json.errors) ? json.errors : [];
-                const updatedCount = (json && typeof json.updatedCount === 'number') ? json.updatedCount : updatedIds.length;
-                const failedCount = (json && typeof json.failedCount === 'number') ? json.failedCount : errors.length;
-                const totalCount = (json && typeof json.totalCount === 'number') ? json.totalCount : selectedIds.length;
-
-                updatedIds.forEach(id => {
-                    const checkbox = document.querySelector('.examination-checkbox[value="' + id + '"]');
-                    if (checkbox) {
-                        const row = checkbox.closest('tr');
-                        const statusCell = row ? row.querySelector('td:nth-child(8)') : null;
-                        if (statusCell) statusCell.textContent = 'COMPLETED';
-                    }
-                });
-
-                if (progressBar) progressBar.style.width = '100%';
-                if (resultBox) resultBox.style.display = 'block';
-                if (progressBox) progressBox.style.display = 'none';
-                if (resultSummary) {
-                    const baseMsg = (json && json.message) ? json.message : (json && json.success ? 'Updated successfully' : 'Partial update completed');
-                    resultSummary.textContent = baseMsg + ' (' + updatedCount + '/' + totalCount + ' updated, ' + failedCount + ' failed)';
-                }
-
-                if (errors && errors.length > 0 && errorContainer && errorList) {
-                    errorContainer.style.display = 'block';
-                    errorList.innerHTML = '';
-                    errors.forEach(err => {
-                        const li = document.createElement('li');
-                        li.textContent = 'Examination ' + (err.examinationId || '-') + ': ' + (err.message || 'Unknown error');
-                        errorList.appendChild(li);
-                    });
-                } else if (errorContainer) {
-                    errorContainer.style.display = 'none';
-                }
-
-                if (json && json.success) {
-                    if (confirmBtn) {
-                        confirmBtn.disabled = true;
-                        confirmBtn.classList.remove('btn-primary','btn-warning');
-                        confirmBtn.classList.add('btn-success');
-                        confirmBtn.innerHTML = '<i class="fas fa-check"></i> Marked';
-                    }
-
-                    updatedIds.forEach(id => {
-                        const checkbox = document.querySelector('.examination-checkbox[value="' + id + '"]');
-                        if (checkbox) { checkbox.checked = false; }
-                    });
-                    if (typeof updateTableSelectionCount === 'function') {
-                        updateTableSelectionCount();
-                    }
-
-                    showAlertModal('Successfully marked selected examinations as completed.', 'success', () => { window.location.reload(); });
-                    setTimeout(() => { closeBulkMarkCompletedModal(); }, 1200);
-                } else {
-                    if (confirmBtn) {
-                        confirmBtn.disabled = true;
-                        confirmBtn.classList.remove('btn-primary','btn-success');
-                        confirmBtn.classList.add('btn-warning');
-                        confirmBtn.innerHTML = '<i class="fas fa-exclamation-circle"></i> Review Issues';
-                    }
-
-                    updatedIds.forEach(id => {
-                        const checkbox = document.querySelector('.examination-checkbox[value="' + id + '"]');
-                        if (checkbox) { checkbox.checked = false; }
-                    });
-                    if (typeof updateTableSelectionCount === 'function') {
-                        updateTableSelectionCount();
-                    }
-
-                    showAlertModal('Partial update completed. Some records could not be updated.', 'warning');
-                }
-            } catch (e) {
-                if (resultBox) resultBox.style.display = 'block';
-                if (resultSummary) resultSummary.textContent = 'Network error while updating statuses: ' + e.message;
-                if (errorContainer) errorContainer.style.display = 'none';
-                if (progressBox) progressBox.style.display = 'none';
-                if (confirmBtn) {
-                    confirmBtn.disabled = false;
-                    confirmBtn.classList.remove('btn-success','btn-warning');
-                    confirmBtn.classList.add('btn-primary');
-                    confirmBtn.innerHTML = '<i class="fas fa-redo"></i> Retry';
-                }
-                window._markingBulkCompleted = false;
-            } finally {
-                // handled above
-            }
-        }
 
         // Bulk Close Selected
         function openBulkMarkClosedModal() {
@@ -8354,15 +7966,16 @@ window.openNotesModal = window.openNotesModal || function(examId) {
                      <div class="table-responsive">
                          <table class="table" style="margin-bottom: 0;">
                              <thead>
-                                 <tr>
-                                     <th>Date</th>
-                                     <th>Procedure</th>
-                                     <th>Amount</th>
-                                     <th>Transaction Type</th>
-                                     <th>Payment Mode</th>
-                                     <th>Refund Reason</th>
-                                     <th>Remarks</th>
-                                 </tr>
+                                <tr>
+                                    <th>Date</th>
+                                    <th>Examination</th>
+                                    <th>Procedure</th>
+                                    <th>Amount</th>
+                                    <th>Transaction Type</th>
+                                    <th>Payment Mode</th>
+                                    <th>Refund Reason</th>
+                                    <th>Remarks</th>
+                                </tr>
                              </thead>
                              <tbody id="ledgerTableBody">
                                  <!-- Transaction rows will be inserted here -->

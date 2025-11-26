@@ -601,3 +601,474 @@ document.addEventListener('DOMContentLoaded', function() {
 });
 
  
+// Bulk mark payment completed / in-progress and completed handling
+function getSelectedExaminationIds() {
+    const nodes = document.querySelectorAll('.examination-checkbox:checked');
+    const ids = [];
+    nodes.forEach(cb => {
+        const v = parseInt(cb.value, 10);
+        if (!isNaN(v)) ids.push(v);
+    });
+    return ids;
+}
+
+function _pd_joinUrl(base, path) {
+    if (typeof joinUrl === 'function') return joinUrl(base, path);
+    return (base || '') + path;
+}
+
+function openBulkMarkPaymentCompletedModal() {
+    const selectedIds = getSelectedExaminationIds();
+    if (selectedIds.length === 0) {
+        if (typeof showAlertModal === 'function') {
+            showAlertModal('Please select at least one examination to mark in progress.', 'warning');
+        }
+        return;
+    }
+    window._markingBulkPaymentCompleted = false;
+
+    const countEl = document.getElementById('bulkMarkPaymentCompletedSelectedCount');
+    if (countEl) countEl.textContent = selectedIds.length;
+
+    const validationList = document.getElementById('bulkPaymentCompletedValidationList');
+    const validationBox = document.getElementById('bulkPaymentCompletedValidation');
+    if (validationList && validationBox) {
+        validationList.innerHTML = '';
+        let invalidCount = 0;
+        selectedIds.forEach(id => {
+            const checkbox = document.querySelector('.examination-checkbox[value="' + id + '"]');
+            if (checkbox) {
+                const row = checkbox.closest('tr');
+                const statusCell = row ? row.querySelector('td:nth-child(8)') : null;
+                const statusText = statusCell ? statusCell.textContent.trim().toUpperCase() : '';
+                const doctorCell = row ? row.querySelector('td[data-doctor]') : null;
+                const doctorId = doctorCell ? (doctorCell.dataset.doctor || '') : '';
+                if (statusText !== 'PAYMENT_COMPLETED') {
+                    invalidCount++;
+                    const li = document.createElement('li');
+                    li.textContent = 'Examination ' + id + ' is ' + (statusText || 'UNKNOWN') + ' and cannot be marked in progress';
+                    validationList.appendChild(li);
+                }
+                if (!doctorId) {
+                    invalidCount++;
+                    const li2 = document.createElement('li');
+                    li2.textContent = 'Examination ' + id + ' has no treating doctor assigned';
+                    validationList.appendChild(li2);
+                }
+            }
+        });
+        validationBox.style.display = invalidCount > 0 ? 'block' : 'none';
+
+        const confirmBtn = document.getElementById('confirmBulkMarkPaymentCompletedBtn');
+        if (confirmBtn) {
+            if (invalidCount > 0) {
+                confirmBtn.disabled = true;
+                confirmBtn.classList.remove('btn-primary','btn-success');
+                confirmBtn.classList.add('btn-warning');
+                confirmBtn.innerHTML = '<i class="fas fa-exclamation-circle"></i> Review Issues';
+            } else {
+                confirmBtn.disabled = false;
+                confirmBtn.classList.remove('btn-warning','btn-success');
+                confirmBtn.classList.add('btn-primary');
+                confirmBtn.innerHTML = '<i class="fas fa-check"></i> Mark In Progress';
+            }
+        }
+    }
+
+    const progressBox = document.getElementById('bulkPaymentCompletedProgress');
+    const progressBar = document.getElementById('bulkPaymentCompletedProgressBar');
+    const resultBox = document.getElementById('bulkPaymentCompletedResult');
+    const errorContainer = document.getElementById('bulkPaymentCompletedErrorContainer');
+    const errorList = document.getElementById('bulkPaymentCompletedErrorList');
+    const resultSummary = document.getElementById('bulkPaymentCompletedResultSummary');
+    if (progressBox) progressBox.style.display = 'none';
+    if (progressBar) progressBar.style.width = '0%';
+    if (resultBox) resultBox.style.display = 'none';
+    if (errorContainer) errorContainer.style.display = 'none';
+    if (errorList) errorList.innerHTML = '';
+    if (resultSummary) resultSummary.textContent = '';
+
+    const modal = document.getElementById('bulkMarkPaymentCompletedModal');
+    if (modal) modal.style.display = 'block';
+}
+
+function closeBulkMarkPaymentCompletedModal() {
+    const modal = document.getElementById('bulkMarkPaymentCompletedModal');
+    if (modal) modal.style.display = 'none';
+}
+
+async function markSelectedPaymentCompleted() {
+    if (window._markingBulkPaymentCompleted) {
+        return;
+    }
+
+    const selectedIds = getSelectedExaminationIds();
+    if (selectedIds.length === 0) {
+        if (typeof showAlertModal === 'function') {
+            showAlertModal('Please select at least one examination to mark in progress.', 'warning');
+        }
+        return;
+    }
+
+    const progressBox = document.getElementById('bulkPaymentCompletedProgress');
+    const progressBar = document.getElementById('bulkPaymentCompletedProgressBar');
+    const resultBox = document.getElementById('bulkPaymentCompletedResult');
+    const errorContainer = document.getElementById('bulkPaymentCompletedErrorContainer');
+    const errorList = document.getElementById('bulkPaymentCompletedErrorList');
+    const resultSummary = document.getElementById('bulkPaymentCompletedResultSummary');
+    const confirmBtn = document.getElementById('confirmBulkMarkPaymentCompletedBtn');
+    if (progressBox) progressBox.style.display = 'block';
+    if (progressBar) progressBar.style.width = '25%';
+    if (confirmBtn) {
+        confirmBtn.disabled = true;
+        confirmBtn.innerHTML = '<i class="fas fa-spinner fa-spin"></i> Processing...';
+    }
+
+    window._markingBulkPaymentCompleted = true;
+
+    const token = document.querySelector('meta[name="_csrf"]').content;
+    const payload = { examinationIds: selectedIds };
+
+    try {
+        const base = (typeof contextPath !== 'undefined') ? contextPath : '';
+        const resp = await fetch(_pd_joinUrl(base, '/patients/examinations/status/in-progress/bulk'), {
+            method: 'POST',
+            headers: { 'Content-Type': 'application/json', 'X-CSRF-TOKEN': token },
+            body: JSON.stringify(payload)
+        });
+
+        let json = {};
+        try { json = await resp.json(); } catch (e) {}
+
+        if (progressBar) progressBar.style.width = '60%';
+
+        if (!resp.ok) {
+            const errMsg = (json && json.message) ? json.message : 'Failed to mark in progress';
+            if (resultBox) resultBox.style.display = 'block';
+            if (resultSummary) resultSummary.textContent = errMsg;
+            if (errorContainer) errorContainer.style.display = 'none';
+            if (progressBox) progressBox.style.display = 'none';
+            if (confirmBtn) {
+                confirmBtn.disabled = false;
+                confirmBtn.classList.remove('btn-success','btn-warning');
+                confirmBtn.classList.add('btn-primary');
+                confirmBtn.innerHTML = '<i class="fas fa-redo"></i> Retry';
+            }
+            window._markingBulkPaymentCompleted = false;
+            return;
+        }
+
+        const updatedIds = (json && json.updatedIds) ? json.updatedIds : [];
+        const errors = (json && json.errors) ? json.errors : [];
+        const updatedCount = (json && typeof json.updatedCount === 'number') ? json.updatedCount : updatedIds.length;
+        const failedCount = (json && typeof json.failedCount === 'number') ? json.failedCount : errors.length;
+        const totalCount = (json && typeof json.totalCount === 'number') ? json.totalCount : selectedIds.length;
+
+        updatedIds.forEach(id => {
+            const checkbox = document.querySelector('.examination-checkbox[value="' + id + '"]');
+            if (checkbox) {
+                const row = checkbox.closest('tr');
+                const statusCell = row ? row.querySelector('td:nth-child(8)') : null;
+                if (statusCell) statusCell.textContent = 'IN_PROGRESS';
+            }
+        });
+
+        if (progressBar) progressBar.style.width = '100%';
+        if (resultBox) resultBox.style.display = 'block';
+        if (progressBox) progressBox.style.display = 'none';
+        if (resultSummary) {
+            const baseMsg = (json && json.message) ? json.message : (json && json.success ? 'Updated successfully' : 'Partial update completed');
+            resultSummary.textContent = baseMsg + ' (' + updatedCount + '/' + totalCount + ' updated, ' + failedCount + ' failed)';
+        }
+
+        if (errors && errors.length > 0 && errorContainer && errorList) {
+            errorContainer.style.display = 'block';
+            errorList.innerHTML = '';
+            errors.forEach(err => {
+                const li = document.createElement('li');
+                li.textContent = 'Examination ' + (err.examinationId || '-') + ': ' + (err.message || 'Unknown error');
+                errorList.appendChild(li);
+            });
+        } else if (errorContainer) {
+            errorContainer.style.display = 'none';
+        }
+
+        if (json && json.success) {
+            if (confirmBtn) {
+                confirmBtn.disabled = true;
+                confirmBtn.classList.remove('btn-primary','btn-warning');
+                confirmBtn.classList.add('btn-success');
+                confirmBtn.innerHTML = '<i class="fas fa-check"></i> Marked';
+            }
+
+            updatedIds.forEach(id => {
+                const checkbox = document.querySelector('.examination-checkbox[value="' + id + '"]');
+                if (checkbox) { checkbox.checked = false; }
+            });
+            if (typeof updateTableSelectionCount === 'function') {
+                updateTableSelectionCount();
+            }
+
+            if (typeof showAlertModal === 'function') {
+                showAlertModal('Successfully marked selected examinations as in progress.', 'success', () => { window.location.reload(); });
+            }
+            setTimeout(() => { closeBulkMarkPaymentCompletedModal(); }, 1200);
+        } else {
+            if (confirmBtn) {
+                confirmBtn.disabled = true;
+                confirmBtn.classList.remove('btn-primary','btn-success');
+                confirmBtn.classList.add('btn-warning');
+                confirmBtn.innerHTML = '<i class="fas fa-exclamation-circle"></i> Review Issues';
+            }
+
+            updatedIds.forEach(id => {
+                const checkbox = document.querySelector('.examination-checkbox[value="' + id + '"]');
+                if (checkbox) { checkbox.checked = false; }
+            });
+            if (typeof updateTableSelectionCount === 'function') {
+                updateTableSelectionCount();
+            }
+
+            if (typeof showAlertModal === 'function') {
+                showAlertModal('Partial update completed. Some records could not be updated.', 'warning');
+            }
+        }
+    } catch (e) {
+        if (resultBox) resultBox.style.display = 'block';
+        if (resultSummary) resultSummary.textContent = 'Network error while updating statuses: ' + e.message;
+        if (errorContainer) errorContainer.style.display = 'none';
+        if (progressBox) progressBox.style.display = 'none';
+        const confirmBtn = document.getElementById('confirmBulkMarkPaymentCompletedBtn');
+        if (confirmBtn) {
+            confirmBtn.disabled = false;
+            confirmBtn.classList.remove('btn-success','btn-warning');
+            confirmBtn.classList.add('btn-primary');
+            confirmBtn.innerHTML = '<i class="fas fa-redo"></i> Retry';
+        }
+        window._markingBulkPaymentCompleted = false;
+    }
+}
+
+function openBulkMarkCompletedModal() {
+    const selectedIds = getSelectedExaminationIds();
+    if (selectedIds.length === 0) {
+        if (typeof showAlertModal === 'function') {
+            showAlertModal('Please select at least one examination to mark completed.', 'warning');
+        }
+        return;
+    }
+    window._markingBulkCompleted = false;
+
+    const countEl = document.getElementById('bulkMarkCompletedSelectedCount');
+    if (countEl) countEl.textContent = selectedIds.length;
+
+    const validationList = document.getElementById('bulkCompletedValidationList');
+    const validationBox = document.getElementById('bulkCompletedValidation');
+    if (validationList && validationBox) {
+        validationList.innerHTML = '';
+        let invalidCount = 0;
+        selectedIds.forEach(id => {
+            const checkbox = document.querySelector('.examination-checkbox[value="' + id + '"]');
+            if (checkbox) {
+                const row = checkbox.closest('tr');
+                const statusCell = row ? row.querySelector('td:nth-child(8)') : null;
+                const statusText = statusCell ? statusCell.textContent.trim().toUpperCase() : '';
+                if (statusText !== 'IN_PROGRESS') {
+                    invalidCount++;
+                    const li = document.createElement('li');
+                    li.textContent = 'Examination ' + id + ' is ' + (statusText || 'UNKNOWN') + ' and cannot be marked completed';
+                    validationList.appendChild(li);
+                }
+            }
+        });
+        validationBox.style.display = invalidCount > 0 ? 'block' : 'none';
+
+        const confirmBtn = document.getElementById('confirmBulkMarkCompletedBtn');
+        if (confirmBtn) {
+            if (invalidCount > 0) {
+                confirmBtn.disabled = true;
+                confirmBtn.classList.remove('btn-primary','btn-success');
+                confirmBtn.classList.add('btn-warning');
+                confirmBtn.innerHTML = '<i class="fas fa-exclamation-circle"></i> Review Issues';
+            } else {
+                confirmBtn.disabled = false;
+                confirmBtn.classList.remove('btn-warning','btn-success');
+                confirmBtn.classList.add('btn-primary');
+                confirmBtn.innerHTML = '<i class="fas fa-check"></i> Mark Completed';
+            }
+        }
+    }
+
+    const progressBox = document.getElementById('bulkCompletedProgress');
+    const progressBar = document.getElementById('bulkCompletedProgressBar');
+    const resultBox = document.getElementById('bulkCompletedResult');
+    const errorContainer = document.getElementById('bulkCompletedErrorContainer');
+    const errorList = document.getElementById('bulkCompletedErrorList');
+    const resultSummary = document.getElementById('bulkCompletedResultSummary');
+    if (progressBox) progressBox.style.display = 'none';
+    if (progressBar) progressBar.style.width = '0%';
+    if (resultBox) resultBox.style.display = 'none';
+    if (errorContainer) errorContainer.style.display = 'none';
+    if (errorList) errorList.innerHTML = '';
+    if (resultSummary) resultSummary.textContent = '';
+
+    const modal = document.getElementById('bulkMarkCompletedModal');
+    if (modal) modal.style.display = 'block';
+}
+
+function closeBulkMarkCompletedModal() {
+    const modal = document.getElementById('bulkMarkCompletedModal');
+    if (modal) modal.style.display = 'none';
+}
+
+async function markSelectedCompleted() {
+    if (window._markingBulkCompleted) {
+        return;
+    }
+
+    const selectedIds = getSelectedExaminationIds();
+    if (selectedIds.length === 0) {
+        if (typeof showAlertModal === 'function') {
+            showAlertModal('Please select at least one examination to mark completed.', 'warning');
+        }
+        return;
+    }
+
+    const progressBox = document.getElementById('bulkCompletedProgress');
+    const progressBar = document.getElementById('bulkCompletedProgressBar');
+    const resultBox = document.getElementById('bulkCompletedResult');
+    const errorContainer = document.getElementById('bulkCompletedErrorContainer');
+    const errorList = document.getElementById('bulkCompletedErrorList');
+    const resultSummary = document.getElementById('bulkCompletedResultSummary');
+    const confirmBtn = document.getElementById('confirmBulkMarkCompletedBtn');
+    if (progressBox) progressBox.style.display = 'block';
+    if (progressBar) progressBar.style.width = '25%';
+    if (confirmBtn) {
+        confirmBtn.disabled = true;
+        confirmBtn.innerHTML = '<i class="fas fa-spinner fa-spin"></i> Processing...';
+    }
+
+    window._markingBulkCompleted = true;
+
+    const token = document.querySelector('meta[name="_csrf"]').content;
+    const payload = { examinationIds: selectedIds };
+
+    try {
+        const base = (typeof contextPath !== 'undefined') ? contextPath : '';
+        const resp = await fetch(_pd_joinUrl(base, '/patients/examinations/status/completed/bulk'), {
+            method: 'POST',
+            headers: { 'Content-Type': 'application/json', 'X-CSRF-TOKEN': token },
+            body: JSON.stringify(payload)
+        });
+
+        let json = {};
+        try { json = await resp.json(); } catch (e) {}
+
+        if (progressBar) progressBar.style.width = '60%';
+
+        if (!resp.ok) {
+            const errMsg = (json && json.message) ? json.message : 'Failed to mark completed';
+            if (resultBox) resultBox.style.display = 'block';
+            if (resultSummary) resultSummary.textContent = errMsg;
+            if (errorContainer) errorContainer.style.display = 'none';
+            if (progressBox) progressBox.style.display = 'none';
+            if (confirmBtn) {
+                confirmBtn.disabled = false;
+                confirmBtn.classList.remove('btn-success','btn-warning');
+                confirmBtn.classList.add('btn-primary');
+                confirmBtn.innerHTML = '<i class="fas fa-redo"></i> Retry';
+            }
+            window._markingBulkCompleted = false;
+            return;
+        }
+
+        const updatedIds = (json && json.updatedIds) ? json.updatedIds : [];
+        const errors = (json && json.errors) ? json.errors : [];
+        const updatedCount = (json && typeof json.updatedCount === 'number') ? json.updatedCount : updatedIds.length;
+        const failedCount = (json && typeof json.failedCount === 'number') ? json.failedCount : errors.length;
+        const totalCount = (json && typeof json.totalCount === 'number') ? json.totalCount : selectedIds.length;
+
+        updatedIds.forEach(id => {
+            const checkbox = document.querySelector('.examination-checkbox[value="' + id + '"]');
+            if (checkbox) {
+                const row = checkbox.closest('tr');
+                const statusCell = row ? row.querySelector('td:nth-child(8)') : null;
+                if (statusCell) statusCell.textContent = 'COMPLETED';
+            }
+        });
+
+        if (progressBar) progressBar.style.width = '100%';
+        if (resultBox) resultBox.style.display = 'block';
+        if (progressBox) progressBox.style.display = 'none';
+        if (resultSummary) {
+            const baseMsg = (json && json.message) ? json.message : (json && json.success ? 'Updated successfully' : 'Partial update completed');
+            resultSummary.textContent = baseMsg + ' (' + updatedCount + '/' + totalCount + ' updated, ' + failedCount + ' failed)';
+        }
+
+        if (errors && errors.length > 0 && errorContainer && errorList) {
+            errorContainer.style.display = 'block';
+            errorList.innerHTML = '';
+            errors.forEach(err => {
+                const li = document.createElement('li');
+                li.textContent = 'Examination ' + (err.examinationId || '-') + ': ' + (err.message || 'Unknown error');
+                errorList.appendChild(li);
+            });
+        } else if (errorContainer) {
+            errorContainer.style.display = 'none';
+        }
+
+        if (json && json.success) {
+            if (confirmBtn) {
+                confirmBtn.disabled = true;
+                confirmBtn.classList.remove('btn-primary','btn-warning');
+                confirmBtn.classList.add('btn-success');
+                confirmBtn.innerHTML = '<i class="fas fa-check"></i> Marked';
+            }
+
+            updatedIds.forEach(id => {
+                const checkbox = document.querySelector('.examination-checkbox[value="' + id + '"]');
+                if (checkbox) { checkbox.checked = false; }
+            });
+            if (typeof updateTableSelectionCount === 'function') {
+                updateTableSelectionCount();
+            }
+
+            if (typeof showAlertModal === 'function') {
+                showAlertModal('Successfully marked selected examinations as completed.', 'success', () => { window.location.reload(); });
+            }
+            setTimeout(() => { closeBulkMarkCompletedModal(); }, 1200);
+        } else {
+            if (confirmBtn) {
+                confirmBtn.disabled = true;
+                confirmBtn.classList.remove('btn-primary','btn-success');
+                confirmBtn.classList.add('btn-warning');
+                confirmBtn.innerHTML = '<i class="fas fa-exclamation-circle"></i> Review Issues';
+            }
+
+            updatedIds.forEach(id => {
+                const checkbox = document.querySelector('.examination-checkbox[value="' + id + '"]');
+                if (checkbox) { checkbox.checked = false; }
+            });
+            if (typeof updateTableSelectionCount === 'function') {
+                updateTableSelectionCount();
+            }
+
+            if (typeof showAlertModal === 'function') {
+                showAlertModal('Partial update completed. Some records could not be updated.', 'warning');
+            }
+        }
+    } catch (e) {
+        if (resultBox) resultBox.style.display = 'block';
+        if (resultSummary) resultSummary.textContent = 'Network error while updating statuses: ' + e.message;
+        if (errorContainer) errorContainer.style.display = 'none';
+        if (progressBox) progressBox.style.display = 'none';
+        const confirmBtn = document.getElementById('confirmBulkMarkCompletedBtn');
+        if (confirmBtn) {
+            confirmBtn.disabled = false;
+            confirmBtn.classList.remove('btn-success','btn-warning');
+            confirmBtn.classList.add('btn-primary');
+            confirmBtn.innerHTML = '<i class="fas fa-redo"></i> Retry';
+        }
+        window._markingBulkCompleted = false;
+    }
+}

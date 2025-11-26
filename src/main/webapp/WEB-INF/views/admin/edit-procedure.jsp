@@ -174,7 +174,16 @@
                     <form:input path="price" type="number" step="0.01" class="form-control" required="required" min="0.01" />
                     <form:errors path="price" cssClass="text-danger" />
                 </div>
-                
+
+                <div class="form-group">
+                    <label for="active">Active</label>
+                    <div>
+                        <form:checkbox path="active" id="active" />
+                        <small class="form-text text-muted">Inactive procedures are hidden from search and selection.</small>
+                    </div>
+                    <form:errors path="active" cssClass="text-danger" />
+                </div>
+
                 <div class="form-group">
                     <label for="changeReason">Reason for Price Change</label>
                     <input type="text" name="changeReason" class="form-control" placeholder="Enter reason for price change (optional)" />

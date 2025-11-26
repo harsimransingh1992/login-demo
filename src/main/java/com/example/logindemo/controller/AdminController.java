@@ -447,7 +447,9 @@ public class AdminController {
     
     @GetMapping("/prices/create")
     public String showCreateProcedurePriceForm(Model model) {
-        model.addAttribute("procedure", new ProcedurePriceDTO());
+        ProcedurePriceDTO dto = new ProcedurePriceDTO();
+        dto.setActive(true);
+        model.addAttribute("procedure", dto);
         model.addAttribute("cityTiers", CityTier.values());
         model.addAttribute("dentalDepartments", DentalDepartment.values());
         return "admin/create-procedure";
@@ -494,6 +496,7 @@ public class AdminController {
             procedurePrice.setCityTier(procedureDTO.getCityTier());
             procedurePrice.setPrice(procedureDTO.getPrice());
             procedurePrice.setDentalDepartment(procedureDTO.getDentalDepartment());
+            procedurePrice.setActive(procedureDTO.isActive());
             
             // Save the procedure first to get its ID
             procedurePrice = procedurePriceRepository.save(procedurePrice);

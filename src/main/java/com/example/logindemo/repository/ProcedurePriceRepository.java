@@ -13,4 +13,7 @@ import java.util.List;
 public interface ProcedurePriceRepository extends JpaRepository<ProcedurePrice, Long> {
     List<ProcedurePrice> findByCityTier(CityTier cityTier);
     List<ProcedurePrice> findByProcedureNameContainingIgnoreCase(String procedureName);
+    List<ProcedurePrice> findByCityTierAndActiveTrue(CityTier cityTier);
+    List<ProcedurePrice> findByProcedureNameContainingIgnoreCaseAndActiveTrue(String procedureName);
+    List<ProcedurePrice> findAllByActiveTrue();
 } 

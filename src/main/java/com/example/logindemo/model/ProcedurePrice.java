@@ -24,4 +24,7 @@ public class ProcedurePrice {
 
     @Enumerated(EnumType.STRING)
     private DentalDepartment dentalDepartment;
+
+    @Column(nullable = false, columnDefinition = "BOOLEAN DEFAULT TRUE")
+    private boolean active = true;
 }

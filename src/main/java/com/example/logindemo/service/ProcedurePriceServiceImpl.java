@@ -52,7 +52,7 @@ public class ProcedurePriceServiceImpl implements ProcedurePriceService {
         try {
             CityTier cityTier = CityTier.valueOf(cityTierStr);
             log.info("Fetching procedures for city tier: {}", cityTier);
-            return procedurePriceRepository.findByCityTier(cityTier).stream()
+            return procedurePriceRepository.findByCityTierAndActiveTrue(cityTier).stream()
                 .map(this::convertToDTO)
                 .collect(Collectors.toList());
         } catch (IllegalArgumentException e) {
@@ -66,7 +66,7 @@ public class ProcedurePriceServiceImpl implements ProcedurePriceService {
         log.info("Fetching procedures for city tier: {}", cityTier);
         
         // Directly use the provided city tier without conversion
-        List<ProcedurePrice> procedures = procedurePriceRepository.findByCityTier(cityTier);
+        List<ProcedurePrice> procedures = procedurePriceRepository.findByCityTierAndActiveTrue(cityTier);
         
         return procedures.stream()
             .map(this::convertToDTO)
@@ -118,6 +118,7 @@ public class ProcedurePriceServiceImpl implements ProcedurePriceService {
         procedure.setCityTier(procedureDTO.getCityTier());
         procedure.setPrice(newPrice);
         procedure.setDentalDepartment(procedureDTO.getDentalDepartment());
+        procedure.setActive(procedureDTO.isActive());
         
         ProcedurePrice updatedProcedure = procedurePriceRepository.save(procedure);
         return convertToDTO(updatedProcedure);
