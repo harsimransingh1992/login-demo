@@ -1614,10 +1614,24 @@ public class PatientController {
             @RequestParam(value = "limit", defaultValue = "15") int limit) {
         try {
             List<ProcedurePrice> procedures;
+            ClinicModel clinic = PeriDeskUtils.getCurrentClinicModel();
+            CityTier tier = (clinic != null ? clinic.getCityTier() : null);
+
             if (query != null && !query.trim().isEmpty()) {
-                procedures = procedurePriceRepository.findByProcedureNameContainingIgnoreCaseAndActiveTrue(query.trim());
+                List<ProcedurePrice> byName = procedurePriceRepository.findByProcedureNameContainingIgnoreCaseAndActiveTrue(query.trim());
+                if (tier != null) {
+                    procedures = byName.stream()
+                            .filter(p -> tier.equals(p.getCityTier()))
+                            .collect(java.util.stream.Collectors.toList());
+                } else {
+                    procedures = byName;
+                }
             } else {
-                procedures = procedurePriceRepository.findAllByActiveTrue();
+                if (tier != null) {
+                    procedures = procedurePriceRepository.findByCityTierAndActiveTrue(tier);
+                } else {
+                    procedures = procedurePriceRepository.findAllByActiveTrue();
+                }
             }
 
             if (limit > 0 && procedures.size() > limit) {
@@ -1711,6 +1725,18 @@ public class PatientController {
                 err.put("success", false);
                 err.put("message", "Procedure not found");
                 return ResponseEntity.badRequest().body(err);
+            }
+
+            ClinicModel clinic = PeriDeskUtils.getCurrentClinicModel();
+            if (clinic != null && procedureOpt.get().getCityTier() != null && clinic.getCityTier() != null) {
+                if (!procedureOpt.get().getCityTier().equals(clinic.getCityTier())) {
+                    Map<String, Object> err = new HashMap<>();
+                    err.put("success", false);
+                    err.put("message", "Selected procedure tier does not match clinic tier");
+                    err.put("procedureTier", procedureOpt.get().getCityTier().name());
+                    err.put("clinicTier", clinic.getCityTier().name());
+                    return ResponseEntity.badRequest().body(err);
+                }
             }
 
             List<Long> assignedExamIds = new ArrayList<>();
@@ -5167,7 +5193,15 @@ public class PatientController {
 
             // Allow deletion regardless of existing lifecycle transitions when above conditions are met
 
-            // Delete associated media files first
+            // Delete associated lifecycle transitions to avoid FK constraints
+            try {
+                procedureLifecycleTransitionRepository.deleteByExamination_Id(examinationId);
+                procedureLifecycleTransitionRepository.flush();
+            } catch (Exception e) {
+                log.warn("Failed to delete lifecycle transitions for examination {}: {}", examinationId, e.getMessage());
+            }
+
+            // Delete associated media files
             List<MediaFile> mediaFiles = mediaFileRepository.findByExamination_Id(examinationId);
             for (MediaFile mediaFile : mediaFiles) {
                 try {

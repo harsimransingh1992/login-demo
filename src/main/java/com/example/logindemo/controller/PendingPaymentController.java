@@ -440,7 +440,7 @@ public class PendingPaymentController {
     @ResponseBody
     public String updatePaymentStatus(
             @RequestParam Long examinationId,
-            @RequestParam ProcedureStatus newStatus,
+            @RequestParam("newStatus") String newStatusStr,
             RedirectAttributes redirectAttributes) {
         
         String username = SecurityContextHolder.getContext().getAuthentication().getName();
@@ -450,6 +450,13 @@ public class PendingPaymentController {
             User.class
         );
         
+        ProcedureStatus newStatus;
+        try {
+            newStatus = ProcedureStatus.valueOf(newStatusStr);
+        } catch (IllegalArgumentException e) {
+            return "Invalid status value";
+        }
+
         // Validate that the new status is either PAYMENT_COMPLETED or PAYMENT_DENIED
         if (newStatus != ProcedureStatus.PAYMENT_COMPLETED && 
             newStatus != ProcedureStatus.PAYMENT_DENIED) {
