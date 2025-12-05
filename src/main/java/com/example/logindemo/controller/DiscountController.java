@@ -39,6 +39,7 @@ public class DiscountController {
                                            @RequestParam(required = false) String reason,
                                            @RequestParam(required = false) Double percentage,
                                            @RequestParam(required = false) String note,
+                                           @RequestParam(required = false) String membershipNumber,
                                            Authentication authentication) {
         try {
             User currentUser = userService.findByUsername(authentication.getName())
@@ -61,7 +62,7 @@ public class DiscountController {
                         .body(Map.of("success", false, "message", "Provide a valid percentage for OTHER or no reason"));
             }
 
-            ToothClinicalExamination updated = discountService.applyDiscount(examinationId, percentage, discountReason, note, currentUser);
+            ToothClinicalExamination updated = discountService.applyDiscount(examinationId, percentage, discountReason, note, membershipNumber, currentUser);
 
             Map<String, Object> response = new HashMap<>();
             response.put("success", true);

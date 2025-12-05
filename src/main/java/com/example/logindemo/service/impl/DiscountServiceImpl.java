@@ -93,6 +93,7 @@ public class DiscountServiceImpl implements DiscountService {
                                                   Double percentage,
                                                   DiscountReason reason,
                                                   String note,
+                                                  String membershipNumber,
                                                   User appliedBy) {
         ToothClinicalExamination examination = examinationRepository.findById(examinationId)
                 .orElseThrow(() -> new RuntimeException("Examination not found"));
@@ -126,6 +127,18 @@ public class DiscountServiceImpl implements DiscountService {
         // We now enforce strictly on procedure presence regardless of base price snapshot.
         if (examination.getProcedure() == null) {
             throw new RuntimeException("Cannot apply discount: no procedure assigned to examination");
+        }
+
+        // If MEMBERSHIP_PLAN_SERVICE is selected, verify membership number matches patient's record
+        if (reason == DiscountReason.MEMBERSHIP_PLAN_SERVICE) {
+            String patientMembership = examination.getPatient() != null ? examination.getPatient().getMembershipNumber() : null;
+            String provided = membershipNumber != null ? membershipNumber.trim() : null;
+            if (provided == null || provided.isEmpty()) {
+                throw new RuntimeException("Membership number is required for Membership Plan Service discount");
+            }
+            if (patientMembership == null || !patientMembership.equals(provided)) {
+                throw new RuntimeException("Membership number does not match the patient's membership record");
+            }
         }
 
         // Determine applied percentage based on reason or explicit percentage

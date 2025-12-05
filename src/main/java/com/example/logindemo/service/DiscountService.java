@@ -20,6 +20,7 @@ public interface DiscountService {
                                            Double percentage,
                                            DiscountReason reason,
                                            String note,
+                                           String membershipNumber,
                                            User appliedBy);
 
     /**

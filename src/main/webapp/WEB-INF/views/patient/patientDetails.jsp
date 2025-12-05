@@ -36,6 +36,7 @@
         // Permission flag for discount actions
         const CURRENT_USER_CAN_APPLY_DISCOUNT = ('${currentUser.canApplyDiscount}' === 'true');
         console.log('[PD] CURRENT_USER_CAN_APPLY_DISCOUNT =', CURRENT_USER_CAN_APPLY_DISCOUNT);
+        const PATIENT_MEMBERSHIP_NUMBER = '${patient.membershipNumber != null ? patient.membershipNumber : ''}';
     </script>
     <script>window.CURRENT_USER_CAN_ASSIGN_PROCEDURE = false;</script>
     <sec:authorize access="hasAnyRole('DOCTOR','OPD_DOCTOR','ADMIN')">
@@ -5721,6 +5722,12 @@ window.openNotesModal = window.openNotesModal || function(examId) {
                 <p class="text-muted">
                     Selected examinations: <strong><span id="bulkDiscountSelectedCount">0</span></strong>
                 </p>
+                <div id="bulkDiscountValidation" style="display:none; background:#fff3cd; border:1px solid #ffe08a; border-radius:6px; padding:10px; margin-bottom:10px;">
+                    <div style="display:flex; align-items:center; gap:8px;">
+                        <i class="fas fa-exclamation-circle" style="color:#856404;"></i>
+                        <strong id="bulkDiscountValidationMsg" style="color:#856404;">Validation error</strong>
+                    </div>
+                </div>
                 <div class="form-group">
                     <label for="bulkDiscountReasonSelect">Reason</label>
                     <select id="bulkDiscountReasonSelect" class="form-control" onchange="onBulkDiscountReasonChange()">
@@ -5733,6 +5740,11 @@ window.openNotesModal = window.openNotesModal || function(examId) {
                     <label for="bulkDiscountPercentage">Percentage</label>
                     <input type="number" id="bulkDiscountPercentage" class="form-control" min="0" max="100" step="0.01" placeholder="e.g., 10">
                     <small style="color: #6c757d; font-size: 0.85rem;">Required when reason is Other or no reason selected</small>
+                </div>
+                <div class="form-group" id="bulkMembershipNumberContainer" style="display:none;">
+                    <label for="bulkMembershipNumber">Membership Number</label>
+                    <input type="text" id="bulkMembershipNumber" class="form-control" placeholder="Enter patient's membership number">
+                    <small style="color: #6c757d; font-size: 0.85rem;">Required for Membership Plan Service</small>
                 </div>
                 <div class="form-group">
                     <label for="bulkDiscountNote">Reason Note</label>
@@ -6819,6 +6831,7 @@ window.openNotesModal = window.openNotesModal || function(examId) {
             if (errorContainer) errorContainer.style.display = 'none';
             if (errorList) errorList.innerHTML = '';
             if (resultSummary) resultSummary.textContent = '';
+            hideBulkDiscountInlineError();
 
             document.getElementById('bulkSendForPaymentModal').style.display = 'block';
         }
@@ -7633,6 +7646,9 @@ window.openNotesModal = window.openNotesModal || function(examId) {
             if (m.includes('examination not found')) {
                 return 'The selected examination could not be found.';
             }
+            if (m.includes('membership number')) {
+                return 'Membership number does not match the patient record or is missing.';
+            }
             return msg;
         }
         let _bulkDiscountReasons = null;
@@ -7682,6 +7698,21 @@ window.openNotesModal = window.openNotesModal || function(examId) {
         function closeBulkDiscountModal() {
             document.getElementById('bulkDiscountModal').style.display = 'none';
         }
+        function showBulkDiscountInlineError(message, type) {
+            const box = document.getElementById('bulkDiscountValidation');
+            const msgEl = document.getElementById('bulkDiscountValidationMsg');
+            if (!box || !msgEl) return;
+            msgEl.textContent = message || 'Validation error';
+            const isErr = (type === 'error');
+            box.style.display = 'block';
+            box.style.borderColor = isErr ? '#f5c6cb' : '#ffe08a';
+            box.style.background = isErr ? '#fdecea' : '#fff3cd';
+            msgEl.style.color = isErr ? '#721c24' : '#856404';
+        }
+        function hideBulkDiscountInlineError() {
+            const box = document.getElementById('bulkDiscountValidation');
+            if (box) box.style.display = 'none';
+        }
 
         async function loadBulkDiscountReasons() {
             const reasonSel = document.getElementById('bulkDiscountReasonSelect');
@@ -7718,11 +7749,15 @@ window.openNotesModal = window.openNotesModal || function(examId) {
         function onBulkDiscountReasonChange() {
             const reasonSel = document.getElementById('bulkDiscountReasonSelect');
             const pctEl = document.getElementById('bulkDiscountPercentage');
+            const mnContainer = document.getElementById('bulkMembershipNumberContainer');
+            const mnEl = document.getElementById('bulkMembershipNumber');
             if (!reasonSel || !pctEl) return;
             const val = reasonSel.value;
             if (val === 'OTHER' || val === '') {
                 pctEl.disabled = false;
                 pctEl.value = '';
+                if (mnContainer) mnContainer.style.display = 'none';
+                if (mnEl) mnEl.value = '';
             } else {
                 const match = (_bulkDiscountReasons || []).find(r => r.name === val);
                 if (match && typeof match.percentage === 'number') {
@@ -7731,6 +7766,8 @@ window.openNotesModal = window.openNotesModal || function(examId) {
                 } else {
                     pctEl.disabled = false;
                 }
+                if (mnContainer) mnContainer.style.display = (val === 'MEMBERSHIP_PLAN_SERVICE') ? 'block' : 'none';
+                if (val !== 'MEMBERSHIP_PLAN_SERVICE' && mnEl) mnEl.value = '';
             }
         }
 
@@ -7743,18 +7780,31 @@ window.openNotesModal = window.openNotesModal || function(examId) {
             const reasonSel = document.getElementById('bulkDiscountReasonSelect');
             const pctEl = document.getElementById('bulkDiscountPercentage');
             const noteEl = document.getElementById('bulkDiscountNote');
+            const mnEl = document.getElementById('bulkMembershipNumber');
             const reason = reasonSel ? reasonSel.value : '';
             const percentageVal = pctEl && pctEl.value ? parseFloat(pctEl.value) : null;
             const note = noteEl ? noteEl.value.trim() : '';
 
             // Validate percentage when reason is Other or empty
             if ((reason === 'OTHER' || reason === '') && (percentageVal == null || isNaN(percentageVal))) {
-                showAlertModal('Please enter a valid discount percentage for "Other" or when no reason is selected.', 'warning');
+                showBulkDiscountInlineError('Please enter a valid discount percentage for "Other" or when no reason is selected.', 'warning');
                 return;
             }
             if (percentageVal != null && (percentageVal < 0 || percentageVal > 100)) {
-                showAlertModal('Discount percentage must be between 0 and 100.', 'warning');
+                showBulkDiscountInlineError('Discount percentage must be between 0 and 100.', 'warning');
                 return;
+            }
+            if (reason === 'MEMBERSHIP_PLAN_SERVICE') {
+                const provided = mnEl ? (mnEl.value || '').trim() : '';
+                if (!provided) {
+                    showBulkDiscountInlineError('Please enter membership number for Membership Plan Service.', 'warning');
+                    return;
+                }
+                const actual = (PATIENT_MEMBERSHIP_NUMBER || '').trim();
+                if (!actual || provided !== actual) {
+                    showBulkDiscountInlineError('Membership number does not match the patient record.', 'error');
+                    return;
+                }
             }
 
             const token = document.querySelector('meta[name="_csrf"]').content;
@@ -7781,6 +7831,7 @@ window.openNotesModal = window.openNotesModal || function(examId) {
                 // Only send percentage when reason is OTHER or empty; standardized reasons use configured percentages
                 if ((reason === 'OTHER' || reason === '') && percentageVal != null) params.append('percentage', percentageVal);
                 if (note) params.append('note', note);
+                if (reason === 'MEMBERSHIP_PLAN_SERVICE' && mnEl && mnEl.value) params.append('membershipNumber', mnEl.value.trim());
                 try {
                     const resp = await fetch(joinUrl(contextPath, '/discounts/apply/' + examId), {
                         method: 'POST',
