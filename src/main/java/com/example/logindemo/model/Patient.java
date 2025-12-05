@@ -108,6 +108,13 @@ public class Patient {
     @Column(name = "created_at")
     private Date createdAt = new Date();
 
+    @Enumerated(EnumType.STRING)
+    @Column(name = "membership_plan")
+    private MembershipPlan membershipPlan;
+
+    @Column(name = "membership_number", unique = true)
+    private String membershipNumber;
+
     // Transient field for pending payments calculation
     @Transient
     private Double pendingPayments = 0.0;

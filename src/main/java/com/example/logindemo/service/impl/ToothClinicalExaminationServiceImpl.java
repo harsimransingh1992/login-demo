@@ -41,6 +41,7 @@ import com.example.logindemo.model.PaymentEntry;
 import com.example.logindemo.utils.PeriDeskUtils;
 import com.example.logindemo.repository.PaymentEntryRepository;
 import com.example.logindemo.model.ClinicModel;
+import com.example.logindemo.model.CityTier;
 import com.example.logindemo.repository.ProcedurePriceHistoryRepository;
 import com.example.logindemo.model.ProcedurePriceHistory;
 
@@ -155,11 +156,15 @@ public class ToothClinicalExaminationServiceImpl implements ToothClinicalExamina
             return procedure.getPrice();
         }
 
-        Optional<ProcedurePriceHistory> history = priceHistoryRepository
+        java.util.List<ProcedurePriceHistory> activeList = priceHistoryRepository
+            .findActiveByProcedureAndDate(procedure, date);
+        if (activeList != null && !activeList.isEmpty()) {
+            return activeList.get(0).getPrice();
+        }
+        Optional<ProcedurePriceHistory> fallback = priceHistoryRepository
             .findFirstByProcedureAndEffectiveFromLessThanEqualOrderByEffectiveFromDesc(
                 procedure, date);
-
-        return history.map(ProcedurePriceHistory::getPrice)
+        return fallback.map(ProcedurePriceHistory::getPrice)
             .orElse(procedure.getPrice());
     }
 
@@ -307,8 +312,13 @@ public class ToothClinicalExaminationServiceImpl implements ToothClinicalExamina
         ProcedurePrice procedure = procedurePriceRepository.findById(procedureId)
             .orElseThrow(() -> new RuntimeException("Procedure not found"));
             
-        // Snapshot the price effective at association time and store as base total
-        Double basePrice = getHistoricalPrice(procedure.getId(), LocalDateTime.now());
+        CityTier clinicTier = examination.getExaminationClinic() != null ? examination.getExaminationClinic().getCityTier() : null;
+        if (clinicTier != null && procedure.getCityTier() != null && !clinicTier.equals(procedure.getCityTier())) {
+            throw new RuntimeException("Selected procedure tier does not match clinic tier");
+        }
+
+        LocalDateTime associationTime = LocalDateTime.now();
+        Double basePrice = getHistoricalPrice(procedure.getId(), associationTime);
         if (basePrice == null) {
             basePrice = procedure.getPrice();
         }

@@ -547,6 +547,22 @@
                                 </form:select>
                             </div>
                         </div>
+                        <div class="form-row">
+                            <div class="form-group w-50">
+                                <label for="membershipPlan">Membership Plan Availed</label>
+                                <form:select path="membershipPlan" id="membershipPlan" class="form-control">
+                                    <form:option value="">-- Select Plan --</form:option>
+                                    <form:options items="${membershipPlans}" itemLabel="displayName" itemValue="name"/>
+                                </form:select>
+                            </div>
+                            <div class="form-group w-50">
+                                <label for="membershipNumber">Membership Number</label>
+                                <form:input path="membershipNumber" id="membershipNumber" type="text" placeholder="Enter membership number" />
+                                <div class="form-tip">
+                                    <i class="fas fa-info-circle"></i> Required and must be unique when a plan is selected
+                                </div>
+                            </div>
+                        </div>
                     </div>
                     
                     <div class="form-section">
@@ -717,7 +733,44 @@
                 
                 console.log('FORM SUBMISSION ALLOWED - No validation errors');
             });
-            
+
+            function toggleMembershipFields() {
+                var planSelect = document.getElementById('membershipPlan');
+                var numberInput = document.getElementById('membershipNumber');
+                if (!planSelect || !numberInput) return;
+                var hasPlan = planSelect.value && planSelect.value.trim() !== '';
+                numberInput.disabled = !hasPlan;
+                if (hasPlan) {
+                    numberInput.removeAttribute('disabled');
+                    numberInput.readOnly = false;
+                    numberInput.setAttribute('required','required');
+                } else {
+                    numberInput.setAttribute('disabled','disabled');
+                    numberInput.readOnly = true;
+                    numberInput.removeAttribute('required');
+                    numberInput.value = '';
+                }
+            }
+            var planSelectEl = document.getElementById('membershipPlan');
+            if (planSelectEl) {
+                planSelectEl.addEventListener('change', toggleMembershipFields);
+                toggleMembershipFields();
+            }
+
+            var editForm = document.getElementById('editPatientForm');
+            if (editForm) {
+                editForm.addEventListener('submit', function(e) {
+                    var plan = document.getElementById('membershipPlan');
+                    var number = document.getElementById('membershipNumber');
+                    if (plan && plan.value && (!number.value || number.value.trim() === '')) {
+                        e.preventDefault();
+                        alert('Membership number is required when a membership plan is selected');
+                        number.focus();
+                        return;
+                    }
+                });
+            }
+        });
             // Profile picture preview functionality
             const profilePictureInput = document.getElementById('profilePicture');
             if (profilePictureInput) {

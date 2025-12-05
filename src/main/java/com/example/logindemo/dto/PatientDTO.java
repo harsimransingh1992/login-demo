@@ -1,6 +1,7 @@
 package com.example.logindemo.dto;
 
 import com.example.logindemo.model.ReferralModel;
+import com.example.logindemo.model.MembershipPlan;
 import com.example.logindemo.model.PatientColorCode;
 import lombok.Getter;
 import lombok.Setter;
@@ -76,9 +77,12 @@ public class PatientDTO {
     private PatientColorCode colorCode;
 
     private String chairsideNote;
-    
+
     // Transient field for pending payments calculation
     private Double pendingPayments = 0.0;
+
+    private MembershipPlan membershipPlan;
+    private String membershipNumber;
 
     public Integer getAge() {
         if (dateOfBirth == null) {

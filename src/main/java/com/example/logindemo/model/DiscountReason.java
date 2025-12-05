@@ -11,6 +11,7 @@ public enum DiscountReason {
     EMPLOYEE_FAMILY_DISCOUNT("Employee Discount", "discount.employee_family.percentage", 30.0),
     EMPLOYEE_RELATION_DISCOUNT("Employee Relation Discount", "discount.employee_relation.percentage", 20.0),
     FULL_WAIVE_OFF("Full Waive-Off", "discount.full_waive_off.percentage", 100.0),
+    MEMBERSHIP_PLAN_SERVICE("Membership Plan Service", "discount.membership_plan_service.percentage", 100.0),
     OTHER("Other", null, 0.0);
 
     private final String label;

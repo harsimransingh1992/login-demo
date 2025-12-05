@@ -90,14 +90,15 @@ public class ProcedurePriceServiceImpl implements ProcedurePriceService {
         
         // Only create history if price has changed
         if (!oldPrice.equals(newPrice)) {
+            LocalDateTime now = LocalDateTime.now();
             // End the current price history record
             Optional<ProcedurePriceHistory> currentHistory = priceHistoryRepository
                 .findFirstByProcedureAndEffectiveFromLessThanEqualOrderByEffectiveFromDesc(
-                    procedure, LocalDateTime.now());
+                    procedure, now);
             
             if (currentHistory.isPresent()) {
                 ProcedurePriceHistory history = currentHistory.get();
-                history.setEffectiveUntil(LocalDateTime.now());
+                history.setEffectiveUntil(now);
                 priceHistoryRepository.save(history);
             }
             
@@ -105,12 +106,13 @@ public class ProcedurePriceServiceImpl implements ProcedurePriceService {
             ProcedurePriceHistory newHistory = new ProcedurePriceHistory();
             newHistory.setProcedure(procedure);
             newHistory.setPrice(newPrice);
-            newHistory.setEffectiveFrom(LocalDateTime.now());
+            newHistory.setEffectiveFrom(now);
             newHistory.setChangeReason(changeReason);
             priceHistoryRepository.save(newHistory);
             
             log.info("Created price history record for procedure {}: {} -> {}", 
                 id, oldPrice, newPrice);
+            fixEffectiveUntilForProcedure(procedure.getId());
         }
         
         // Update the procedure
@@ -131,15 +133,67 @@ public class ProcedurePriceServiceImpl implements ProcedurePriceService {
             throw new RuntimeException("Procedure not found");
         }
         
-        Optional<ProcedurePriceHistory> history = priceHistoryRepository
+        List<ProcedurePriceHistory> activeList = priceHistoryRepository
+            .findActiveByProcedureAndDate(procedure.get(), date);
+        if (activeList != null && !activeList.isEmpty()) {
+            return activeList.get(0).getPrice();
+        }
+        Optional<ProcedurePriceHistory> fallback = priceHistoryRepository
             .findFirstByProcedureAndEffectiveFromLessThanEqualOrderByEffectiveFromDesc(
                 procedure.get(), date);
-        
-        return history.map(ProcedurePriceHistory::getPrice)
+        return fallback.map(ProcedurePriceHistory::getPrice)
             .orElse(procedure.get().getPrice());
     }
     
     private ProcedurePriceDTO convertToDTO(ProcedurePrice procedure) {
         return modelMapper.map(procedure, ProcedurePriceDTO.class);
     }
-} 
+
+    @Transactional
+    public int fixEffectiveUntilForProcedure(Long procedureId) {
+        Optional<ProcedurePrice> procedureOpt = procedurePriceRepository.findById(procedureId);
+        if (!procedureOpt.isPresent()) {
+            return 0;
+        }
+        ProcedurePrice procedure = procedureOpt.get();
+        List<ProcedurePriceHistory> histories = priceHistoryRepository.findByProcedureOrderByEffectiveFromAsc(procedure);
+        if (histories == null || histories.size() < 2) {
+            return 0;
+        }
+        int updated = 0;
+        for (int i = 0; i < histories.size() - 1; i++) {
+            ProcedurePriceHistory current = histories.get(i);
+            ProcedurePriceHistory next = histories.get(i + 1);
+            LocalDateTime nextFrom = next.getEffectiveFrom();
+            if (nextFrom != null && (current.getEffectiveUntil() == null || !current.getEffectiveUntil().equals(nextFrom))) {
+                current.setEffectiveUntil(nextFrom);
+                priceHistoryRepository.save(current);
+                updated++;
+            }
+        }
+        return updated;
+    }
+
+    @Transactional
+    public int fixAllEffectiveUntil() {
+        List<ProcedurePrice> procedures = procedurePriceRepository.findAll();
+        int totalUpdated = 0;
+        for (ProcedurePrice p : procedures) {
+            List<ProcedurePriceHistory> histories = priceHistoryRepository.findByProcedureOrderByEffectiveFromAsc(p);
+            if (histories == null || histories.size() < 2) {
+                continue;
+            }
+            for (int i = 0; i < histories.size() - 1; i++) {
+                ProcedurePriceHistory current = histories.get(i);
+                ProcedurePriceHistory next = histories.get(i + 1);
+                LocalDateTime nextFrom = next.getEffectiveFrom();
+                if (nextFrom != null && (current.getEffectiveUntil() == null || !current.getEffectiveUntil().equals(nextFrom))) {
+                    current.setEffectiveUntil(nextFrom);
+                    priceHistoryRepository.save(current);
+                    totalUpdated++;
+                }
+            }
+        }
+        return totalUpdated;
+    }
+}

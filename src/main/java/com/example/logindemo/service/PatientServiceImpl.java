@@ -173,6 +173,14 @@ public class PatientServiceImpl implements PatientService{
             patient.setEmergencyContactName(patientDTO.getEmergencyContactName());
             patient.setEmergencyContactPhoneNumber(patientDTO.getEmergencyContactPhoneNumber());
             patient.setProfilePicturePath(patientDTO.getProfilePicturePath());
+
+            if (patientDTO.getMembershipPlan() != null) {
+                patient.setMembershipPlan(patientDTO.getMembershipPlan());
+                patient.setMembershipNumber(patientDTO.getMembershipNumber());
+            } else {
+                patient.setMembershipPlan(null);
+                patient.setMembershipNumber(null);
+            }
             
             // Set referralOther
             patient.setReferralOther(patientDTO.getReferralOther());

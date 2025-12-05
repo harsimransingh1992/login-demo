@@ -608,6 +608,17 @@ public class AdminController {
             return ResponseEntity.badRequest().body(Map.of("success", false, "message", e.getMessage()));
         }
     }
+
+    @PostMapping("/prices/fix-history-intervals")
+    @ResponseBody
+    public ResponseEntity<?> fixHistoryIntervals() {
+        try {
+            int updated = procedurePriceService.fixAllEffectiveUntil();
+            return ResponseEntity.ok(Map.of("success", true, "updated", updated));
+        } catch (Exception e) {
+            return ResponseEntity.badRequest().body(Map.of("success", false, "message", e.getMessage()));
+        }
+    }
     
     
     @PostMapping("/fix-duplicate-ids")

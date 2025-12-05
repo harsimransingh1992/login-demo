@@ -3,6 +3,7 @@ package com.example.logindemo.service.impl;
 import com.example.logindemo.model.DiscountEntry;
 import com.example.logindemo.model.DiscountReason;
 import com.example.logindemo.model.ToothClinicalExamination;
+import com.example.logindemo.model.ProcedureStatus;
 import com.example.logindemo.model.User;
 import com.example.logindemo.model.UserRole;
 import com.example.logindemo.repository.DiscountEntryRepository;
@@ -170,6 +171,11 @@ public class DiscountServiceImpl implements DiscountService {
         double aggregated = examination.getAggregatedDiscountPercentage();
         double net = base * (1 - (aggregated / 100.0));
         examination.setTotalProcedureAmount(net < 0 ? 0.0 : net);
+
+        // If effective net payable is zero after discount, mark payment as completed
+        if ((net <= 0.0) || examination.isFullyWaived()) {
+            examination.setProcedureStatus(ProcedureStatus.PAYMENT_COMPLETED);
+        }
 
         return examinationRepository.save(examination);
     }

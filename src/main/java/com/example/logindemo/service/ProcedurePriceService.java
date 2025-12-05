@@ -12,4 +12,8 @@ public interface ProcedurePriceService {
     List<ProcedurePriceDTO> getProceduresByTier(CityTier cityTier);
     ProcedurePriceDTO updateProcedurePrice(Long id, ProcedurePriceDTO procedureDTO, String changeReason);
     Double getHistoricalPrice(Long procedureId, LocalDateTime date);
-} 
+
+    int fixEffectiveUntilForProcedure(Long procedureId);
+
+    int fixAllEffectiveUntil();
+}

@@ -263,6 +263,11 @@ public class PatientController {
         return DentalDepartment.values();
     }
 
+    @ModelAttribute("membershipPlans")
+    public MembershipPlan[] membershipPlans() {
+        return MembershipPlan.values();
+    }
+
     @GetMapping("/register")
     public String showRegistrationForm(Model model) {
         model.addAttribute("patient", new PatientDTO());
@@ -314,6 +319,20 @@ public class PatientController {
             return "patient/register";
         }
         
+        // Validate membership fields
+        if (patient.getMembershipPlan() != null) {
+            if (patient.getMembershipNumber() == null || patient.getMembershipNumber().trim().isEmpty()) {
+                model.addAttribute("error", "Membership number is required when a membership plan is selected");
+                model.addAttribute("patient", patient);
+                return "patient/register";
+            }
+            if (patientRepository.existsByMembershipNumber(patient.getMembershipNumber())) {
+                model.addAttribute("error", "Membership number already exists. Please provide a unique number");
+                model.addAttribute("patient", patient);
+                return "patient/register";
+            }
+        }
+
         String profilePicturePath = null;
         
         // Handle profile picture upload if provided
@@ -792,6 +811,22 @@ public class PatientController {
             existingPatient.setReferralOther(patient.getReferralOther());
             existingPatient.setColorCode(patient.getColorCode());
             existingPatient.setChairsideNote(patient.getChairsideNote());
+
+            existingPatient.setMembershipPlan(patient.getMembershipPlan());
+            if (patient.getMembershipPlan() != null) {
+                if (patient.getMembershipNumber() == null || patient.getMembershipNumber().trim().isEmpty()) {
+                    redirectAttributes.addFlashAttribute("error", "Membership number is required when a membership plan is selected");
+                    return "redirect:/patients/edit/" + patient.getId();
+                }
+                Optional<Patient> existingByNumber = patientRepository.findByMembershipNumber(patient.getMembershipNumber());
+                if (existingByNumber.isPresent() && !existingByNumber.get().getId().equals(patient.getId())) {
+                    redirectAttributes.addFlashAttribute("error", "Membership number already exists. Please provide a unique number");
+                    return "redirect:/patients/edit/" + patient.getId();
+                }
+                existingPatient.setMembershipNumber(patient.getMembershipNumber());
+            } else {
+                existingPatient.setMembershipNumber(null);
+            }
             
             // Handle profile picture upload if provided
             if (profilePicture != null && !profilePicture.isEmpty()) {
@@ -1462,6 +1497,26 @@ public class PatientController {
                 ));
             }
             
+            Optional<ToothClinicalExamination> examOpt = toothClinicalExaminationRepository.findById(examinationId);
+            if (!examOpt.isPresent()) {
+                return ResponseEntity.badRequest().body(Map.of(
+                    "success", false,
+                    "message", "Examination not found"
+                ));
+            }
+            ToothClinicalExamination examForTier = examOpt.get();
+            ProcedurePriceDTO procDtoForTier = procedurePriceService.getProcedureById(procedureId);
+            if (procDtoForTier != null && examForTier.getExaminationClinic() != null && procDtoForTier.getCityTier() != null && examForTier.getExaminationClinic().getCityTier() != null) {
+                if (!procDtoForTier.getCityTier().equals(examForTier.getExaminationClinic().getCityTier())) {
+                    return ResponseEntity.badRequest().body(Map.of(
+                        "success", false,
+                        "message", "Selected procedure tier does not match clinic tier",
+                        "procedureTier", procDtoForTier.getCityTier().name(),
+                        "clinicTier", examForTier.getExaminationClinic().getCityTier().name()
+                    ));
+                }
+            }
+
             // Save the denture pictures (only if provided)
             String upperDenturePath = null;
             String lowerDenturePath = null;

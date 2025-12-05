@@ -3606,6 +3606,38 @@ window.openNotesModal = window.openNotesModal || function(examId) {
         }
 
 
+        .membership-banner {
+            display: inline-flex;
+            align-items: center;
+            gap: 10px;
+            padding: 10px 14px;
+            border-radius: 10px;
+            font-weight: 600;
+            margin-top: 10px;
+            box-shadow: 0 6px 14px rgba(0,0,0,0.08);
+            letter-spacing: 0.2px;
+        }
+        .membership-banner i {
+            font-size: 1.1rem;
+        }
+        .membership-basic {
+            background: linear-gradient(135deg, #ecf0f1, #d0d9e0);
+            color: #2c3e50;
+            border: 1px solid #cfd9e2;
+        }
+        .membership-standard {
+            background: linear-gradient(135deg, #3498db, #2ecc71);
+            color: #ffffff;
+            border: 1px solid rgba(255,255,255,0.3);
+        }
+        .membership-premium {
+            background: linear-gradient(135deg, #f1c40f, #f39c12);
+            color: #2c3e50;
+            border: 1px solid #d4ac0d;
+        }
+        .membership-banner .label { opacity: 0.9; }
+        .membership-banner .sep { opacity: 0.6; }
+
     </style>
 </head>
 <body>
@@ -3688,6 +3720,26 @@ window.openNotesModal = window.openNotesModal || function(examId) {
                         </span>
 
                     </div>
+                    <c:if test="${patient.membershipPlan != null}">
+                        <c:set var="planClass" value="membership-basic" />
+                        <c:choose>
+                            <c:when test="${patient.membershipPlan.name() == 'STANDARD'}">
+                                <c:set var="planClass" value="membership-standard" />
+                            </c:when>
+                            <c:when test="${patient.membershipPlan.name() == 'PREMIUM'}">
+                                <c:set var="planClass" value="membership-premium" />
+                            </c:when>
+                        </c:choose>
+                        <div class="membership-banner ${planClass}">
+                            <i class="fas fa-id-card-alt"></i>
+                            <span class="label">Membership:</span>
+                            <span class="value">${patient.membershipPlan.displayName}</span>
+                            <c:if test="${not empty patient.membershipNumber}">
+                                <span class="sep">•</span>
+                                <span class="value">No. ${fn:escapeXml(patient.membershipNumber)}</span>
+                            </c:if>
+                        </div>
+                    </c:if>
                 </div>
                 <div class="patient-actions">
                     <!-- Pending Payment Button -->

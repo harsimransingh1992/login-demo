@@ -669,6 +669,22 @@
                                 <i class="fas fa-info-circle"></i> Assign a color code for patient categorization
                             </div>
                         </div>
+                        <div class="form-row">
+                            <div class="form-group">
+                                <label for="membershipPlan">Membership Plan Availed</label>
+                                <form:select id="membershipPlan" path="membershipPlan" class="form-control">
+                                    <form:option value="">-- Select Plan --</form:option>
+                                    <form:options items="${membershipPlans}" itemLabel="displayName" itemValue="name"/>
+                                </form:select>
+                            </div>
+                            <div class="form-group">
+                                <label for="membershipNumber">Membership Number</label>
+                                <form:input type="text" id="membershipNumber" path="membershipNumber" placeholder="Enter membership number" disabled="true"/>
+                                <div class="form-tip">
+                                    <i class="fas fa-info-circle"></i> Required and must be unique when a plan is selected
+                                </div>
+                            </div>
+                        </div>
                     </div>
                     
                     <!-- Emergency Contact Section -->
@@ -1051,6 +1067,32 @@
         if ($('#referral').val() === 'OTHER') {
             $('#referralOther').show().prop('disabled', false);
         }
+
+        function toggleMembershipFields() {
+            const plan = $('#membershipPlan').val();
+            const hasPlan = plan && plan.trim() !== '';
+            const $number = $('#membershipNumber');
+            if (hasPlan) {
+                $number.prop('disabled', false);
+                $number.attr('required', 'required');
+            } else {
+                $number.prop('disabled', true);
+                $number.removeAttr('required');
+                $number.val('');
+            }
+        }
+        $('#membershipPlan').on('change', toggleMembershipFields);
+        toggleMembershipFields();
+        $('form').on('submit', function(e) {
+            const plan = $('#membershipPlan').val();
+            const number = $('#membershipNumber').val();
+            if (plan && (!number || number.trim() === '')) {
+                e.preventDefault();
+                alert('Membership number is required when a membership plan is selected');
+                $('#membershipNumber').focus();
+                return false;
+            }
+        });
     });
 </script>
 

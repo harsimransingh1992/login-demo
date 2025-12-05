@@ -256,10 +256,14 @@ public class ToothClinicalExaminationServiceImpl implements ToothClinicalExamina
             throw new IllegalArgumentException("Procedure not found");
         }
         
-        // Associate the procedure with the examination
         ProcedurePrice procedure = procedureOptional.get();
-        // Snapshot the price effective at association time
-        Double basePrice = getHistoricalPrice(procedure.getId(), java.time.LocalDateTime.now());
+        CityTier clinicTier = examination.getExaminationClinic() != null ? examination.getExaminationClinic().getCityTier() : null;
+        if (clinicTier != null && procedure.getCityTier() != null && !clinicTier.equals(procedure.getCityTier())) {
+            throw new IllegalArgumentException("Selected procedure tier does not match clinic tier");
+        }
+
+        LocalDateTime associationTime = LocalDateTime.now();
+        Double basePrice = getHistoricalPrice(procedure.getId(), associationTime);
         if (basePrice == null) {
             basePrice = procedure.getPrice();
         }
@@ -511,11 +515,15 @@ public class ToothClinicalExaminationServiceImpl implements ToothClinicalExamina
             return procedure.get().getPrice();
         }
         
-        Optional<ProcedurePriceHistory> history = priceHistoryRepository
+        java.util.List<ProcedurePriceHistory> activeList = priceHistoryRepository
+            .findActiveByProcedureAndDate(procedure.get(), date);
+        if (activeList != null && !activeList.isEmpty()) {
+            return activeList.get(0).getPrice();
+        }
+        Optional<ProcedurePriceHistory> fallback = priceHistoryRepository
             .findFirstByProcedureAndEffectiveFromLessThanEqualOrderByEffectiveFromDesc(
                 procedure.get(), date);
-        
-        return history.map(ProcedurePriceHistory::getPrice)
+        return fallback.map(ProcedurePriceHistory::getPrice)
             .orElse(procedure.get().getPrice());
     }
 
@@ -558,9 +566,9 @@ public class ToothClinicalExaminationServiceImpl implements ToothClinicalExamina
             notes,
             transactionReference
         );
-        entry.setPaymentDate(java.time.LocalDateTime.now());
-        entry.setCreatedAt(java.time.LocalDateTime.now());
-        entry.setUpdatedAt(java.time.LocalDateTime.now());
+        entry.setPaymentDate(LocalDateTime.now());
+        entry.setCreatedAt(LocalDateTime.now());
+        entry.setUpdatedAt(LocalDateTime.now());
 
         // Add to examination's paymentEntries
         if (examination.getPaymentEntries() == null) {
@@ -570,7 +578,7 @@ public class ToothClinicalExaminationServiceImpl implements ToothClinicalExamina
 
         // Set treatmentStartingDate when first payment is received
         if (examination.getTreatmentStartingDate() == null) {
-            examination.setTreatmentStartingDate(java.time.LocalDateTime.now());
+            examination.setTreatmentStartingDate(LocalDateTime.now());
             log.info("Set treatmentStartingDate to current time for examination: {} (first payment received)", examinationId);
         }
 

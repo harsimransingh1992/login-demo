@@ -16,7 +16,8 @@ public enum ReferralModel {
     STAFF_REFERENCE("Clinic Staff Reference"),
     SHARK_TANK("Shark Tank"),
     BIKRAM_REFERENCE("Bikramjeet Reference"),
-    MEDICAL_STORE_REFERENCE("Medical Store Reference");
+    MEDICAL_STORE_REFERENCE("Medical Store Reference"),
+    MEMBERSHIP_PLAN("Membership Plan");
 
     private final String displayName;
 
